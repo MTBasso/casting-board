@@ -20,7 +20,7 @@ import {
   passOnOffer,
   post,
   postingFor,
-  postingOnRoute,
+  postingsOnRoute,
   recall,
   removeFromCrew,
   reserveCeiling,
@@ -41,16 +41,16 @@ import { creatureName } from "../names.js";
 /**
  * Routes, and the two kinds of people who work them.
  *
- * `Ground` is the map: what lives where, and who is standing on it. `Catchers`
- * and `Evolvers` are the two payrolls — collecting and training, kept apart
+ * `Ground` is the map: what lives where, and who is standing on it. `Rangers`
+ * and `Handlers` are the two payrolls — collecting and training, kept apart
  * because they are different jobs done at different times, and stacking them on
  * one screen left neither any room.
  */
-type View = "ground" | "catcher" | "evolver";
+type View = "routes" | "ranger" | "handler";
 
 export function FieldWork() {
   const state = useGame((s) => s.state);
-  const [view, setView] = useState<View>("ground");
+  const [view, setView] = useState<View>("routes");
 
   const idle = usableReserve(state);
   const cap = reserveCeiling(state);
@@ -61,9 +61,9 @@ export function FieldWork() {
     fieldStaff(state, role).filter((t) => !postingFor(state, t.id)).length;
 
   return (
-    <div className="catchers">
+    <div className="rangers">
       <h2 className="col-title">
-        Routes
+        Field
         <span className="counter">
           {state.postings.length} posted · {idle}/{cap} usable in the box
         </span>
@@ -72,9 +72,9 @@ export function FieldWork() {
       <div className="subtabs" role="tablist">
         {(
           [
-            ["ground", "Ground", 0],
-            ["catcher", "Catchers", unposted("catcher")],
-            ["evolver", "Evolvers", unposted("evolver")],
+            ["routes", "Routes", 0],
+            ["ranger", "Rangers", unposted("ranger")],
+            ["handler", "Handlers", unposted("handler")],
           ] as const
         ).map(([id, label, badge]) => (
           <button
@@ -91,17 +91,17 @@ export function FieldWork() {
         ))}
       </div>
 
-      {boxFull && view !== "evolver" && (
+      {boxFull && view !== "handler" && (
         <p className="warn-banner">
           {cap} creatures your trainers could field are sitting idle. Catching has
           stopped until you put some of them to work.
         </p>
       )}
 
-      {view === "ground" ? (
+      {view === "routes" ? (
         <>
           <p className="hint">
-            Catchers bring creatures in; Evolvers take a party out and bring it
+            Rangers bring creatures in; Handlers take a party out and bring it
             back stronger. Route work costs fatigue and never career — this is the
             safe posting, and the only one your spare creatures can hold.
           </p>
@@ -122,7 +122,7 @@ export function FieldWork() {
  * One role's staff, and the hiring offer above them.
  *
  * The offer is drawn, not chosen: three types turn up, you take one or you pass
- * and see three more. That is what makes a Water Catcher a piece of luck you
+ * and see three more. That is what makes a Water Ranger a piece of luck you
  * build around rather than a component you buy.
  */
 function Payroll({ role }: { role: FieldRole }) {
@@ -136,9 +136,9 @@ function Payroll({ role }: { role: FieldRole }) {
   const cost = fieldHireCost(state, role);
 
   const blurb =
-    role === "catcher"
-      ? "A Catcher works a route with one partner of their own type, and brings back what lives there. They will not take ground their partner cannot handle."
-      : `An Evolver takes up to ${constants.EVOLVER.partyMax} of their own type onto a route, earns Pokéyen, and brings them back levelled. They *may* be posted over their heads — it pays better and teaches faster, and one day they come back beaten.`;
+    role === "ranger"
+      ? "A Ranger works a route with one partner of their own type, and brings back what lives there. They will not take ground their partner cannot handle."
+      : `An Handler takes up to ${constants.HANDLER.partyMax} of their own type onto a route, earns Pokéyen, and brings them back levelled. They *may* be posted over their heads — it pays better and teaches faster, and one day they come back beaten.`;
 
   return (
     <>
@@ -155,7 +155,7 @@ function Payroll({ role }: { role: FieldRole }) {
         {staff.length >= slots ? (
           <p className="empty">
             Every slot is filled. Upgrade the{" "}
-            {role === "catcher" ? "Scouting Office" : "Training Grounds"} for
+            {role === "ranger" ? "Scouting Office" : "Training Grounds"} for
             another.
           </p>
         ) : (
@@ -192,7 +192,7 @@ function Payroll({ role }: { role: FieldRole }) {
       {staff.length === 0 ? (
         <p className="empty">
           Nobody employed.{" "}
-          {role === "catcher"
+          {role === "ranger"
             ? "This is where every creature on the roster comes from."
             : "This is the only way your creatures gain levels outside a gym."}
         </p>
@@ -232,7 +232,7 @@ function FieldRow({ trainer }: { trainer: Trainer }) {
         <span className="trainer-id">
           <TypeBadge type={trainer.affinity} size="sm" />
           <span>{trainer.name}</span>
-          <span className="dim">{trainer.kind === "evolver" ? "Evolver" : "Catcher"}</span>
+          <span className="dim">{trainer.kind === "handler" ? "Handler" : "Ranger"}</span>
         </span>
         {posting ? (
           <button
@@ -318,7 +318,7 @@ function FieldRow({ trainer }: { trainer: Trainer }) {
               </span>
             </span>
             <span className="dim">
-              {posting.role === "catcher"
+              {posting.role === "ranger"
                 ? `${posting.caught} caught`
                 : `₱${Math.round(posting.earned).toLocaleString()} earned`}
             </span>
@@ -352,22 +352,21 @@ function RouteCard({ route }: { route: Route }) {
   const [open, setOpen] = useState(false);
 
   const known = hasIntel(state, route.id);
-  const worked = postingOnRoute(state, route.id);
-  const workedBy = worked ? state.trainers[worked.trainerId] : undefined;
+  const here = postingsOnRoute(state, route.id);
 
   const rows = TYPES.map((t) => ({ type: t, share: route.supply[t] }))
     .filter((r) => r.share > 0)
     .sort((a, b) => b.share - a.share);
   const total = rows.reduce((a, r) => a + r.share, 0) || 1;
 
-  const ready = open && !worked
-    ? [...fieldStaff(state, "catcher"), ...fieldStaff(state, "evolver")].filter(
+  const ready = open
+    ? [...fieldStaff(state, "ranger"), ...fieldStaff(state, "handler")].filter(
         (t) => canPost(state, route.id, t.id).ok,
       )
     : [];
 
   return (
-    <li className={`route-card ${worked ? "is-worked" : ""}`}>
+    <li className={`route-card ${here.length > 0 ? "is-worked" : ""}`}>
       <div className="route-head">
         <span>
           <strong>{route.name}</strong>
@@ -376,16 +375,9 @@ function RouteCard({ route }: { route: Route }) {
             Lv{route.levelMin}–{route.levelMax}
           </span>
         </span>
-        {worked ? (
-          <span className="worked-by">
-            {workedBy?.name ?? "Worked"}
-            <span className="dim"> · {worked.role}</span>
-          </span>
-        ) : (
-          <button type="button" className="btn sm" onClick={() => setOpen((v) => !v)}>
-            {open ? "Cancel" : "Post…"}
-          </button>
-        )}
+        <button type="button" className="btn sm" onClick={() => setOpen((v) => !v)}>
+          {open ? "Cancel" : "Post…"}
+        </button>
       </div>
 
       <div className="supply">
@@ -408,13 +400,34 @@ function RouteCard({ route }: { route: Route }) {
         </button>
       )}
 
-      {open && !worked && (
+      {here.length > 0 && (
+        <ul className="on-route">
+          {here.map((p) => {
+            const who = state.trainers[p.trainerId];
+            return (
+              <li key={p.trainerId}>
+                <span className="worked-by">
+                  {p.role === "ranger" ? "Ranger" : "Handler"}
+                </span>
+                <span className="dim">{who?.name}</span>
+                <span className="dim">
+                  {p.role === "ranger"
+                    ? `${p.caught} caught`
+                    : `\u20b1${Math.round(p.earned).toLocaleString()}`}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {open && (
         <div className="post-options">
           {ready.length === 0 ? (
             <p className="empty">
-              Nobody crewed who could work this ground. Catchers need Lv
-              {route.levelMin}; Evolvers can be pushed{" "}
-              {constants.EVOLVER.maxStretch} levels under it.
+              Nobody crewed who could work this ground. Rangers need Lv
+              {route.levelMin}; Handlers can be pushed{" "}
+              {constants.HANDLER.maxStretch} levels under it.
             </p>
           ) : (
             <ul className="thin-list">
@@ -428,7 +441,7 @@ function RouteCard({ route }: { route: Route }) {
                         {t.name}
                         <span className="dim">
                           {" "}
-                          {t.kind === "evolver" ? "Evolver" : "Catcher"} · crew Lv
+                          {t.kind === "handler" ? "Handler" : "Ranger"} · crew Lv
                           {crewLevel(state, t.id)}
                           {under > 0 && ` · ${under} under`}
                         </span>

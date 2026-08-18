@@ -52,6 +52,23 @@ export function partySizeFor(badges: number): number {
   return Math.max(1, Math.min(CHALLENGE.maxParty, 1 + badges));
 }
 
+/**
+ * A challenger's level, adjusted for how many they brought.
+ *
+ * A challenger walking into gym one may well have six creatures — people do
+ * arrive with a full box — but six *at the gym's level* is not a first badge,
+ * it is a wall. So depth and quality trade against each other: the bigger the
+ * party, the greener it is.
+ *
+ * This is the same bargain the player makes on their own side. A Leader at the
+ * first gym fields two good creatures; the challenger's answer to depth is that
+ * theirs are not ready yet.
+ */
+export function depthPenalty(size: number): number {
+  const extra = Math.max(0, size - CHALLENGE.freeDepth);
+  return Math.max(CHALLENGE.minDepthScale, 1 - extra * CHALLENGE.levelPerExtraMon);
+}
+
 export function levelFor(
   state: LeagueState,
   badges: number,
@@ -94,7 +111,7 @@ function meanLevel(creatures: readonly Creature[]): number {
  * its strongest third of fielded creatures.
  *
  * The strongest third rather than the mean of everything, because a plain mean
- * is dilutable: once Catchers are running, the roster fills with low-level
+ * is dilutable: once Rangers are running, the roster fills with low-level
  * catches, and averaging over all of them would make challengers *weaker* the
  * more creatures you own. That is exactly backwards, and it would reward
  * hoarding junk — the behaviour this whole design exists to make unnecessary.
@@ -105,7 +122,7 @@ function meanLevel(creatures: readonly Creature[]): number {
 export function fieldedLevel(state: LeagueState): number {
   const levels: number[] = [];
   for (const trainer of Object.values(state.trainers)) {
-    if (trainer.kind === "candidate" || trainer.kind === "catcher") continue;
+    if (trainer.kind === "candidate" || trainer.kind === "ranger") continue;
     for (const id of trainer.party) {
       const c = state.creatures[id];
       if (c) levels.push(c.level);
@@ -160,7 +177,7 @@ export function makeChallenger(
   floor = 0,
 ): Challenger {
   const size = partySizeFor(badges);
-  const level = levelFor(state, badges, facing, floor);
+  const level = Math.max(1, Math.round(levelFor(state, badges, facing, floor) * depthPenalty(size)));
   const party: ChallengerMon[] = [];
   const families = new Set<string>();
 

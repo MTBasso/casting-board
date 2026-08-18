@@ -1,4 +1,4 @@
-import { CATCHER, FATIGUE, STAFF } from "../constants.js";
+import { RANGER, FATIGUE, STAFF } from "../constants.js";
 import { isSuspended } from "./morale.js";
 
 import { recoverySpeed } from "./facilities.js";
@@ -103,7 +103,7 @@ export function recover(state: LeagueState, dt: number): void {
     if (c.fatigue <= 0) continue;
     // Only a partner actually on the route recovers slowly. One sitting the
     // shift out rests like anyone else, which is what lets the posting resume.
-    const rate = working.has(c.id) ? amount * CATCHER.restWhilePosted : amount;
+    const rate = working.has(c.id) ? amount * RANGER.restWhilePosted : amount;
     c.fatigue = Math.max(0, c.fatigue - rate);
   }
 }

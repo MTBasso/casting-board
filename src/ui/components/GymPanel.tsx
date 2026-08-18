@@ -4,7 +4,6 @@ import { StaffStanding } from "./StaffStanding.js";
 import {
   bench,
   canHireGymTrainer,
-  constants,
   expandGymTrainers,
   gymTrainerSlotCost,
   hireCost,
@@ -20,7 +19,6 @@ import { creatureName } from "../names.js";
 import { PartyList } from "./PartyList.js";
 import { ThreatReport } from "./ThreatReport.js";
 import { BattleFeed } from "./BattleFeed.js";
-import { AvailablePokemon } from "./AvailablePokemon.js";
 
 /**
  * One gym.
@@ -73,6 +71,8 @@ export function GymPanel({ gymId }: { gymId: string }) {
           </button>
         )}
       </header>
+
+      {leader && <StaffStanding trainer={leader} />}
 
       <BattleFeed gymId={gym.id} />
 
@@ -129,10 +129,9 @@ export function GymPanel({ gymId }: { gymId: string }) {
           <h3>
             {leader.name}&rsquo;s party
             <span className="counter">
-              {leader.party.length}/{constants.PARTY.max}
+              {leader.party.length}/{partyCapOf(leader, state)}
             </span>
           </h3>
-          <StaffStanding trainer={leader} />
           <p className="hint">
             Position one leads; the rest follow as each faints. Drag to reorder.
             Parties fill themselves from the box — pin the ones that matter and
@@ -143,7 +142,6 @@ export function GymPanel({ gymId }: { gymId: string }) {
             onRemove={(c) => act((s) => bench(s, c.id))}
           />
 
-          <AvailablePokemon trainerId={leader.id} />
         </section>
       )}
 
@@ -179,7 +177,7 @@ function TrainerRow({ trainer }: { trainer: Trainer }) {
           </span>
         </span>
         <span className="dim">
-          {party.length}/{partyCapOf(trainer)} · avg Lv{avgLevel} · {rested}% rested
+          {party.length}/{partyCapOf(trainer, state)} · avg Lv{avgLevel} · {rested}% rested
         </span>
       </div>
 

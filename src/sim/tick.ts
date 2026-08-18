@@ -116,6 +116,7 @@ export function emptyReport(): TickReport {
     departures: [],
     released: [],
     beaten: [],
+    returned: [],
   };
 }
 

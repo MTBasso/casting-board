@@ -31,6 +31,18 @@ export const CHALLENGE = {
   baseLevel: 8,
   levelPerBadge: 5,
   levelPerThousandRenown: 4,
+  /**
+   * Party size a challenger carries before depth starts costing them level.
+   *
+   * Beyond it every extra creature shaves `levelPerExtraMon` off the whole
+   * party, so a full team of six is a real threat by *weight* rather than by
+   * quality — which is what lets the early gyms field two and still be a fair
+   * fight.
+   */
+  freeDepth: 2,
+  levelPerExtraMon: 0.09,
+  /** However deep they come, never greener than this fraction of their level. */
+  minDepthScale: 0.6,
   /** One Revive per this many badges. */
   badgesPerRevive: 3,
   /** Chance a held Revive is actually spent on a faint. */
@@ -55,7 +67,7 @@ export const CHALLENGE = {
    * the league's own creatures at a comparable rate — that is what Battlers are
    * for — and this ceiling is what keeps the game honest until they land.
    */
-  maxLevelRatio: 1.8,
+  maxLevelRatio: 2.1,
   /** Never clamp below this, or an unstaffed league would face nothing at all. */
   minChallengerLevel: 10,
   reportWindow: 20,
@@ -222,8 +234,15 @@ export const LEVELS = {
    * the same creature at level 1.
    */
   powerPerLevel: 0.015,
-  /** XP awarded for fighting a wave in the front line. */
-  xpPerBattle: 1,
+  /**
+   * XP awarded for fighting a bout in the front line.
+   *
+   * Was 1, against an `xpBase` of 12 — a creature needed a dozen bouts to reach
+   * level 2 and hundreds to matter, so gym duty read as teaching nothing at all.
+   * Defending the board is the game's central activity and it has to be one of
+   * the ways a creature grows, or every level in the league comes from a route.
+   */
+  xpPerBattle: 6,
   /** Undercard rounds teach less than a real bout. */
   xpPerUndercardBattle: 0.35,
   /** XP to reach the next level, from the current one. */
@@ -268,13 +287,13 @@ export const PARTY = {
  */
 
 /**
- * Catchers.
+ * Rangers.
  *
  * Scouting used to be a purchase: spend a charge and some money, creatures
  * appear. It was the least characterful system in the game — the one place a
  * league about people acquired creatures from nowhere.
  *
- * Now you staff a route. A Catcher and a **field partner** work it continuously,
+ * Now you staff a route. A Ranger and a **field partner** work it continuously,
  * and creatures arrive because somebody went and got them. That is what turns a
  * box of four hundred into an org chart: the fortieth Zubat is not inventory,
  * it is somebody's working partner.
@@ -282,7 +301,7 @@ export const PARTY = {
  * Route work costs **fatigue, never career**. Routes are the safe posting, and
  * the box has a job that never kills anyone.
  */
-export const CATCHER = {
+export const RANGER = {
   /** Sim-seconds for one catch before the route's difficulty is applied. */
   baseCatchSeconds: 70,
   /** Added per point of the route's top level. Better ground is slower ground. */
@@ -323,16 +342,23 @@ export const CATCHER = {
    * The gap between this and `tiredAt` is what makes a posting a duty cycle
    * rather than a stall. Without it a tired partner recovered a hair, worked one
    * second, and tired out again — postings ran at a trickle forever and the
-   * league starved with Catchers apparently hard at work.
+   * league starved with Rangers apparently hard at work.
    */
   rested: 0.3,
-  /** Experience the partner earns per catch. */
-  xpPerCatch: 16,
+  /**
+   * How long a Ranger's shift runs before they come home.
+   *
+   * A posting that never ended made the whole screen one decision, made once —
+   * staff every route and never look at it again. A shift means the Field tab
+   * asks something of the player on a rhythm, and it is the difference between a
+   * system and a switch.
+   */
+  shiftSeconds: 45 * 60,
   /**
    * Postings stall once this many creatures sit idle in the box.
    *
    * Automation without a ceiling quietly recreated the hoarding problem once
-   * before — the roster hit 720 and the runner slowed six-fold. Catchers stop
+   * before — the roster hit 720 and the runner slowed six-fold. Rangers stop
    * when there is nowhere to put anyone.
    */
   reserveCeilingBase: 24,
@@ -354,7 +380,7 @@ export const CATCHER = {
    * six-fold. It only ever touches creatures nobody has invested in.
    */
   hardCeilingFactor: 3,
-  /** Catchers are paid less than Leaders; they are not holding the board. */
+  /** Rangers are paid less than Leaders; they are not holding the board. */
   salaryFactor: 0.45,
   hireCostBase: 700,
   hireCostGrowth: 1.4,
@@ -372,7 +398,7 @@ export const CATCHER = {
  * Field staff, and why you do not get to pick their type.
  *
  * Hiring offers a handful of types drawn at random; take one and the offer
- * redraws. Picking freely made a Catcher a component you bought — you already
+ * redraws. Picking freely made a Ranger a component you bought — you already
  * knew which type you wanted, so the only question was whether you could afford
  * it, and there was no decision in it at all.
  *
@@ -387,14 +413,14 @@ export const FIELD = {
 } as const;
 
 /**
- * Evolvers.
+ * Handlers.
  *
  * Named to stay clear of Gym Trainers, and named for what they do: they take a
  * party out onto a route and bring it back stronger. This is the training half
- * of field work, opposite the Catchers' collecting half.
+ * of field work, opposite the Rangers' collecting half.
  *
- * The mechanic that makes it a decision is the **stretch**. A Catcher refuses
- * ground its partner could not handle; an Evolver may be posted *below* a
+ * The mechanic that makes it a decision is the **stretch**. A Ranger refuses
+ * ground its partner could not handle; an Handler may be posted *below* a
  * route's level band on purpose. The further under, the more they earn and the
  * faster the party levels — and the more likely they come back beaten.
  *
@@ -403,12 +429,12 @@ export const FIELD = {
  * tier fielded level 6 creatures against a league in the twenties. Training has
  * to be a thing the player can *do*, not a thing that happens to them.
  */
-export const EVOLVER = {
+export const HANDLER = {
   /** Postings before the Training Grounds are upgraded. */
   baseSlots: 3,
   /** Further postings per level of the Training Grounds. */
   slotsPerFacilityLevel: 1,
-  /** An Evolver's party. Smaller than a gym's — they travel light. */
+  /** An Handler's party. Smaller than a gym's — they travel light. */
   partyMax: 4,
 
   hireCostBase: 1100,
@@ -459,7 +485,7 @@ export const SCOUTING = {
   /**
    * Pokéyen a new league opens with.
    *
-   * Enough to hire the first Catcher immediately. Creatures now come *only*
+   * Enough to hire the first Ranger immediately. Creatures now come *only*
    * from staffed routes, so opening at zero meant the player could not catch
    * anything until gate receipts trickled in — the game's central supply chain
    * was locked behind a wait on the very first screen.
@@ -625,6 +651,22 @@ export const LEADER_OFFER = {
   /** Their signature creature arrives already trained and fully bonded. */
   signatureLevelBase: 14,
   signatureLevelPerThousandRenown: 8,
+} as const;
+
+/**
+ * How deep a gym's Leader runs.
+ *
+ * Gym one opening with a full party of six was the wrong shape twice over: it
+ * handed the player their whole roster problem on the first screen, and it made
+ * the first badge as hard as the eighth. Depth is a thing the board *earns* —
+ * a Leader's party grows as the gym's rank rises, exactly as it does in the
+ * source, where the first gym fields two and the last fields a full team.
+ */
+export const LEADER_DEPTH = {
+  /** Creatures the first gym's Leader fields. */
+  atFirstGym: 2,
+  /** And the last. Everything between is interpolated across the board. */
+  atLastGym: 6,
 } as const;
 
 export const LEAGUE = {

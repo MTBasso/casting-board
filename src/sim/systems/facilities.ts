@@ -59,7 +59,7 @@ export function upgrade(
  * exactly, and it is a cleaner unlock: another slot is another route worked by
  * another pair of people, not a number quietly going up.
  */
-export function catcherSlots(state: LeagueState): number {
+export function rangerSlots(state: LeagueState): number {
   return level(state, "scouting_office");
 }
 
@@ -69,13 +69,13 @@ export function hasSurvey(state: LeagueState): boolean {
 }
 
 /**
- * Evolver postings the Training Grounds support beyond the first few.
+ * Handler postings the Training Grounds support beyond the first few.
  *
  * The Grounds already bought bonding speed; buying *headcount* alongside it is
  * the same shape the Scouting Office has, and it keeps every facility answering
  * the question "how many people can I have out working".
  */
-export function evolverSlots(state: LeagueState): number {
+export function handlerSlots(state: LeagueState): number {
   return level(state, "training_grounds");
 }
 

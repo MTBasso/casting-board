@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useGame } from "../../engine/store.js";
-import { join, partyOf, unbench, type Creature } from "../../sim/index.js";
+import { join, partyCapOf, partyOf, unbench, type Creature } from "../../sim/index.js";
+import { CreaturePicker } from "./CreaturePicker.js";
 import { CreatureCard } from "./CreatureCard.js";
 import { CreatureSummary } from "./CreatureSummary.js";
 
@@ -24,10 +25,12 @@ export function PartyList({
   const [dragging, setDragging] = useState<string | null>(null);
   const [over, setOver] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
 
   const trainer = state.trainers[trainerId];
   const party = partyOf(state, trainerId);
   if (!trainer) return null;
+  const cap = partyCapOf(trainer, state);
 
   const move = (fromId: string, toId: string) => {
     act((s) => {
@@ -101,39 +104,44 @@ export function PartyList({
 
           <CreatureCard creature={c} onOpen={() => setOpen(c.id)} />
 
-          <span className="party-actions">
+          {/* One control, and it only appears on the slot you are pointing at.
+              Three buttons per slot turned a six-slot party into eighteen
+              controls, and reordering already has a better gesture: dragging. */}
+          {onRemove && c.id !== trainer.signatureId && (
             <button
               type="button"
-              className="btn sm ghost"
-              disabled={i === 0}
-              onClick={() => {
-                const prev = party[i - 1];
-                if (prev) move(c.id, prev.id);
-              }}
-              aria-label="Move earlier"
+              className="slot-remove"
+              onClick={() => onRemove(c)}
+              aria-label={`Take ${c.speciesId} out of the party`}
+              title="Take out of the party"
             >
-              ↑
+              ×
             </button>
-            <button
-              type="button"
-              className="btn sm ghost"
-              disabled={i === party.length - 1}
-              onClick={() => {
-                const nextOne = party[i + 1];
-                if (nextOne) move(c.id, nextOne.id);
-              }}
-              aria-label="Move later"
-            >
-              ↓
-            </button>
-            {onRemove && c.id !== trainer.signatureId && (
-              <button type="button" className="btn sm ghost" onClick={() => onRemove(c)}>
-                Remove
-              </button>
-            )}
-          </span>
+          )}
         </li>
       ))}
+      {/* Empty slots ask to be filled, rather than sitting as a gap with a
+          separate list underneath doing the asking. */}
+      {Array.from({ length: Math.max(0, cap - party.length) }).map((_, i) => (
+        <li key={`empty-${i}`} className="party-slot is-empty">
+          <span className="party-order">{party.length + i + 1}</span>
+          <button
+            type="button"
+            className="slot-fill"
+            onClick={() => setPicking(true)}
+          >
+            <span className="slot-plus" aria-hidden="true">
+              +
+            </span>
+            <span>Add</span>
+          </button>
+        </li>
+      ))}
+
+      {picking && (
+        <CreaturePicker trainerId={trainerId} onClose={() => setPicking(false)} />
+      )}
+
       {open && state.creatures[open] && (
         <CreatureSummary
           creature={state.creatures[open]!}

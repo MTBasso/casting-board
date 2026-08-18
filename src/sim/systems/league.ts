@@ -1,6 +1,6 @@
 import { catalog } from "../../data/catalog.js";
 import { ROUTES } from "../../data/routes.js";
-import { DOCTRINE, GYM_TRAINERS, LEADER_OFFER, LEAGUE } from "../constants.js";
+import { DOCTRINE, GYM_TRAINERS, LEADER_DEPTH, LEADER_OFFER, LEAGUE } from "../constants.js";
 import {
   addGymTrainer,
   assignLeader,
@@ -159,6 +159,21 @@ export function offerLeaders(state: LeagueState, gymId: string): void {
  * became a real defect the moment species were filtered *down* to what fits the
  * level — a hired Leader started turning up with a level 1 signature.
  */
+/**
+ * How many creatures the Leader of a gym at this rank may field.
+ *
+ * Read live rather than stored, so a gym that rises in rank deepens on its own
+ * and every existing save picks up the curve without a migration.
+ */
+export function leaderPartyCap(state: LeagueState, gymId: string): number {
+  const rank = state.gymOrder.indexOf(gymId);
+  const last = Math.max(1, LEAGUE.maxGyms - 1);
+  const t = Math.min(1, Math.max(0, rank) / last);
+  return Math.round(
+    LEADER_DEPTH.atFirstGym + (LEADER_DEPTH.atLastGym - LEADER_DEPTH.atFirstGym) * t,
+  );
+}
+
 export function leaderLevel(state: LeagueState): number {
   return (
     LEADER_OFFER.signatureLevelBase +

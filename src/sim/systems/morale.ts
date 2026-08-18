@@ -255,7 +255,7 @@ export function demote(
  * the queue to stay, since it is welded to the trainer and cannot be boxed.
  */
 function trimParty(state: LeagueState, trainer: Trainer): void {
-  const cap = partyCapOf(trainer);
+  const cap = partyCapOf(trainer, state);
   if (trainer.party.length <= cap) return;
 
   const ordered = [

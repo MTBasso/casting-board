@@ -866,6 +866,65 @@ fall rate is 0 in 51. Evolvers train **their own crews**, and moving a trained
 creature onto an Elite seat is a player action the balance runner does not model
 — but Coaches, and the end-of-career level transfer, are the real answer.
 
+### Naming, and the second playtest pass
+
+**Catchers → Rangers. Evolvers → Handlers. The Routes tab → Field, and its first
+view → Routes.** "Catcher" and "Evolver" described mechanics rather than people,
+and the tab was named after one of the three things on it.
+
+**Rangers no longer teach their partner anything.** Both roles levelling their
+crews left no reason to run a Handler — catching taught you *and* paid you in
+creatures. Collecting and training are now different jobs with different rewards.
+
+**A Ranger's posting is a shift**, forty-five minutes and then they come home
+with whatever they found. Postings that never ended made the whole screen one
+decision made once: staff every route, never look again.
+
+**A route now holds one Ranger and one Handler.** They are doing different things
+on the same ground, and making them compete for one slot meant Handlers — who
+stay until recalled — quietly squeezed Rangers off the map: eight Rangers managed
+ten shifts each across sixty hours. With the split, 213.
+
+**Gym duty teaches something.** `xpPerBattle` was 1 against an `xpBase` of 12, so
+a creature needed a dozen bouts to reach level 2 and hundreds to matter. Now 6.
+Defending the board is the game's central activity; it cannot be the one activity
+that grows nobody.
+
+**A Leader's depth follows their gym's rank** — two creatures at the first gym,
+six at the last, interpolated across the board. Gym one opening with a full party
+was the wrong shape twice over: it handed the player their whole roster problem
+on the first screen, and made the first badge as hard as the eighth.
+
+**Challengers trade depth against quality.** A full team of six may well walk into
+gym one — people do arrive with a full box — but six at the gym's level is a wall,
+not a first badge. Every creature past the second shaves level off the whole
+party, so depth is a threat by weight rather than by quality. `maxLevelRatio` and
+`depthPenalty` are two halves of one number: this pass raised the ratio from 1.8
+to 2.1 to pay for the penalty, and the win rate landed back at 88.4%.
+
+### Interface
+
+- **One control per party slot.** Up, down and REMOVE made a six-slot party
+  eighteen buttons competing with the creatures for attention. Reordering already
+  had a better gesture in dragging, so what is left is a single × that appears on
+  the slot you are pointing at.
+- **Empty slots ask to be filled**, opening a picker of everything that trainer
+  could field. The permanent available-list under every party is gone — it was
+  always open, always the length of the box, and pushed the party off screen.
+- **"Content" stopped being printed everywhere.** A full meter reading *Content*
+  under every trainer on every screen is noise pretending to be information, and
+  under a *party* heading it read as a fact about the party. Standing now shows
+  only when something needs attention; otherwise one quiet line.
+- **Tabs fit.** Six of them scrolled sideways on a phone — the one navigation
+  element in the app was the one thing you could not see all of.
+
+**Measured** (60h, `--promote earned`): 8 gyms, win rate 88.4%, first tier gate at
+14.4h, 215 caught over 213 shifts, ₱3.9M earned by Handlers, 14 parties beaten.
+
+**Still open, unchanged:** the gauntlet fall rate is 0 in 57, wages do not bite,
+and renown now equilibrates around 26,000 with receipts to match. The economy
+wants its own pass rather than another round of income tuning.
+
 ### Build order
 
 Morale staircase ✅ → title loss, forced recruitment, prestige fork ✅ →

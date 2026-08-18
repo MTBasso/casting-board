@@ -1,9 +1,9 @@
-export type TabId = "gyms" | "pc" | "routes" | "staff" | "daycare" | "facilities";
+export type TabId = "gyms" | "pc" | "field" | "staff" | "daycare" | "facilities";
 
 export const TABS: { id: TabId; label: string }[] = [
   { id: "gyms", label: "Gyms" },
   { id: "pc", label: "PC Box" },
-  { id: "routes", label: "Routes" },
+  { id: "field", label: "Field" },
   { id: "staff", label: "Elite" },
   { id: "daycare", label: "Day-Care" },
   { id: "facilities", label: "Facilities" },

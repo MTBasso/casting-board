@@ -25,8 +25,8 @@ import {
   fieldOffer,
   fieldStaff,
   canPost,
-  catchers,
-  evolvers,
+  rangers,
+  handlers,
   stretchOf,
   eligibleRoutes,
   hire,
@@ -188,7 +188,7 @@ function greedyPolicy(
   // routes — which is a real trap for the player too, not just the runner.
   autoFillAll(state);
 
-  for (const role of ["catcher", "evolver"] as const) {
+  for (const role of ["ranger", "handler"] as const) {
     // Hiring is an offer now, so the policy takes whatever type turns up that
     // the board could use, and passes otherwise.
     let guard = 0;
@@ -215,12 +215,12 @@ function greedyPolicy(
       if (crewOf(state, trainer.id).length === 0) continue;
 
       const routes = [...eligibleRoutes(state)].sort((a, b) => {
-        if (role === "catcher") {
+        if (role === "ranger") {
           const fit = (r: typeof a) =>
             [...wanted].reduce((sum, t) => sum + (t ? r.supply[t] : 0), 0);
           return fit(b) - fit(a) || b.levelMax - a.levelMax;
         }
-        // Evolvers want the hardest ground they are allowed to stand on.
+        // Handlers want the hardest ground they are allowed to stand on.
         return b.levelMax - a.levelMax;
       });
 
@@ -289,6 +289,8 @@ function run(): void {
   let retirements = 0;
   let resignations = 0;
   let gauntlets = 0;
+  let caught = 0;
+  let shifts = 0;
   let suspensions = 0;
   let evolutions = 0;
   let hatched = 0;
@@ -318,6 +320,8 @@ function run(): void {
     retirements += report.retirements.length;
     resignations += report.resignations.length;
     gauntlets += report.gauntlets.length;
+    caught += report.caught.length;
+    shifts += report.returned.length;
     suspensions += report.suspended.length;
     evolutions += report.evolutions.length;
     hatched += report.hatched.length;
@@ -373,15 +377,15 @@ function run(): void {
   );
   console.log(`  Suspensions      ${suspensions}`);
   console.log(
-    `  Catchers         ${catchers(state).length} hired · ${state.postings.filter((p) => p.role === "catcher").length} posted · ${state.postings.reduce((a, p) => a + p.caught, 0)} caught`,
+    `  Rangers         ${rangers(state).length} hired · ${state.postings.filter((p) => p.role === "ranger").length} posted · ${caught} caught over ${shifts} shifts`,
   );
   {
-    const posts = state.postings.filter((p) => p.role === "evolver");
+    const posts = state.postings.filter((p) => p.role === "handler");
     const earned = posts.reduce((a, p) => a + p.earned, 0);
     const beaten = posts.reduce((a, p) => a + p.beaten, 0);
     const stretch = posts.map((p) => stretchOf(state, p));
     console.log(
-      `  Evolvers         ${evolvers(state).length} hired · ${posts.length} posted · \u20b1${Math.round(earned).toLocaleString()} earned · ${beaten} beaten · stretch [${stretch.join(",")}]`,
+      `  Handlers         ${handlers(state).length} hired · ${posts.length} posted · \u20b1${Math.round(earned).toLocaleString()} earned · ${beaten} beaten · stretch [${stretch.join(",")}]`,
     );
   }
   console.log(
@@ -394,8 +398,8 @@ function run(): void {
       const ids = [...gym.trainerIds, ...(gym.leaderId ? [gym.leaderId] : [])];
       return ids
         .map((tid) => state.trainers[tid])
-        .filter((t) => t !== undefined && t.party.length < partyCapOf(t))
-        .map((t) => `${t!.affinity}:${t!.party.length}/${partyCapOf(t!)}`);
+        .filter((t) => t !== undefined && t.party.length < partyCapOf(t, state))
+        .map((t) => `${t!.affinity}:${t!.party.length}/${partyCapOf(t!, state)}`);
     });
     console.log(`  Short-handed     ${short.length ? short.join(" ") : "none"}`);
   }

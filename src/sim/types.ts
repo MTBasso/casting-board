@@ -30,7 +30,7 @@ export type TypeTally = Record<TypeId, number>;
  * - `retired` — career spent. Breeds at the Day-Care.
  */
 /**
- * `field` is a creature posted to a route as a Catcher's working partner. It is
+ * `field` is a creature posted to a route as a Ranger's working partner. It is
  * a separate role from `reserve` so auto-fill cannot quietly pull someone off a
  * route to plug a gym — a posting is a commitment, not a suggestion.
  */
@@ -140,9 +140,9 @@ export type TrainerKind =
   | "elite"
   | "champion"
   /** Works a route with a field partner. Catches rather than defends. */
-  | "catcher"
+  | "ranger"
   /** Takes a party onto a route and brings it back stronger. */
-  | "evolver"
+  | "handler"
   /** Offered for a gym but not yet hired. Draws no salary and defends nothing. */
   | "candidate";
 
@@ -434,7 +434,7 @@ export interface Challenger {
 }
 
 /**
- * A Catcher working a route, with the creature that works it alongside them.
+ * A Ranger working a route, with the creature that works it alongside them.
  *
  * The field partner is the concept draft's whole anti-duplicate thesis made
  * literal: your fortieth Zubat is not inventory, it is somebody's working
@@ -445,24 +445,29 @@ export interface Posting {
   routeId: string;
   trainerId: string;
   /**
-   * What this posting is for. Catchers bring creatures back; Evolvers bring the
+   * What this posting is for. Rangers bring creatures back; Handlers bring the
    * ones they took stronger. Both are a trainer standing on a route with their
    * party, which is why they share a shape.
    */
   role: FieldRole;
   /** Sim-seconds banked toward the next catch or training round. */
   progress: number;
-  /** Creatures brought in since this posting began. Catchers only. */
+  /** Creatures brought in since this posting began. Rangers only. */
   caught: number;
-  /** Pokéyen earned since this posting began. Evolvers only. */
+  /** Pokéyen earned since this posting began. Handlers only. */
   earned: number;
-  /** Times the party has come back beaten. Evolvers only. */
+  /** Times the party has come back beaten. Handlers only. */
   beaten: number;
   /** True while the party is sitting the shift out to recover. */
   resting: boolean;
+  /**
+   * Sim-time this posting ends of its own accord, or null if it stands until
+   * recalled. Rangers work shifts; Handlers stay.
+   */
+  endsAt: number | null;
 }
 
-export type FieldRole = "catcher" | "evolver";
+export type FieldRole = "ranger" | "handler";
 
 export type Tier = "regional" | "national" | "world";
 
@@ -606,7 +611,7 @@ export interface LeagueState {
   /**
    * Types on offer when hiring field staff, per role.
    *
-   * Drawn rather than chosen. Picking freely made a Catcher a component you
+   * Drawn rather than chosen. Picking freely made a Ranger a component you
    * bought; being *offered* three types means the staff you end up with is
    * partly the staff that turned up, exactly as the Leader offer works.
    */
@@ -692,6 +697,8 @@ export interface TickReport {
   departures: string[];
   /** Spillover released because the box was overrun. */
   released: string[];
-  /** Evolvers whose party came back beaten from ground over their heads. */
+  /** Handlers whose party came back beaten from ground over their heads. */
   beaten: string[];
+  /** Rangers whose shift ended this tick, and what they brought home. */
+  returned: { name: string; caught: number }[];
 }

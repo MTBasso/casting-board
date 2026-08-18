@@ -66,7 +66,7 @@ export function normalize(raw: unknown): LeagueState | null {
   state.renown ??= 0;
   state.peakRenown ??= state.renown;
 
-  // Scouting became staffed Catchers: no offers, no banked charges. Intel
+  // Scouting became staffed Rangers: no offers, no banked charges. Intel
   // survives as a purchase, so whatever the league already knew it keeps.
   state.routeIntel ??= {};
   state.postings ??= [];
@@ -106,6 +106,9 @@ export function normalize(raw: unknown): LeagueState | null {
   // Trainers gained parties and a kind when every defender became a trainer.
   for (const trainer of Object.values(state.trainers)) {
     if (!trainer) continue;
+    const kind = trainer.kind as unknown as string | undefined;
+    if (kind === "catcher") trainer.kind = "ranger";
+    else if (kind === "evolver") trainer.kind = "handler";
     trainer.kind ??= "leader";
     trainer.partyCap ??= 6;
     trainer.party ??= trainer.signatureId ? [trainer.signatureId] : [];
@@ -168,11 +171,16 @@ export function normalize(raw: unknown): LeagueState | null {
 
   // A posting whose trainer or partner no longer exists is a ghost that would
   // tick forever against nothing.
-  // Postings became role-aware and crew-based: a Catcher's single partner is
-  // now just the first member of their party, exactly like an Evolver's four.
+  // Postings became role-aware and crew-based: a Ranger's single partner is
+  // now just the first member of their party, exactly like an Handler's four.
   for (const p of state.postings) {
     p.resting ??= false;
-    p.role ??= "catcher";
+    // Catchers became Rangers and Evolvers became Handlers.
+    const legacyRole = (p as unknown as { role?: string }).role;
+    if (legacyRole === "catcher") p.role = "ranger";
+    else if (legacyRole === "evolver") p.role = "handler";
+    p.role ??= "ranger";
+    p.endsAt ??= null;
     p.earned ??= 0;
     p.beaten ??= 0;
     const legacy = (p as unknown as { partnerId?: string }).partnerId;
@@ -183,7 +191,13 @@ export function normalize(raw: unknown): LeagueState | null {
   state.postings = state.postings.filter(
     (p) => (state.trainers[p.trainerId]?.party.length ?? 0) > 0,
   );
-  state.fieldOffer ??= { catcher: [], evolver: [] };
+  {
+    const offer = state.fieldOffer as unknown as Record<string, LeagueState["fieldOffer"]["ranger"]> | undefined;
+    state.fieldOffer = {
+      ranger: offer?.ranger ?? offer?.catcher ?? [],
+      handler: offer?.handler ?? offer?.evolver ?? [],
+    };
+  }
 
   // Drop gym ids that no longer resolve, so the board cannot render a hole.
   state.gymOrder = state.gymOrder.filter((id) => state.gyms[id] !== undefined);
@@ -238,10 +252,12 @@ const STEPS: Record<number, (state: LeagueState) => LeagueState> = {
   15: (state) => state,
   // v16 → v17: forced recruitment, grudges, and the second promotion path.
   16: (state) => state,
-  // v17 → v18: Catchers replace paid scouting. Charges and offers are gone.
+  // v17 → v18: Rangers replace paid scouting. Charges and offers are gone.
   17: (state) => state,
-  // v18 → v19: Evolvers, crew-based postings, and drawn hiring offers.
+  // v18 → v19: Handlers, crew-based postings, and drawn hiring offers.
   18: (state) => state,
+  // v19 → v20: Catchers became Rangers, Evolvers became Handlers.
+  19: (state) => state,
 };
 
 export function migrateState(

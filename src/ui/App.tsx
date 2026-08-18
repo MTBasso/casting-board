@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useGame } from "../engine/store.js";
-import { catchers, doctrineUnlocked, evolvers, nextRival, postingFor } from "../sim/index.js";
+import { rangers, doctrineUnlocked, handlers, nextRival, postingFor } from "../sim/index.js";
 import { LeagueMap } from "./components/LeagueMap.js";
 import { GymPanel } from "./components/GymPanel.js";
 import { EventLog } from "./components/EventLog.js";
@@ -33,10 +33,10 @@ export function App() {
   const badges: Partial<Record<TabId, string>> = {};
   if (rival) badges.gyms = "!";
   // Field staff off a route are money going out with nothing coming back.
-  const unposted = [...catchers(state), ...evolvers(state)].filter(
+  const unposted = [...rangers(state), ...handlers(state)].filter(
     (t) => !postingFor(state, t.id),
   ).length;
-  if (unposted > 0) badges.routes = String(unposted);
+  if (unposted > 0) badges.field = String(unposted);
   if (doctrineUnlocked(state) && state.elite.some((s) => s.trainerId === null)) {
     badges.staff = "!";
   }
@@ -99,7 +99,7 @@ export function App() {
           </div>
         )}
 
-        {tab === "routes" && (
+        {tab === "field" && (
           <div className="single-screen">
             <FieldWork />
           </div>

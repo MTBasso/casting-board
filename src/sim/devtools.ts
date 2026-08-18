@@ -1,5 +1,5 @@
 import { catalog } from "../data/catalog.js";
-import { CATCHER, ELITE, MORALE } from "./constants.js";
+import { RANGER, ELITE, MORALE } from "./constants.js";
 import { pick } from "./rng.js";
 import { makeCreature } from "./factory.js";
 import {
@@ -80,7 +80,7 @@ export function staffEverything(state: LeagueState): void {
 
 /** Hire up to every field slot, taking whatever the offer happens to show. */
 function fillFieldStaff(state: LeagueState): void {
-  for (const role of ["catcher", "evolver"] as const) {
+  for (const role of ["ranger", "handler"] as const) {
     let guard = 0;
     while (canHire(state, role).ok && guard < 12) {
       const type = fieldOffer(state, role)[0];
@@ -95,7 +95,7 @@ function fillFieldStaff(state: LeagueState): void {
 function postEveryone(state: LeagueState): void {
   const routes = [...eligibleRoutes(state)].sort((a, b) => b.levelMax - a.levelMax);
 
-  for (const role of ["catcher", "evolver"] as const) {
+  for (const role of ["ranger", "handler"] as const) {
     for (const trainer of fieldStaff(state, role)) {
       if (postingFor(state, trainer.id)) continue;
 
@@ -125,7 +125,7 @@ function postEveryone(state: LeagueState): void {
  */
 export function fillBox(state: LeagueState, count: number): void {
   const wanted = Object.values(state.trainers)
-    .filter((t) => t.kind !== "candidate" && t.kind !== "catcher")
+    .filter((t) => t.kind !== "candidate" && t.kind !== "ranger")
     .map((t) => t.affinity);
 
   for (let i = 0; i < count; i++) {
@@ -176,6 +176,6 @@ export function grindMorale(state: LeagueState): void {
 /** Fatigue every posted partner, to watch a duty cycle turn over. */
 export function tireCrews(state: LeagueState): void {
   for (const posting of state.postings) {
-    for (const c of crewOf(state, posting.trainerId)) c.fatigue = CATCHER.tiredAt;
+    for (const c of crewOf(state, posting.trainerId)) c.fatigue = RANGER.tiredAt;
   }
 }

@@ -24,7 +24,7 @@ export const FACILITIES: readonly FacilityDef[] = [
   {
     id: "scouting_office",
     name: "Scouting Office",
-    blurb: "Supports your Catchers. Every level is another route you can staff \u2014 headcount, not a percentage \u2014 and from level 2 it surveys ground nobody has worked yet.",
+    blurb: "Supports your Rangers. Every level is another route you can staff \u2014 headcount, not a percentage \u2014 and from level 2 it surveys ground nobody has worked yet.",
     maxLevel: 5,
     baseCost: 3200,
     costGrowth: 2.2,

@@ -1,7 +1,6 @@
 import { useGame } from "../../engine/store.js";
 import { bench, partyCapOf, partyOf, type Trainer } from "../../sim/index.js";
 import { PartyList } from "./PartyList.js";
-import { AvailablePokemon } from "./AvailablePokemon.js";
 import { TypeBadge } from "./TypeBadge.js";
 
 /**
@@ -89,12 +88,11 @@ function Roster({
           </span>
         </span>
         <span className="counter">
-          {party.length}/{partyCapOf(trainer)}
+          {party.length}/{partyCapOf(trainer, state)}
         </span>
       </header>
 
       <PartyList trainerId={trainer.id} onRemove={(c) => act((s) => bench(s, c.id))} />
-      <AvailablePokemon trainerId={trainer.id} />
     </section>
   );
 }

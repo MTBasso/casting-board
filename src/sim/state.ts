@@ -11,7 +11,7 @@ import type { LeagueState } from "./types.js";
  * it, which let stale saves through the version check and crashed the app on
  * load — hence v2 and the defensive normalize pass.
  */
-export const SAVE_VERSION = 19;
+export const SAVE_VERSION = 20;
 
 /**
  * The first hour, per the design doc: one trainer, one signature creature,
@@ -52,7 +52,7 @@ export function createInitialState(seed = 1): LeagueState {
     titleLost: false,
     grudges: [],
     postings: [],
-    fieldOffer: { catcher: [], evolver: [] },
+    fieldOffer: { ranger: [], handler: [] },
     lastSeenAt: 0,
     dayCare: [],
     eggProgress: 0,
@@ -81,10 +81,10 @@ export function foundLeague(state: LeagueState): void {
   // offer opens immediately and the first gym is free; picking it opens the
   // Leader offer, exactly as every later gym does.
   //
-  // It also begins with a handful of creatures. Catchers have to be hired and
+  // It also begins with a handful of creatures. Rangers have to be hired and
   // posted, and a league with nobody to post would open on a dead screen.
   seedBench(state);
-  // A league opens able to make its first move. Catchers are the only source of
+  // A league opens able to make its first move. Rangers are the only source of
   // creatures now, so the money to hire one is part of the opening position.
   state.money = Math.max(state.money, SCOUTING.startingMoney);
   checkGymUnlock(state);

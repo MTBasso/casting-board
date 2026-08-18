@@ -2,6 +2,7 @@ import { familyOf, grantableAtLevel, type Species } from "../../data/catalog.js"
 import { makeCreature } from "../factory.js";
 import { int, pick } from "../rng.js";
 import { PARTY } from "../constants.js";
+import { leaderPartyCap } from "./league.js";
 import { nameOnBond } from "./wave.js";
 import type { Creature, LeagueState, Trainer } from "../types.js";
 
@@ -27,12 +28,19 @@ export function partyOf(state: LeagueState, trainerId: string): Creature[] {
     .filter((c): c is Creature => c !== undefined);
 }
 
-export function partyCapOf(trainer: Trainer): number {
-  return Math.min(PARTY.max, trainer.partyCap ?? PARTY.max);
+export function partyCapOf(trainer: Trainer, state?: LeagueState): number {
+  const stored = Math.min(PARTY.max, trainer.partyCap ?? PARTY.max);
+  // A Leader's depth follows their gym's rank: the first gym fields two, the
+  // last a full six. Passing state is optional so the many call sites that only
+  // want the stored cap stay unchanged.
+  if (state && trainer.kind === "leader" && trainer.gymId) {
+    return Math.min(stored, leaderPartyCap(state, trainer.gymId));
+  }
+  return stored;
 }
 
-export function partyFull(trainer: Trainer): boolean {
-  return trainer.party.length >= partyCapOf(trainer);
+export function partyFull(trainer: Trainer, state?: LeagueState): boolean {
+  return trainer.party.length >= partyCapOf(trainer, state);
 }
 
 /** Detach a creature from whatever party currently holds it. */
@@ -58,7 +66,9 @@ export function canJoin(
   if (!trainer || !creature) return { ok: false, reason: "Not found" };
   if (creature.role === "retired") return { ok: false, reason: "Retired" };
   if (!creature.owned) return { ok: false, reason: "Not yours to assign" };
-  if (partyFull(trainer)) return { ok: false, reason: `Party is full (${partyCapOf(trainer)})` };
+  if (partyFull(trainer, state)) {
+    return { ok: false, reason: `Party is full (${partyCapOf(trainer, state)})` };
+  }
   if (trainer.party.includes(creatureId)) return { ok: false, reason: "Already here" };
   // Every trainer is their type, all the way through. No wildcards, no
   // exceptions for juniors — a gym *is* its type, and answering a hostile meta
@@ -178,7 +188,7 @@ export function autoFill(state: LeagueState, trainerId: string): void {
 
   // 1. Fill empty slots.
   let cursor = 0;
-  while (!partyFull(trainer) && cursor < box.length) {
+  while (!partyFull(trainer, state) && cursor < box.length) {
     const candidate = box[cursor++];
     if (!candidate) break;
     if (candidate.role !== "reserve") continue;

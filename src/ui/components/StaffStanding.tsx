@@ -19,7 +19,6 @@ import {
  */
 export function StaffStanding({ trainer }: { trainer: Trainer }) {
   const state = useGame((s) => s.state);
-  const act = useGame((s) => s.act);
   const [open, setOpen] = useState(false);
 
   const M = constants.MORALE;
@@ -41,8 +40,31 @@ export function StaffStanding({ trainer }: { trainer: Trainer }) {
           ? "At breaking point"
           : "Unhappy";
 
+  // Nothing to say is worth saying quietly. A full meter reading "Content" under
+  // every trainer on every screen is noise pretending to be information — and
+  // under a *party* heading it read as a fact about the party, which it is not.
+  const needsAttention = suspended || slumping || straining || trainer.suspensions > 0;
+
+  if (!needsAttention) {
+    return (
+      <div className="standing is-quiet">
+        <span className="dim">Settled · morale {Math.round(trainer.morale * 100)}%</span>
+        {targets.length > 0 && (
+          <button
+            type="button"
+            className="linky"
+            onClick={() => setOpen((v) => !v)}
+          >
+            {open ? "cancel" : "step down…"}
+          </button>
+        )}
+        {open && <DemoteList trainer={trainer} targets={targets} onDone={() => setOpen(false)} />}
+      </div>
+    );
+  }
+
   return (
-    <div className={`standing ${suspended ? "is-suspended" : slumping ? "is-slump" : ""}`}>
+    <div className={`standing ${suspended ? "is-suspended" : "is-slump"}`}>
       <div className="standing-head">
         <span className="mood">{mood}</span>
         {suspended ? (
@@ -62,10 +84,7 @@ export function StaffStanding({ trainer }: { trainer: Trainer }) {
           is what makes a second suspension read as worse than the first. */}
       <span className="morale-track" title={`Ceiling ${Math.round(trainer.standing * 100)}%`}>
         <span className="morale-fill" style={{ width: `${trainer.morale * 100}%` }} />
-        <span
-          className="morale-ceiling"
-          style={{ left: `${trainer.standing * 100}%` }}
-        />
+        <span className="morale-ceiling" style={{ left: `${trainer.standing * 100}%` }} />
       </span>
 
       {straining && !suspended && (
@@ -82,33 +101,46 @@ export function StaffStanding({ trainer }: { trainer: Trainer }) {
           <button type="button" className="btn sm ghost" onClick={() => setOpen((v) => !v)}>
             {open ? "Cancel" : "Step down…"}
           </button>
-          {open && (
-            <ul className="demote-list">
-              {targets.map((t) => (
-                <li key={labelKey(t)}>
-                  <button
-                    type="button"
-                    className="btn sm"
-                    onClick={() => {
-                      act((s) => void demote(s, trainer.id, t));
-                      setOpen(false);
-                    }}
-                  >
-                    {t.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {open && (
-            <p className="hint">
-              Their party comes with them, trimmed to the new post. Nothing they
-              have bonded to is forgotten.
-            </p>
-          )}
+          {open && <DemoteList trainer={trainer} targets={targets} onDone={() => setOpen(false)} />}
         </div>
       )}
     </div>
+  );
+}
+
+function DemoteList({
+  trainer,
+  targets,
+  onDone,
+}: {
+  trainer: Trainer;
+  targets: DemotionTarget[];
+  onDone: () => void;
+}) {
+  const act = useGame((s) => s.act);
+  return (
+    <>
+      <ul className="demote-list">
+        {targets.map((t) => (
+          <li key={labelKey(t)}>
+            <button
+              type="button"
+              className="btn sm"
+              onClick={() => {
+                act((s) => void demote(s, trainer.id, t));
+                onDone();
+              }}
+            >
+              {t.label}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <p className="hint">
+        Their party comes with them, trimmed to the new post. Nothing they have
+        bonded to is forgotten.
+      </p>
+    </>
   );
 }
 

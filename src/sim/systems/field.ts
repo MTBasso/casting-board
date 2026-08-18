@@ -1,9 +1,9 @@
 import { catalog, encounterWeight, minLevelFor } from "../../data/catalog.js";
 import { ROUTES, routeById, routesUpTo } from "../../data/routes.js";
-import { CATCHER, EVOLVER, FIELD, SCOUTING, STAFF } from "../constants.js";
+import { RANGER, HANDLER, FIELD, SCOUTING, STAFF } from "../constants.js";
 import { makeCreature, makeTrainer } from "../factory.js";
 import { chance, int, pick, weighted } from "../rng.js";
-import { catcherSlots, evolverSlots, hasSurvey } from "./facilities.js";
+import { rangerSlots, handlerSlots, hasSurvey } from "./facilities.js";
 import { gainXp } from "./growth.js";
 import { isSuspended } from "./morale.js";
 import { canJoin, leaveParty, partyCapOf } from "./party.js";
@@ -22,20 +22,20 @@ import type {
 } from "../types.js";
 
 /**
- * Field staff: Catchers, and Evolvers.
+ * Field staff: Rangers, and Handlers.
  *
  * Both are a trainer standing on a route with their own party, which is why
  * they share a module and a `Posting`. What differs is what the route gives
  * back.
  *
- *   Catchers  bring creatures *in*. One partner, and the ground has to be
+ *   Rangers  bring creatures *in*. One partner, and the ground has to be
  *             within that partner's reach.
- *   Evolvers  bring the ones they took back *stronger*, and paid. Up to four,
+ *   Handlers  bring the ones they took back *stronger*, and paid. Up to four,
  *             and the ground may be deliberately over their heads.
  *
  * Three rules hold for both:
  *
- *   - **type-bound, like everyone else.** A Fire Catcher works with Fire
+ *   - **type-bound, like everyone else.** A Fire Ranger works with Fire
  *     creatures. Field staff used to be the one place in the league where type
  *     did not matter, which made them the one place with no casting decision.
  *   - **the route caps them.** Route work levels a creature only to the top of
@@ -60,7 +60,7 @@ export function hasIntel(state: LeagueState, routeId: string): boolean {
 
 export function intelCost(routeId: string): number {
   const route = routeById(routeId);
-  return route ? Math.round(route.cost * CATCHER.intelCostFactor) : 0;
+  return route ? Math.round(route.cost * RANGER.intelCostFactor) : 0;
 }
 
 export function buyIntel(
@@ -88,33 +88,33 @@ export function buyIntel(
 export function fieldStartingLevel(state: LeagueState): number {
   const open = eligibleRoutes(state);
   const floor = open.length > 0 ? Math.min(...open.map((r) => r.levelMin)) : 1;
-  return Math.max(floor, Math.round((state.peakRenown / 1000) * CATCHER.levelPerThousandRenown));
+  return Math.max(floor, Math.round((state.peakRenown / 1000) * RANGER.levelPerThousandRenown));
 }
 
 export function fieldStaff(state: LeagueState, role: FieldRole): Trainer[] {
   return Object.values(state.trainers).filter((t) => t.kind === role);
 }
 
-export function catchers(state: LeagueState): Trainer[] {
-  return fieldStaff(state, "catcher");
+export function rangers(state: LeagueState): Trainer[] {
+  return fieldStaff(state, "ranger");
 }
 
-export function evolvers(state: LeagueState): Trainer[] {
-  return fieldStaff(state, "evolver");
+export function handlers(state: LeagueState): Trainer[] {
+  return fieldStaff(state, "handler");
 }
 
 export function slotsAvailable(state: LeagueState, role: FieldRole): number {
-  return role === "catcher"
-    ? CATCHER.baseSlots + catcherSlots(state)
-    : EVOLVER.baseSlots + evolverSlots(state);
+  return role === "ranger"
+    ? RANGER.baseSlots + rangerSlots(state)
+    : HANDLER.baseSlots + handlerSlots(state);
 }
 
 export function hireCost(state: LeagueState, role: FieldRole): number {
   const n = fieldStaff(state, role).length;
   return Math.round(
-    role === "catcher"
-      ? CATCHER.hireCostBase * CATCHER.hireCostGrowth ** n
-      : EVOLVER.hireCostBase * EVOLVER.hireCostGrowth ** n,
+    role === "ranger"
+      ? RANGER.hireCostBase * RANGER.hireCostGrowth ** n
+      : HANDLER.hireCostBase * HANDLER.hireCostGrowth ** n,
   );
 }
 
@@ -139,7 +139,7 @@ export function canHire(
   role: FieldRole,
 ): { ok: true; cost: number } | { ok: false; reason: string } {
   if (fieldStaff(state, role).length >= slotsAvailable(state, role)) {
-    const where = role === "catcher" ? "Scouting Office" : "Training Grounds";
+    const where = role === "ranger" ? "Scouting Office" : "Training Grounds";
     return { ok: false, reason: `No slots left — upgrade the ${where}` };
   }
   const cost = hireCost(state, role);
@@ -165,9 +165,9 @@ export function hire(
   }
 
   state.money -= check.cost;
-  const cap = role === "catcher" ? 1 : EVOLVER.partyMax;
+  const cap = role === "ranger" ? 1 : HANDLER.partyMax;
   // They arrive with a working partner, not a hatchling. A level 1 signature
-  // meant a Catcher could never be posted anywhere at all — every route has a
+  // meant a Ranger could never be posted anywhere at all — every route has a
   // floor, and theirs was below all of them.
   const trainer = makeTrainer(state, type, role, {
     partyCap: cap,
@@ -175,7 +175,7 @@ export function hire(
   });
   trainer.salary =
     STAFF.baseSalaryPerHour *
-    (role === "catcher" ? CATCHER.salaryFactor : EVOLVER.salaryFactor);
+    (role === "ranger" ? RANGER.salaryFactor : HANDLER.salaryFactor);
 
   // Their signature creature is their first field partner, not a defender.
   for (const id of trainer.party) {
@@ -216,7 +216,7 @@ export function canCrew(
   trainerId: string,
 ): { ok: true } | { ok: false; reason: string } {
   const trainer = state.trainers[trainerId];
-  if (!trainer || (trainer.kind !== "catcher" && trainer.kind !== "evolver")) {
+  if (!trainer || (trainer.kind !== "ranger" && trainer.kind !== "handler")) {
     return { ok: false, reason: "Not field staff" };
   }
   if (postingFor(state, trainerId)) {
@@ -249,7 +249,7 @@ export function addToCrew(
 
 export function removeFromCrew(state: LeagueState, creatureId: string): void {
   for (const trainer of Object.values(state.trainers)) {
-    if (trainer.kind !== "catcher" && trainer.kind !== "evolver") continue;
+    if (trainer.kind !== "ranger" && trainer.kind !== "handler") continue;
     if (!trainer.party.includes(creatureId)) continue;
     if (postingFor(state, trainer.id)) return;
     trainer.party = trainer.party.filter((id) => id !== creatureId);
@@ -269,8 +269,27 @@ export function postingFor(state: LeagueState, trainerId: string): Posting | und
   return state.postings.find((p) => p.trainerId === trainerId);
 }
 
-export function postingOnRoute(state: LeagueState, routeId: string): Posting | undefined {
-  return state.postings.find((p) => p.routeId === routeId);
+/**
+ * What is happening on a route right now.
+ *
+ * A route holds one Ranger *and* one Handler at a time. They are doing
+ * different things on the same ground — one is looking for creatures, the other
+ * is training the ones they brought — and making them compete for the same slot
+ * meant Handlers, who stay until recalled, quietly squeezed Rangers off the map
+ * entirely: eight Rangers managed ten shifts each across sixty hours.
+ */
+export function postingsOnRoute(state: LeagueState, routeId: string): Posting[] {
+  return state.postings.filter((p) => p.routeId === routeId);
+}
+
+export function postingOnRoute(
+  state: LeagueState,
+  routeId: string,
+  role?: FieldRole,
+): Posting | undefined {
+  return state.postings.find(
+    (p) => p.routeId === routeId && (role === undefined || p.role === role),
+  );
 }
 
 /** The crew's level, as the route judges it: the weakest one there. */
@@ -283,8 +302,8 @@ export function crewLevel(state: LeagueState, trainerId: string): number {
 /**
  * How far under a route's floor this crew is standing.
  *
- * Zero for a Catcher, always — they refuse ground they cannot handle. For an
- * Evolver it is the whole mechanic: the stretch pays better, teaches faster,
+ * Zero for a Ranger, always — they refuse ground they cannot handle. For an
+ * Handler it is the whole mechanic: the stretch pays better, teaches faster,
  * and is how a party comes back beaten.
  */
 export function stretchOf(state: LeagueState, posting: Posting): number {
@@ -303,13 +322,16 @@ export function canPost(
   if (!eligibleRoutes(state).some((r) => r.id === routeId)) {
     return { ok: false, reason: "Route not open yet" };
   }
-  if (postingOnRoute(state, routeId)) {
-    return { ok: false, reason: "Already being worked" };
-  }
-
   const trainer = state.trainers[trainerId];
-  if (!trainer || (trainer.kind !== "catcher" && trainer.kind !== "evolver")) {
+  if (!trainer || (trainer.kind !== "ranger" && trainer.kind !== "handler")) {
     return { ok: false, reason: "Not field staff" };
+  }
+  const role: FieldRole = trainer.kind === "handler" ? "handler" : "ranger";
+  if (postingOnRoute(state, routeId, role)) {
+    return {
+      ok: false,
+      reason: role === "ranger" ? "A Ranger is already working here" : "A Handler is already here",
+    };
   }
   if (postingFor(state, trainerId)) return { ok: false, reason: "Already posted" };
 
@@ -317,14 +339,14 @@ export function canPost(
   if (crew.length === 0) return { ok: false, reason: "Nobody in their crew" };
 
   const level = Math.min(...crew.map((c) => c.level));
-  if (trainer.kind === "catcher") {
+  if (trainer.kind === "ranger") {
     if (level < route.levelMin) {
       return { ok: false, reason: `Needs Lv${route.levelMin} to work here` };
     }
-  } else if (level < route.levelMin - EVOLVER.maxStretch) {
+  } else if (level < route.levelMin - HANDLER.maxStretch) {
     return {
       ok: false,
-      reason: `Lv${route.levelMin - EVOLVER.maxStretch} at the very least — this is far over their heads`,
+      reason: `Lv${route.levelMin - HANDLER.maxStretch} at the very least — this is far over their heads`,
     };
   }
   return { ok: true };
@@ -341,15 +363,20 @@ export function post(
   const trainer = state.trainers[trainerId];
   if (!trainer) return { ok: false, reason: "Gone" };
 
+  const role: FieldRole = trainer.kind === "handler" ? "handler" : "ranger";
   state.postings.push({
     routeId,
     trainerId,
-    role: trainer.kind === "evolver" ? "evolver" : "catcher",
+    role,
     progress: 0,
     caught: 0,
     earned: 0,
     beaten: 0,
     resting: false,
+    // A Ranger works a shift and comes home; a Handler stays until recalled.
+    // Expeditions that ran forever meant the whole system was one decision made
+    // once, and the route screen never asked anything of the player again.
+    endsAt: role === "ranger" ? state.time + RANGER.shiftSeconds : null,
   });
   return { ok: true };
 }
@@ -377,29 +404,29 @@ export function roundSeconds(state: LeagueState, posting: Posting): number {
   if (!route) return Infinity;
 
   const base =
-    posting.role === "catcher"
-      ? CATCHER.baseCatchSeconds + route.levelMax * CATCHER.secondsPerRouteLevel
-      : EVOLVER.baseRoundSeconds + route.levelMax * EVOLVER.secondsPerRouteLevel;
+    posting.role === "ranger"
+      ? RANGER.baseCatchSeconds + route.levelMax * RANGER.secondsPerRouteLevel
+      : HANDLER.baseRoundSeconds + route.levelMax * HANDLER.secondsPerRouteLevel;
 
   // A crew that has outgrown the ground works it fast — and is telling you to
   // move them on.
-  return base / (1 + throughBand(state, posting) * CATCHER.partnerSpeedBonus);
+  return base / (1 + throughBand(state, posting) * RANGER.partnerSpeedBonus);
 }
 
 /** Fatigue this posting costs its crew per sim-second. */
 export function fatigueRate(state: LeagueState, posting: Posting): number {
   const through = throughBand(state, posting);
-  if (posting.role === "catcher") {
+  if (posting.role === "ranger") {
     return (
-      CATCHER.fatiguePerSecondAtFloor *
-      (1 - through * (1 - CATCHER.fatigueAtCeiling))
+      RANGER.fatiguePerSecondAtFloor *
+      (1 - through * (1 - RANGER.fatigueAtCeiling))
     );
   }
   const stretch = stretchOf(state, posting);
   return (
-    EVOLVER.fatiguePerSecondAtFloor *
-    (1 - through * (1 - EVOLVER.fatigueAtCeiling)) *
-    (1 + stretch * EVOLVER.fatiguePerStretch)
+    HANDLER.fatiguePerSecondAtFloor *
+    (1 - through * (1 - HANDLER.fatigueAtCeiling)) *
+    (1 + stretch * HANDLER.fatiguePerStretch)
   );
 }
 
@@ -418,7 +445,7 @@ export function reserveCount(state: LeagueState): number {
 
 export function reserveCeiling(state: LeagueState): number {
   return (
-    CATCHER.reserveCeilingBase + state.gymOrder.length * CATCHER.reserveCeilingPerGym
+    RANGER.reserveCeilingBase + state.gymOrder.length * RANGER.reserveCeilingPerGym
   );
 }
 
@@ -457,7 +484,7 @@ export function usableReserve(state: LeagueState): number {
  * ever releases a creature nobody has invested anything in.
  */
 function releaseSpillover(state: LeagueState, report: TickReport): void {
-  const hard = reserveCeiling(state) * CATCHER.hardCeilingFactor;
+  const hard = reserveCeiling(state) * RANGER.hardCeilingFactor;
   if (reserveCount(state) <= hard) return;
 
   const types = fieldableTypes(state);
@@ -522,8 +549,20 @@ export function tickField(state: LeagueState, dt: number, report: TickReport): v
     }
     if (isSuspended(state, trainer)) continue;
 
-    const tiredAt = posting.role === "catcher" ? CATCHER.tiredAt : EVOLVER.tiredAt;
-    const restedAt = posting.role === "catcher" ? CATCHER.rested : EVOLVER.rested;
+    // The shift ends and they come home, whatever they were in the middle of.
+    if (posting.endsAt !== null && state.time >= posting.endsAt) {
+      state.postings = state.postings.filter((p) => p !== posting);
+      report.returned.push({ name: trainer.name, caught: posting.caught });
+      log(
+        state,
+        "catch",
+        `${trainer.name} is back from ${routeById(posting.routeId)?.name ?? "the field"} with ${posting.caught}.`,
+      );
+      continue;
+    }
+
+    const tiredAt = posting.role === "ranger" ? RANGER.tiredAt : HANDLER.tiredAt;
+    const restedAt = posting.role === "ranger" ? RANGER.rested : HANDLER.rested;
     const worst = Math.max(...crew.map((c) => c.fatigue));
 
     // A shift, then a break. The hysteresis is what makes this a duty cycle
@@ -536,8 +575,8 @@ export function tickField(state: LeagueState, dt: number, report: TickReport): v
       posting.resting = true;
       continue;
     }
-    // Catchers with nowhere to put anyone idle; an Evolver is still training.
-    if (posting.role === "catcher" && boxFull) continue;
+    // Rangers with nowhere to put anyone idle; an Handler is still training.
+    if (posting.role === "ranger" && boxFull) continue;
 
     posting.progress += dt;
     const wear = fatigueRate(state, posting) * dt;
@@ -551,8 +590,8 @@ export function tickField(state: LeagueState, dt: number, report: TickReport): v
       const route = routeById(posting.routeId);
       if (!route) break;
 
-      if (posting.role === "catcher") {
-        workCatch(state, posting, route, crew, report);
+      if (posting.role === "ranger") {
+        workCatch(state, posting, route, report);
       } else {
         workTraining(state, posting, route, trainer, crew, report);
       }
@@ -560,19 +599,20 @@ export function tickField(state: LeagueState, dt: number, report: TickReport): v
   }
 }
 
-function workCatch(
-  state: LeagueState,
-  posting: Posting,
-  route: Route,
-  crew: Creature[],
-  report: TickReport,
-): void {
+/**
+ * A Ranger's round: something turns up, or it does not.
+ *
+ * Deliberately no experience. Rangers and Handlers used to both level their
+ * crews, which left no reason to run a Handler at all — catching taught you
+ * *and* paid you in creatures. Collecting and training are now genuinely
+ * different jobs with genuinely different rewards.
+ */
+function workCatch(state: LeagueState, posting: Posting, route: Route, report: TickReport): void {
   const caught = drawFrom(state, route);
   if (caught) {
     posting.caught += 1;
     report.caught.push(caught.id);
   }
-  teach(state, posting, route, crew, CATCHER.xpPerCatch, report);
 }
 
 /**
@@ -594,19 +634,19 @@ function workTraining(
   const stretch = stretchOf(state, posting);
 
   const pay =
-    (EVOLVER.payBase + route.levelMax * EVOLVER.payPerRouteLevel) *
-    (1 + stretch * EVOLVER.payPerStretch);
+    (HANDLER.payBase + route.levelMax * HANDLER.payPerRouteLevel) *
+    (1 + stretch * HANDLER.payPerStretch);
   state.money += pay;
   posting.earned += pay;
   report.earned += pay;
 
-  const xp = EVOLVER.xpPerRound * (1 + stretch * EVOLVER.xpPerStretch);
+  const xp = HANDLER.xpPerRound * (1 + stretch * HANDLER.xpPerStretch);
   teach(state, posting, route, crew, xp, report);
 
-  if (stretch > 0 && chance(state.rng, stretch * EVOLVER.beatenChancePerStretch)) {
+  if (stretch > 0 && chance(state.rng, stretch * HANDLER.beatenChancePerStretch)) {
     posting.beaten += 1;
-    for (const c of crew) c.fatigue = clamp01(c.fatigue + EVOLVER.beatenFatigue);
-    trainer.morale = Math.max(0, trainer.morale - EVOLVER.beatenMorale);
+    for (const c of crew) c.fatigue = clamp01(c.fatigue + HANDLER.beatenFatigue);
+    trainer.morale = Math.max(0, trainer.morale - HANDLER.beatenMorale);
     report.beaten.push(trainer.name);
     log(state, "wave", `${trainer.name}'s party came back beaten from ${route.name}.`);
   }
@@ -640,7 +680,7 @@ function teach(
  * The creatures a league opens with.
  *
  * Drawn from the starting routes, so the opening bench is made of the same
- * things a Catcher would actually bring back.
+ * things a Ranger would actually bring back.
  */
 export function seedBench(state: LeagueState): void {
   const starters = routesUpTo(0);
@@ -649,8 +689,8 @@ export function seedBench(state: LeagueState): void {
     if (!route) break;
     drawFrom(state, route);
   }
-  rollFieldOffer(state, "catcher");
-  rollFieldOffer(state, "evolver");
+  rollFieldOffer(state, "ranger");
+  rollFieldOffer(state, "handler");
 }
 
 /** Every route the league knows about, for the intel screen. */

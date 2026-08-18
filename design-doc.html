@@ -1,0 +1,845 @@
+<title>The Casting Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+  :root {
+    --paper:   #EFF1EE;
+    --surface: #F7F8F6;
+    --sunken:  #E5E9E5;
+    --ink:     #16211F;
+    --muted:   #66756F;
+    --rule:    #D2DAD5;
+    --accent:  #0F6B5C;
+    --accent-soft: #0F6B5C1a;
+    --warn:    #A85D14;
+    --warn-soft: #A85D141f;
+
+    --display: "Archivo", ui-sans-serif, system-ui, sans-serif;
+    --body: "Newsreader", ui-serif, Georgia, serif;
+    --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+    --measure: 34rem;
+    --gutter: 8.5rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:   #0F1513;
+      --surface: #17201D;
+      --sunken:  #1D2724;
+      --ink:     #E2E8E4;
+      --muted:   #8B9A94;
+      --rule:    #27332F;
+      --accent:  #52C2AA;
+      --accent-soft: #52C2AA1f;
+      --warn:    #DDA355;
+      --warn-soft: #DDA35521;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:   #0F1513;
+    --surface: #17201D;
+    --sunken:  #1D2724;
+    --ink:     #E2E8E4;
+    --muted:   #8B9A94;
+    --rule:    #27332F;
+    --accent:  #52C2AA;
+    --accent-soft: #52C2AA1f;
+    --warn:    #DDA355;
+    --warn-soft: #DDA35521;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 1.0625rem;
+    line-height: 1.65;
+    margin: 0;
+    padding: 0 1.5rem 6rem;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: calc(var(--gutter) + var(--measure) + 2.5rem);
+    margin: 0 auto;
+  }
+
+  /* ---------- masthead ---------- */
+
+  .masthead {
+    padding: 4.5rem 0 2rem;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 1.25rem;
+  }
+
+  .masthead h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(2.75rem, 9vw, 4.5rem);
+    line-height: 0.98;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+    margin: 0 0 1rem;
+  }
+
+  .standfirst {
+    font-size: 1.25rem;
+    line-height: 1.5;
+    color: var(--ink);
+    max-width: 30rem;
+    margin: 0 0 2rem;
+  }
+
+  .standfirst em { color: var(--muted); }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 2.25rem;
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .meta b {
+    display: block;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: 0.04em;
+  }
+
+  .meta > div { padding: 0.5rem 0; }
+
+  /* ---------- section scaffolding ---------- */
+
+  section {
+    display: grid;
+    grid-template-columns: var(--gutter) minmax(0, 1fr);
+    gap: 0 2.5rem;
+    padding: 3.25rem 0 0;
+    border-top: 1px solid var(--rule);
+    margin-top: 3.25rem;
+  }
+
+  section:first-of-type { border-top: none; margin-top: 0; }
+
+  .filing {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-top: 0.55rem;
+    line-height: 1.5;
+  }
+
+  .filing span {
+    display: block;
+    color: var(--accent);
+  }
+
+  .body { min-width: 0; max-width: var(--measure); }
+
+  h2 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 1.75rem;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    text-wrap: balance;
+    margin: 0 0 1.25rem;
+  }
+
+  h3 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 1.0625rem;
+    letter-spacing: -0.005em;
+    margin: 2.25rem 0 0.75rem;
+  }
+
+  p { margin: 0 0 1.15rem; }
+  .body > *:last-child { margin-bottom: 0; }
+
+  strong { font-weight: 600; }
+
+  em.term {
+    font-style: normal;
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 0.95em;
+  }
+
+  a { color: var(--accent); }
+  a:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  ul, ol { margin: 0 0 1.15rem; padding-left: 1.25rem; }
+  li { margin-bottom: 0.5rem; }
+  li::marker { color: var(--muted); }
+
+  ol.steps { list-style: none; padding-left: 0; counter-reset: step; }
+  ol.steps li {
+    counter-increment: step;
+    display: grid;
+    grid-template-columns: 2.25rem 1fr;
+    gap: 0 0.75rem;
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  ol.steps li:last-child { border-bottom: none; margin-bottom: 0; }
+  ol.steps li::before {
+    content: counter(step, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent);
+    padding-top: 0.28rem;
+  }
+
+  /* ---------- pull statement ---------- */
+
+  .pull {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 1.3125rem;
+    line-height: 1.3;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    border-left: 3px solid var(--accent);
+    padding: 0.15rem 0 0.15rem 1.25rem;
+    margin: 1.75rem 0;
+    color: var(--ink);
+  }
+
+  /* ---------- callout ---------- */
+
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 1.35rem 1.5rem;
+    margin: 1.75rem 0;
+  }
+
+  .callout .tag {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 0.6rem;
+  }
+
+  .callout h3 { margin-top: 0; }
+  .callout > *:last-child { margin-bottom: 0; }
+
+  /* ---------- data tables ---------- */
+
+  .scroller { overflow-x: auto; margin: 0 0 1.5rem; }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 22rem;
+    font-family: var(--display);
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    font-weight: 500;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0 1rem 0.6rem 0;
+    border-bottom: 1px solid var(--ink);
+  }
+
+  td {
+    padding: 0.7rem 1rem 0.7rem 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+
+  td:first-child { font-weight: 600; }
+  tr.mark td { color: var(--accent); }
+
+  /* ---------- terminal blocks ---------- */
+
+  .term-block {
+    background: var(--sunken);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    line-height: 1.7;
+    padding: 1.25rem 1.35rem;
+    margin: 1.75rem 0;
+    overflow-x: auto;
+  }
+
+  .term-block .k {
+    color: var(--muted);
+    display: inline-block;
+    min-width: 6.5rem;
+  }
+
+  .term-block .name {
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  .term-block .rule {
+    color: var(--rule);
+    display: block;
+    margin: 0.5rem 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  /* ---------- threat report ---------- */
+
+  .threat {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--warn);
+    border-radius: 2px;
+    padding: 1.25rem 1.35rem;
+    margin: 1.75rem 0;
+  }
+
+  .threat-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .threat-head h4 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 0.9375rem;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+
+  .status {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--warn);
+    background: var(--warn-soft);
+    padding: 0.25rem 0.5rem;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+
+  .threat-sub {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 1rem;
+  }
+
+  .bars { display: grid; gap: 0.55rem; }
+
+  .bar-row {
+    display: grid;
+    grid-template-columns: 5.5rem minmax(0, 1fr) 2.75rem;
+    align-items: center;
+    gap: 0 0.75rem;
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+  }
+
+  .bar-label { display: flex; align-items: center; gap: 0.4rem; color: var(--ink); }
+
+  .dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    flex: none;
+  }
+
+  .track {
+    height: 0.5rem;
+    background: var(--sunken);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+
+  .fill { height: 100%; border-radius: 1px; }
+
+  .pct { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* ---------- chain diagram ---------- */
+
+  .chain {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 1.75rem 0;
+    padding: 1.25rem 1.35rem;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+  }
+
+  .chain b {
+    font-weight: 500;
+    color: var(--ink);
+    background: var(--sunken);
+    border: 1px solid var(--rule);
+    padding: 0.35rem 0.6rem;
+    border-radius: 2px;
+  }
+
+  .chain i { font-style: normal; color: var(--accent); font-weight: 700; }
+
+  .chain .loop {
+    width: 100%;
+    color: var(--accent);
+    font-size: 0.625rem;
+    padding-top: 0.35rem;
+  }
+
+  /* ---------- risks ---------- */
+
+  .risk {
+    border-top: 1px solid var(--rule);
+    padding: 1.1rem 0;
+  }
+  .risk:last-child { padding-bottom: 0; }
+
+  .risk h3 {
+    margin: 0 0 0.4rem;
+    font-size: 1rem;
+  }
+  .risk p { margin: 0; color: var(--muted); font-size: 0.9375rem; }
+
+  /* ---------- colophon ---------- */
+
+  .colophon {
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid var(--ink);
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* ---------- narrow ---------- */
+
+  @media (max-width: 46rem) {
+    section {
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+    .filing { padding-top: 0; margin-bottom: 1rem; }
+    .filing span { display: inline; }
+    .filing span::before { content: " · "; color: var(--muted); }
+    .body { max-width: none; }
+    .bar-row { grid-template-columns: 4.5rem minmax(0, 1fr) 2.5rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Design Document · Working Title</p>
+    <h1>The Casting Board</h1>
+    <p class="standfirst">A Pokémon League Manager idle game — where you never battle, never walk a route, and the scarcest thing you own is <em>attention</em>.</p>
+    <div class="meta">
+      <div>Genre<b>Idle / Management</b></div>
+      <div>Platform<b>Mobile web PWA</b></div>
+      <div>Model<b>Free · No monetization</b></div>
+      <div>Status<b>Pre-prototype</b></div>
+    </div>
+  </header>
+
+  <section>
+    <div class="filing">Premise<span>The pitch</span></div>
+    <div class="body">
+      <h2>You run the league. You do not fight for it.</h2>
+      <p>You manage a Pokémon League. You hire people, build the facilities behind them, and decide which Pokémon stand in which gym. Challengers come to take your badges. Your job is to make sure they don't — not by owning one unbeatable ace, but by running a deep, well-cast, well-bonded league.</p>
+
+      <h3>The problem this solves</h3>
+      <p>Every idle Pokémon game reaches the same failure state: one absurdly strong Pokémon and four hundred you have never looked at. The species become a resource, the individuals disappear, and the thing that made Pokémon work — that you <em class="term">know</em> your team — is the first thing the genre throws away.</p>
+      <p>Three mechanics attack that structurally:</p>
+      <ul>
+        <li><strong>Attention is rationed, ownership is not.</strong> You may own hundreds; you may only bond as many as your hired trainers have slots for. Hiring is literally buying the right to care about one more Pokémon.</li>
+        <li><strong>Every Pokémon has a finite career.</strong> Battles are spent from a lifetime counter. Deploying your favorite costs something you cannot get back.</li>
+        <li><strong>Promotion requires breadth.</strong> You advance by passing a league-wide readiness check. One stacked gym structurally cannot promote you.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <div class="filing">Pillars<span>Non-negotiable</span></div>
+    <div class="body">
+      <h2>Three lines that don't move</h2>
+      <p><strong>You manage, you don't battle.</strong> The player is never a combatant; the Champion slot is filled by your best <em class="term">trainer</em>. The moment the player battles, every system below becomes a formality.</p>
+      <p><strong>Attention is the scarce resource.</strong> Not money, not Pokémon, not time. Everything expensive in this game is expensive because it buys attention.</p>
+      <p><strong>Consequences land on the cast, never on the run.</strong> You cannot lose. Your Pokémon tire, age out, and retire. Your leaders quit. That is where the weight lives.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="filing">Board<span>Gyms &amp; types</span></div>
+    <div class="body">
+      <h2>The board is type-bound, and that is the point</h2>
+      <p>Each gym is a building with a fixed type identity, a leader slot, and N Pokémon slots. Upgrading the building adds slots and modifiers. The gym <em class="term">is</em> the casting board — you look at it and see who is in it.</p>
+      <p>Trainers are type-bound too: a Fire trainer bonds Fire Pokémon. This is deliberate constraint reduction, turning casting from an eighteen-dimensional optimization into a legible one.</p>
+      <p class="pull">Dual-types are the release valve — the only pieces with optionality, and therefore the most valuable assets in the game. A rarity tier that emerges from the type chart instead of being invented.</p>
+
+      <h3>Tier structure grows with promotion</h3>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>Tier</th><th>Gyms</th><th>Type slate</th></tr></thead>
+          <tbody>
+            <tr><td>Regional</td><td>8</td><td>You choose which eight</td></tr>
+            <tr><td>National</td><td>12</td><td>Expand to twelve</td></tr>
+            <tr><td>World</td><td>18</td><td>All types</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Choosing your eight types at Regional is a genuine identity decision — it makes two playthroughs feel different without authoring a single line of new content.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="filing">People<span>Staff</span></div>
+    <div class="body">
+      <h2>Leaders are casting constraints, not a second grind</h2>
+      <p>Each leader carries a fixed <strong>type affinity</strong>, one <strong>signature doctrine</strong> (Stall, Sweep, Mentor, Drillmaster), <strong>morale</strong> that falls under underpayment or bad casting, and an <strong>escalating salary</strong> that grows with tenure and prestige.</p>
+      <p>Leaders do not level independently. The moment they do, the player optimizes leaders and Pokémon become interchangeable equipment — the exact failure this design exists to avoid.</p>
+
+      <h3>Signature Pokémon</h3>
+      <p>Every trainer arrives welded to one partner. It is permanently bonded, costs <strong>zero attention</strong>, cannot be reassigned or traded, and leaves when the trainer leaves.</p>
+      <p>That guarantees every hire is an emotional unit from minute one, even when your attention budget is tiny — and it means firing someone evicts a pair. Underpay to expand and leaders start quitting, taking their partner with them. That is the tycoon pressure, and it never ends the run.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="filing">Roster<span>The card</span></div>
+    <div class="body">
+      <h2>The Pokémon Card is the emotional unit</h2>
+      <p>It is the core UI object and should be the most polished screen in the game.</p>
+
+      <div class="term-block">
+        <span class="name">ESPEON &nbsp;"Vesper"</span> &nbsp;&nbsp; PSYCHIC<span class="rule">────────────────────────────────────</span><span class="k">Trainer</span>Marnie · Psychic Gym<br>
+        <span class="k">Bond</span>████████░░ &nbsp;L4 — Reliable<br>
+        <span class="k">Career</span>212 W / 48 L<br>
+        <span class="k">Remaining</span>41 battles<br>
+        <span class="k">Fatigue</span>▓▓▓░░░░░ &nbsp;Rested<br>
+        <span class="k">Pedigree</span>Vesper ← Umbra ← Solace ← "Sunny"
+      </div>
+
+      <p class="pull">"Battles remaining: 41" sitting next to a four-generation pedigree is the entire design compressed into one view.</p>
+
+      <h3>Bond buys reliability, not power</h3>
+      <p>A high-bond Pokémon performs at its stated numbers. A low-bond Pokémon has wide variance and throws upsets. An unbonded ace is a <em class="term">liability</em> — a far more interesting statement than "an unbonded ace is weaker," and precisely what a manager actually wants to buy. Thresholds unlock abilities so the player can feel bond climbing.</p>
+
+      <h3>Attention is per-trainer slots</h3>
+      <ul>
+        <li>Start: one trainer, two bond slots, plus their free signature — <strong>three named Pokémon in hour one</strong></li>
+        <li>Training Grounds upgrades raise slots per trainer</li>
+        <li>Mid-game ~20–30 bonded · World tier 50+</li>
+      </ul>
+      <p>The ceiling that matters is not a balance number. It is the point where the player stops recognizing names. Never cross it.</p>
+
+      <h3>Fatigue is short-term, career is permanent</h3>
+      <p><strong>Fatigue</strong> accrues per defense and recovers with rest — faster at the Medical Center, instantly for money. Rotating tired Pokémon out is the daily session's texture, and it is what makes roster depth mechanically necessary.</p>
+      <p><strong>Career</strong> is a finite lifetime battle count (~250 base, extendable via facilities). When it runs out the Pokémon <strong>retires</strong> — which is never deletion. Retirees move to the Day-Care as breeders. A career ends by becoming a lineage.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="filing">Intake<span>Acquisition</span></div>
+    <div class="body">
+      <h2>Three pipelines, three emotional registers</h2>
+      <p><strong>Scouting — volume and randomness.</strong> Dispatch trainers to routes; they return with catches. This preserves the route-walking fantasy of the genre, just delegated: your trainers do the walking, which is the entire premise.</p>
+      <p><strong>Breeding — intentional and slow.</strong> The Day-Care, staffed by retirees. The only source of lineage.</p>
+      <p><strong>Recruiting rivals — rare and story-loaded.</strong> Beating a named rival makes them <em class="term">hireable</em>. They join with their signature Pokémon, the only way to acquire creatures you can neither scout nor breed. Your staff roster becomes a trophy case of everyone who once beat you.</p>
+
+      <h3>What a child inherits</h3>
+      <ul>
+        <li>A <strong>stat floor</strong> derived from both parents</li>
+        <li><strong>One trait</strong> from a parent</li>
+        <li>A <strong>visible pedigree</strong> — a named ancestry chain showing each ancestor's career record</li>
+      </ul>
+      <p>Two rules close the loop: parents' <strong>bond level</strong> affects offspring quality, so bonding pays forward into breeding; and a <strong>long career produces better children</strong>, so a Pokémon that fought 300 battles for you yields better offspring than one that idled.</p>
+
+      <div class="chain">
+        <b>Deploy</b><i>→</i><b>Career battles</b><i>→</i><b>Retirement</b><i>→</i><b>Day-Care</b><i>→</i><b>Offspring</b>
+        <span class="loop">↳ back to Deploy — the pedigree is the artifact this whole game exists to produce</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="filing">Resolved<span>Open hole 1</span></div>
+    <div class="body">
+      <h2>What the unbonded hundreds actually do</h2>
+      <p>Ownership is uncapped but only bonded Pokémon are individuals — so the anonymous majority needs a real job, or "strength means having a lot of Pokémon" quietly breaks.</p>
+
+      <div class="callout">
+        <span class="tag">Resolution — The Undercard</span>
+        <p>Challengers must clear a gym's <strong>undercard</strong> before reaching the bonded team. Unbonded Pokémon of that gym's type fill it.</p>
+        <ul>
+          <li>A deeper undercard absorbs more of the challenger trickle</li>
+          <li>More absorbed = <strong>more gate receipts</strong> and <strong>less fatigue on your bonded stars</strong></li>
+          <li>Undercard Pokémon gain no bond and spend career slowly — but they <em class="term">do</em> spend it, so a long undercard career is how a nobody becomes a good breeder</li>
+        </ul>
+      </div>
+
+      <p class="pull">Depth of roster is how you protect the Pokémon you love. Every anonymous Pokémon you own is a battle your favorite doesn't have to fight.</p>
+      <p>Secondary roles: unbonded Pokémon staff facilities (Day-Care hands, Medical Center support) for small percentage bonuses, and they are the reserve you promote from when a bond slot opens.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="filing">Resolved<span>Open hole 2</span></div>
+    <div class="body">
+      <h2>Off-type scouting waste</h2>
+      <p>Hard type-binding plus only eight chosen types at Regional means much of what scouts bring home is off-slate. Three layers fix it, and all three are things a manager actually does.</p>
+
+      <div class="callout">
+        <span class="tag">Resolution — Three layers</span>
+        <ol>
+          <li><strong>Route targeting.</strong> Scouting Office upgrades reveal and filter route type distributions, so off-type inflow becomes a function of investment rather than pure noise.</li>
+          <li><strong>The Trade Desk.</strong> Off-type Pokémon are <em class="term">trade goods</em> — trade them to rival leagues for on-type Pokémon or facility materials. No catch is ever worthless.</li>
+          <li><strong>Speculation.</strong> Promotion expands your slate 8 → 12 → 18, so hoarded off-types become future assets. "I've been sitting on Ghosts for two tiers waiting to open a Ghost gym" becomes a real strategic position.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="filing">Meta<span>Threat reports</span></div>
+    <div class="body">
+      <h2>How the type chart reaches a player who never watches</h2>
+      <p>Each gym displays a <strong>Threat Report</strong>: the type distribution of incoming challengers over recent waves, with a status light.</p>
+
+      <div class="threat">
+        <div class="threat-head">
+          <h4>Fire Gym — Leader: Blaise</h4>
+          <span class="status">⚠ Critical</span>
+        </div>
+        <p class="threat-sub">Incoming challenger types · last 40 waves</p>
+        <div class="bars">
+          <div class="bar-row">
+            <span class="bar-label"><span class="dot" style="background:#4B8FD4"></span>Water</span>
+            <span class="track"><span class="fill" style="width:34%;background:#4B8FD4"></span></span>
+            <span class="pct">34%</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label"><span class="dot" style="background:#B08A4A"></span>Ground</span>
+            <span class="track"><span class="fill" style="width:22%;background:#B08A4A"></span></span>
+            <span class="pct">22%</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label"><span class="dot" style="background:#9A8C6E"></span>Rock</span>
+            <span class="track"><span class="fill" style="width:18%;background:#9A8C6E"></span></span>
+            <span class="pct">18%</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label"><span class="dot" style="background:#8E86D6"></span>Flying</span>
+            <span class="track"><span class="fill" style="width:14%;background:#8E86D6"></span></span>
+            <span class="pct">14%</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label"><span class="dot" style="background:#7C8C86"></span>Other</span>
+            <span class="track"><span class="fill" style="width:12%;background:#7C8C86"></span></span>
+            <span class="pct">12%</span>
+          </div>
+        </div>
+      </div>
+
+      <p>This converts casting from "recall the type chart" into "read the scouting report" — the actual manager fantasy. It teaches the chart implicitly to players who never memorized it.</p>
+      <p class="pull">The meta drifts. This season Water surges; next season Ground does. That drift generates infinite re-casting pressure with zero authored content — a live-service engine that costs nothing to run.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="filing">Systems<span>Facilities</span></div>
+    <div class="body">
+      <h2>The support tier behind the front line</h2>
+      <p>Gyms hold Pokémon. Facilities don't — they change what the front line can do.</p>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>Facility</th><th>Effect</th></tr></thead>
+          <tbody>
+            <tr><td>Training Grounds</td><td>More bond slots per trainer; faster bonding</td></tr>
+            <tr><td>Day-Care</td><td>Breeding; staffed by retirees</td></tr>
+            <tr><td>Medical Center</td><td>Faster fatigue recovery; extends career length</td></tr>
+            <tr><td>Scouting Office</td><td>Route targeting, filtering, more concurrent expeditions</td></tr>
+            <tr><td>Trade Desk</td><td>Converts off-type Pokémon into on-type or materials</td></tr>
+            <tr><td>Hall of Fame</td><td>Holds inducted Mentors across promotions</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="filing">Economy<span>Flow &amp; sinks</span></div>
+    <div class="body">
+      <h2>Recurring salary is what makes this a tycoon</h2>
+      <p><strong>Income:</strong> gate receipts on the challenger trickle, scaling with league prestige. A well-cast league wins more and therefore earns more.</p>
+      <p><strong>Primary sink: recurring salaries</strong>, escalating with tenure and prestige. Recurring cost is what separates a tycoon from a shop — every hire is a permanent commitment against future income, and it is what gives morale its teeth.</p>
+      <p><strong>Secondary sinks:</strong> facility construction and upgrades (one-time), scouting expeditions and medical care (consumable).</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="filing">Progression<span>Prestige</span></div>
+    <div class="body">
+      <h2>Promotion is a readiness check, not a price tag</h2>
+      <p>The tier Champion challenge unlocks only when every gym is staffed, every gym is bonded above a minimum, and league prestige clears a bar.</p>
+      <p>A currency gate would mean idling until a number is big enough — the exact failure mode this design reacts against. A readiness check tests the thing the game is actually about.</p>
+
+      <h3>Hall of Fame induction</h3>
+      <p>On promotion you induct a small fixed number of Pokémon. They return as <strong>Mentors</strong>: each occupies a Hall slot and permanently accelerates bonding for its type across the whole league.</p>
+      <p>A flat multiplier would make induction a math problem solved by stat sheet. Mentorship makes it a typed strategic commitment — inducting your Dragonite means the next league is a Dragon league.</p>
+      <p class="pull">The Pokémon that carried you now trains the ones that follow. Your prestige currency is inherited experience.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="filing">Session<span>Rhythm</span></div>
+    <div class="body">
+      <h2>Three to five minutes a day, and no punishment for missing one</h2>
+      <ul>
+        <li>Offline accrual <strong>capped at ~12 hours</strong>. No monetization means no reason to punish attendance.</li>
+        <li><strong>Rival challenges queue rather than expire.</strong> They wait politely for you to cast against them.</li>
+        <li>Daily loop: read the queue, fix what's glowing red, re-cast two or three gyms, dispatch scouts, close.</li>
+      </ul>
+
+      <h3>Main screen</h3>
+      <p>The <strong>league map</strong> is home — gyms as buildings, each showing type, leader portrait, bond state, and a Threat Report warning light. The whole game state readable at a glance. Tap a gym to cast it, back out. The battle feed lives on a secondary tab as a glanceable ticker: present for flavor, never required.</p>
+
+      <h3>Identity surfacing</h3>
+      <p>Every Pokémon arrives with an <strong>auto-generated nickname the player can edit</strong>. Nobody manually names fifty Pokémon, but everybody renames the one they've grown attached to. Auto-names give attachment somewhere to land without demanding it upfront.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="filing">Onboarding<span>First hour</span></div>
+    <div class="body">
+      <h2>Open narrow. One trainer, one gym, no money.</h2>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>Time</th><th>Beat</th></tr></thead>
+          <tbody>
+            <tr><td>0:00</td><td>One trainer, one signature Pokémon, one gym</td></tr>
+            <tr><td>0:05</td><td>Trickle challengers earn the first purse</td></tr>
+            <tr><td>0:10</td><td>First scout dispatched</td></tr>
+            <tr class="mark"><td>0:15</td><td>First fatigue moment — a favorite tires, forcing a substitution</td></tr>
+            <tr><td>0:20</td><td>First named rival</td></tr>
+            <tr><td>0:30</td><td>First hire; second gym unlocks</td></tr>
+            <tr><td>1:00</td><td>Three to five named Pokémon; one hard casting decision on the table</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The fatigue moment is the most important beat in the game. It teaches the thesis — these are individuals with limits, not stat sticks — before any number ever could.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="filing">Platform<span>Constraints</span></div>
+    <div class="body">
+      <h2>Free web fangame, and that is a gift</h2>
+      <p>Shipping as a free mobile-web PWA on itch.io or GitHub Pages deletes the entire monetization subtree: no gacha, no energy timers, no ad breaks, no IAP pacing. Every pacing decision below can be made for <em class="term">feel</em> rather than for retention metrics.</p>
+      <p><strong>Creature data is swappable from commit one.</strong> Prototype with real Pokémon — you need known creature identities to test whether casting and bonding feel good. Unfamiliar fakemon would mask a broken design as "I don't care about these monsters yet."</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="filing">Build<span>Order of work</span></div>
+    <div class="body">
+      <h2>Prove the core before building anything around it</h2>
+      <p>The riskiest assumption in this document is that <strong>casting against a drifting threat meta is fun to do repeatedly.</strong> Everything else amplifies that core, and none of it can rescue a boring one.</p>
+      <ol class="steps">
+        <li><strong>The casting core.</strong> Three gyms, the Threat Report, bond, fatigue. Fake stats, hand-entered creature data. No breeding, no promotion, no facilities, no hiring. If ten minutes with three gyms and a shifting meta doesn't make you want an eleventh, the design is wrong — and you want to know that in week one, not month six.</li>
+        <li>Hiring, salaries, morale, signature Pokémon</li>
+        <li>Scouting and the undercard</li>
+        <li>Facilities and the economy</li>
+        <li>Breeding, pedigree, retirement</li>
+        <li>Promotion, Hall of Fame, Mentors</li>
+        <li>Offline accrual and PWA packaging</li>
+      </ol>
+    </div>
+  </section>
+
+  <section>
+    <div class="filing">Risk<span>Known unknowns</span></div>
+    <div class="body">
+      <h2>What could still sink this</h2>
+
+      <div class="risk">
+        <h3>The player never battles and never watches</h3>
+        <p>All the charm has to live in the Card, the map, and the writing. If those are inert, the game is a spreadsheet. This is the single biggest execution risk — and it is an art and UX risk, not a systems risk.</p>
+      </div>
+      <div class="risk">
+        <h3>Meta drift tuning</h3>
+        <p>Drift must be slow enough to respond to and fast enough to matter. Too slow and the game is static; too fast and casting feels futile. Playtesting resolves this, not theory.</p>
+      </div>
+      <div class="risk">
+        <h3>Undercard clarity</h3>
+        <p>Mechanically excellent but conceptually invisible. The player must <em class="term">feel</em> that hoarding protects their stars — surface it explicitly with a "battles absorbed" readout per gym.</p>
+      </div>
+      <div class="risk">
+        <h3>Attention cap legibility</h3>
+        <p>If players can't see why they can't bond another Pokémon, the core constraint reads as an arbitrary paywall-shaped wall. The UI must make "you need another trainer" obvious at the exact moment of friction.</p>
+      </div>
+    </div>
+  </section>
+
+  <p class="colophon">The Casting Board · Design document · Canonical copy at DESIGN.md</p>
+
+</div>

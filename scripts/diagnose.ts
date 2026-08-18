@@ -1,0 +1,230 @@
+import { createInitialState, tick, constants } from "../src/sim/index.js";
+import {
+  acceptGymOffer,
+  chooseLeader,
+  checkGymUnlock,
+  autoFillAll,
+  partyOf,
+  partyCapOf,
+  canHire,
+  fieldOffer,
+  fieldStaff,
+  hire,
+  addToCrew,
+  crewOf,
+  canPost,
+  post,
+  postingFor,
+  eligibleRoutes,
+  canUpgrade,
+  upgrade,
+  allFacilities,
+  canHireGymTrainer,
+  hireGymTrainer,
+  canStaff,
+  staffSeat,
+  ensureSeats,
+  eliteUnlocked,
+  readiness,
+  TYPES,
+} from "../src/sim/index.js";
+import type { LeagueState, TickReport } from "../src/sim/index.js";
+
+/**
+ * Which of the league's systems actually happen.
+ *
+ * The balance runner answers "is the curve right". This answers a blunter and
+ * more useful question: over a full playthrough, how often does each mechanic
+ * fire *at all*? A system that never triggers is not balanced or unbalanced, it
+ * is absent — and absent systems are invisible in every other measurement we
+ * take, because they contribute nothing to any of them.
+ *
+ *   npx tsx scripts/diagnose.ts [hours]
+ */
+
+const HOURS = Number(process.argv[2] ?? 120);
+
+function play(state: LeagueState): void {
+  // A competent player: staff everything affordable, keep everyone working.
+  checkGymUnlock(state);
+  const type = state.gymOffer?.[0];
+  if (type) acceptGymOffer(state, type);
+  const candidate = state.leaderOffer?.trainerIds[0];
+  if (candidate) chooseLeader(state, candidate);
+
+  for (const f of allFacilities()) {
+    if (canUpgrade(state, f.id).ok) upgrade(state, f.id);
+  }
+  for (const gymId of state.gymOrder) {
+    if (canHireGymTrainer(state, gymId).ok) hireGymTrainer(state, gymId);
+  }
+
+  ensureSeats(state);
+  if (eliteUnlocked(state)) {
+    for (const seat of state.elite) {
+      if (seat.trainerId !== null) continue;
+      const t = TYPES.find((x) => canStaff(state, seat.rank, x).ok);
+      if (t) staffSeat(state, seat.rank, t);
+    }
+  }
+
+  autoFillAll(state);
+
+  for (const role of ["ranger", "handler"] as const) {
+    while (canHire(state, role).ok) {
+      const offer = fieldOffer(state, role);
+      if (!offer[0]) break;
+      hire(state, role, offer[0]);
+    }
+    for (const trainer of fieldStaff(state, role)) {
+      if (postingFor(state, trainer.id)) continue;
+      const bench = Object.values(state.creatures)
+        .filter((c) => c.role === "reserve" && c.owned)
+        .sort((a, b) => a.level - b.level);
+      for (const c of bench.slice(0, Math.max(0, bench.length - 6))) {
+        if (crewOf(state, trainer.id).length >= trainer.partyCap) break;
+        addToCrew(state, c.id, trainer.id);
+      }
+      if (crewOf(state, trainer.id).length === 0) continue;
+      for (const route of [...eligibleRoutes(state)].sort((a, b) => b.levelMax - a.levelMax)) {
+        if (canPost(state, route.id, trainer.id).ok) {
+          post(state, route.id, trainer.id);
+          break;
+        }
+      }
+    }
+  }
+}
+
+const state = createInitialState(7);
+const tally = {
+  waves: 0,
+  wavesWon: 0,
+  badgesLost: 0,
+  gauntlets: 0,
+  leagueTaken: 0,
+  rivals: 0,
+  rivalsHeld: 0,
+  recruited: 0,
+  suspended: 0,
+  reinstated: 0,
+  departures: 0,
+  resignations: 0,
+  retirements: 0,
+  hatched: 0,
+  evolutions: 0,
+  caught: 0,
+  shifts: 0,
+  beaten: 0,
+  released: 0,
+  upsets: 0,
+  earned: 0,
+  paid: 0,
+};
+
+function absorb(r: TickReport): void {
+  tally.waves += r.wavesResolved;
+  tally.wavesWon += r.wavesWon;
+  tally.badgesLost += r.badgesLost;
+  tally.gauntlets += r.gauntlets.length;
+  tally.rivals += r.rivals.length;
+  tally.rivalsHeld += r.rivals.filter((x) => x.held).length;
+  tally.recruited += r.recruited.length;
+  tally.suspended += r.suspended.length;
+  tally.reinstated += r.reinstated.length;
+  tally.departures += r.departures.length;
+  tally.resignations += r.resignations.length;
+  tally.retirements += r.retirements.length;
+  tally.hatched += r.hatched.length;
+  tally.evolutions += r.evolutions.length;
+  tally.caught += r.caught.length;
+  tally.shifts += r.returned.length;
+  tally.beaten += r.beaten.length;
+  tally.released += r.released.length;
+  tally.upsets += r.upsets.length;
+  tally.earned += r.earned;
+  tally.paid += r.paid;
+}
+
+play(state);
+for (let s = 0; s < HOURS * 3600; s++) {
+  absorb(tick(state, 1));
+  if (s % 60 === 0) play(state);
+}
+tally.leagueTaken = state.leagueTaken;
+
+const bonded = Object.values(state.creatures).filter((c) => c.role !== "retired");
+const avgBond = bonded.reduce((a, c) => a + c.bond, 0) / Math.max(1, bonded.length);
+const wellBonded = bonded.filter((c) => c.bond >= 0.5).length;
+const careerUsed =
+  bonded.reduce((a, c) => a + c.careerSpent / Math.max(1, c.careerTotal), 0) /
+  Math.max(1, bonded.length);
+
+const pad = (v: unknown, n: number) => String(v).padStart(n);
+const row = (label: string, value: unknown, note = "") =>
+  console.log(`  ${label.padEnd(22)} ${pad(value, 12)}  ${note}`);
+
+console.log(`\n  ${HOURS}h, one seed, a player who staffs everything they can afford\n`);
+console.log("  ── The board ──────────────────────────────────────────────");
+row("Tier", state.tier);
+row("Gyms", state.gymOrder.length);
+row("Renown", Math.round(state.renown));
+row("Peak renown", Math.round(state.peakRenown));
+row("Hall of Fame", state.hall.length);
+row("Trainers", Object.keys(state.trainers).length);
+row("Creatures", Object.keys(state.creatures).length);
+
+console.log("\n  ── The economy ────────────────────────────────────────────");
+row("Banked", Math.round(state.money));
+row("Earned", Math.round(tally.earned));
+row("Wages paid", Math.round(tally.paid));
+row("Wages as % of income", `${((tally.paid / Math.max(1, tally.earned)) * 100).toFixed(1)}%`);
+
+console.log("\n  ── What actually happens ──────────────────────────────────");
+row("Challenges", tally.waves, `${((tally.wavesWon / Math.max(1, tally.waves)) * 100).toFixed(1)}% held`);
+row("Badges lost", tally.badgesLost);
+row("Upsets", tally.upsets, "bond doing its job");
+row("Rivals", tally.rivals, `${tally.rivalsHeld} turned away, ${tally.recruited} hired`);
+row("Gauntlets", tally.gauntlets, `${tally.leagueTaken} lost`);
+row("Ranger shifts", tally.shifts, `${tally.caught} caught`);
+row("Handler beatings", tally.beaten);
+row("Evolutions", tally.evolutions);
+row("Eggs hatched", tally.hatched);
+row("Retirements", tally.retirements);
+row("Suspensions", tally.suspended, `${tally.reinstated} returned`);
+row("Departures", tally.departures);
+row("Resignations", tally.resignations);
+row("Released", tally.released);
+
+console.log("\n  ── The creatures ──────────────────────────────────────────");
+row("Average bond", avgBond.toFixed(2));
+row("Bonded past 0.5", `${wellBonded}/${bonded.length}`);
+row("Average career used", `${(careerUsed * 100).toFixed(1)}%`);
+row("Day-Care slots", `${state.dayCare.length}/${constants.DAYCARE.slots}`);
+
+console.log("\n  ── Why promotion has not happened ─────────────────────────");
+const check = readiness(state);
+console.log(`  path ${check.path}, ${check.ok ? "READY" : "blocked"}`);
+for (const b of check.blockers) console.log(`    · ${b}`);
+
+console.log("\n  ── Bond, per gym ──────────────────────────────────────────");
+for (const id of state.gymOrder) {
+  const gym = state.gyms[id];
+  if (!gym?.leaderId) continue;
+  const party = partyOf(state, gym.leaderId);
+  const avg = party.reduce((a, c) => a + c.bond, 0) / Math.max(1, party.length);
+  console.log(
+    `  ${gym.type.padEnd(9)} ${party.length} strong, bond ${avg.toFixed(2)} (bar ${constants.PROMOTION.bondBar})`,
+  );
+}
+
+console.log("\n  ── Short-handed ───────────────────────────────────────────");
+const short = state.gymOrder.flatMap((id) => {
+  const gym = state.gyms[id];
+  if (!gym) return [];
+  return [...gym.trainerIds, ...(gym.leaderId ? [gym.leaderId] : [])]
+    .map((tid) => state.trainers[tid])
+    .filter((t) => t !== undefined && partyOf(state, t.id).length < partyCapOf(t, state))
+    .map((t) => `${t!.affinity} ${partyOf(state, t!.id).length}/${partyCapOf(t!, state)}`);
+});
+console.log(`  ${short.length === 0 ? "nobody" : short.join(", ")}\n`);

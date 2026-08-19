@@ -76,6 +76,32 @@ export const OFFLINE_ANALYTIC_THRESHOLD_SECONDS = 2 * 60 * TIME_SCALE;
  */
 export const CHALLENGE = {
   /**
+   * Share of challengers who, having taken a badge, go on to try the next gym.
+   *
+   * This is the whole ladder in one number. The population holding exactly `k`
+   * badges falls as `passRate ** k`, so the first gym sees ~6.8x the traffic of
+   * the eighth — derived rather than asserted, which matters because the threat
+   * report already reasons about who is arriving and why.
+   */
+  badgePassRate: 0.765,
+  /**
+   * How often somebody turns up over-qualified — more badges than the gym needs.
+   *
+   * Without this, what walks into each gym is fully determined by its rank, and
+   * a screen that exists to say *what is coming and can you handle it* has
+   * nothing left to report. It is also where the occasional scare at an early
+   * gym comes from.
+   */
+  overQualified: 0.15,
+  /**
+   * Gate receipts and renown multiplier per rank.
+   *
+   * Deliberately steeper than the interval growth (~1.31x), so a late gym earns
+   * roughly 1.8x per second what the first one does. Equal growth would make
+   * the ladder cosmetic; steeper still would make early gyms irrelevant.
+   */
+  gatePerRank: 1.45,
+  /**
    * Challenger level multiplier while the opening objectives are unclaimed.
    *
    * Invisible by construction: nothing is disallowed, the arrivals are just
@@ -553,12 +579,18 @@ export const SCOUTING = {
  * creatures the player is attached to — stays off the field.
  */
 export const GYM_TRAINERS = {
-  /** Junior trainers a fresh gym can employ. */
+  /** Junior trainers a fresh gym can employ. Every gym opens here. */
   startingSlots: 2,
-  /** Ceiling before the World tier. */
-  maxSlots: 3,
-  /** Ceiling once the league reaches the World tier. */
-  maxSlotsEndgame: 4,
+  /**
+   * Ceiling by rank: two for the first two gyms, three for the middle three,
+   * four for the last three.
+   *
+   * Replaces a tier-wide ceiling that gave every gym on the board the same
+   * depth, which flattened the ladder in the one place it should be steepest —
+   * the gym a seven-badge challenger reaches should be the deepest thing they
+   * have walked into, not the same screen the first one had.
+   */
+  slotsByRank: [2, 2, 3, 3, 3, 4, 4, 4],
   /**
    * Juniors run small parties — they thin the field, they do not hold it.
    *
@@ -790,11 +822,19 @@ export const LEAGUE = {
    * pacing at all.
    *
    * That ceiling is the argument for moving these gates onto counts that time
-   * cannot inflate — badges defended, routes reached, careers completed. Until
-   * then this spreads the eight gyms across roughly two hours instead of fifty
-   * minutes.
+   * cannot inflate — badges defended, routes reached, careers completed.
+   *
+   * Refitted for Block 11. The ladder lowered the curve in two ways: renown now
+   * scales with rank in both directions, and the rank slot caps made the two
+   * busiest gyms shallower, so the board loses more badges where it is hit
+   * hardest. A solvent league now reaches eight gyms at about two real hours.
+   *
+   * "Solvent" is doing work in that sentence — the first fit was made against a
+   * probe that spent to zero, went bankrupt, lost its staff and flatlined, and
+   * every threshold chosen against that was fitted to a spiral rather than to
+   * the game.
    */
-  gymUnlockRenown: [0, 250, 700, 1400, 2400, 3800, 5800, 8500],
+  gymUnlockRenown: [0, 200, 500, 950, 1600, 2400, 3300, 4200],
   /** Building an available gym costs this — unlocking is a timing decision. */
   gymCostBase: 5200,
   gymCostGrowth: 2.1,

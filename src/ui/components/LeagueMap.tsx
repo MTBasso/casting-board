@@ -1,20 +1,33 @@
 import { useEffect } from "react";
 import { useGame } from "../../engine/store.js";
+import { constants, gymChallengeInterval } from "../../sim/index.js";
 import { isDone, leaderStanding, shieldOf, useReplay } from "../replay.js";
 import { TYPE_COLORS } from "../typeColors.js";
 import { useT } from "../i18n.js";
 
 /**
- * How much of the Leader's shield is left, live.
+ * What this gym is doing right now.
  *
- * The bar starts full and empties as the challenger works through the junior
- * trainers; when it hits zero the Leader is fighting, and the row asks to be
- * clicked. It is the only thing in the interface that says *something is
- * happening right now, come and look* — which is the whole reason the game
- * bothers to replay battles at all.
+ * One bar, two things, because they are the same question. Most of the time it
+ * is a **cycle**: how close the next challenger is, filling at a rate set by the
+ * gym's rank — the first gym fills six times faster than the eighth, because
+ * hardly anybody has seven badges. That is the AdventureCapitalist reading, and
+ * its whole value is being steady and predictable enough to glance at.
+ *
+ * While a challenge is playing out it *becomes* the shield: full at the start,
+ * emptying as the challenger works through the juniors, and at zero the Leader
+ * is fighting. That is the only thing in the interface that says *something is
+ * happening right now, come and look*, which is the reason battles are replayed
+ * at all. The status word underneath says which of the two you are looking at,
+ * as it already did.
+ *
+ * For a gym that cannot fight, the cycle keeps running in a warning colour. A
+ * bar filling toward a certain loss is a deadline, and a deadline is the most
+ * useful thing this list can tell you.
  */
-function Shield({ gymId }: { gymId: string }) {
+function GymBar({ gymId }: { gymId: string }) {
   const t = useT();
+  const state = useGame((s) => s.state);
   const record = useGame((s) => s.state.battles[gymId]);
   const sync = useReplay((s) => s.sync);
   const entry = useReplay((s) => s.cursors[gymId]);
@@ -23,46 +36,58 @@ function Shield({ gymId }: { gymId: string }) {
     if (record) sync(gymId, record);
   }, [record, gymId, sync]);
 
-  if (!record || record.stages.length === 0) return null;
+  const gym = state.gyms[gymId];
+  const cursor = record && entry?.at === record.at ? entry.cursor : 0;
+  const replaying = !!record && record.stages.length > 0 && !isDone(record, cursor);
 
-  const cursor = entry?.at === record.at ? entry.cursor : 0;
-  const done = isDone(record, cursor);
-  const shield = shieldOf(record, cursor);
-  const atLeader = leaderStanding(record, cursor);
+  if (replaying && record) {
+    const shield = shieldOf(record, cursor);
+    const mode = leaderStanding(record, cursor) ? "leader" : "pressed";
+    return (
+      <span className={`shield shield-${mode}`}>
+        <span className="shield-track">
+          <span className="shield-fill" style={{ width: `${shield * 100}%` }} />
+        </span>
+        <span className="shield-label">
+          {t(mode === "leader" ? "map.leaderFighting" : "map.challengerInside")}
+        </span>
+      </span>
+    );
+  }
 
-  const state: "clear" | "pressed" | "leader" | "lost" = done
-    ? record.tookBadge
-      ? "lost"
-      : "clear"
-    : atLeader
-      ? "leader"
-      : "pressed";
+  if (!gym) return null;
+
+  const rank = state.gymOrder.indexOf(gymId);
+  const interval = gymChallengeInterval(state, rank);
+  // waveCooldown counts down to the next arrival, so the bar fills as it drains.
+  const filled = interval > 0 ? 1 - Math.max(0, Math.min(1, gym.waveCooldown / interval)) : 0;
+
+  const undefended = !gym.leaderId;
+  const lost = record?.tookBadge === true;
+  const mode = undefended ? "due" : lost ? "lost" : "cycle";
 
   return (
-    <span className={`shield shield-${state}`}>
+    <span className={`shield shield-${mode}`}>
       <span className="shield-track">
-        <span className="shield-fill" style={{ width: `${shield * 100}%` }} />
+        <span className="shield-fill" style={{ width: `${filled * 100}%` }} />
       </span>
       <span className="shield-label">
-        {t(
-          state === "leader"
-            ? "map.leaderFighting"
-            : state === "pressed"
-              ? "map.challengerInside"
-              : state === "lost"
-                ? "map.badgeLost"
-                : "map.held",
-        )}
+        {undefended
+          ? t("map.nextDue")
+          : lost
+            ? t("map.badgeLost")
+            : t("map.nextIn", {
+                // Real seconds, not league seconds. The player is watching a
+                // wall clock; a number counting down 25x faster than it reads
+                // is worse than no number.
+                n: Math.max(0, Math.ceil(gym.waveCooldown / constants.TIME_SCALE)),
+              })}
       </span>
     </span>
   );
 }
 
-/**
- * The home screen: gyms as buildings, each carrying its own warning light.
- * The daily session is "fix what's glowing" — so status has to read from
- * across the room, before any number is parsed.
- */
+
 export function LeagueMap({
   selected,
   onSelect,
@@ -101,7 +126,7 @@ export function LeagueMap({
                 <span className="gym-counts">
                   {t("map.trainers", { n: gym.trainerIds.length, max: gym.trainerSlots })}
                 </span>
-                <Shield gymId={id} />
+                <GymBar gymId={id} />
               </span>
               <span className={`light light-${gym.threat.status}`} aria-hidden="true" />
               <span className="sr-only">

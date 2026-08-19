@@ -1131,6 +1131,47 @@ themselves*.
 
 ---
 
+## Block 11 — The ladder, and gyms as production
+
+Measured first: with all eight gyms staffed over an identical span, **every gym
+took exactly 846 challenges**. `challengeInterval(state)` never took a rank
+argument, so gym one and gym eight were hit at precisely the same rate. The
+payout base was flat too, and `rollBadges(state, rank + 1)` handed a challenger
+at gym eight somewhere between zero and seven badges *skewed low* — the exact
+opposite of "you need seven badges to get here".
+
+### The model
+
+Rates are **derived, not imposed**. If each badge is a filter that ~76.5% of
+challengers pass, the population holding exactly *k* badges falls as
+`0.765^k`, and gym one sees **6.8x** the traffic of gym eight. One honest
+parameter; the 1.31x-per-rank curve falls out of it rather than being asserted.
+
+Total volume is preserved by construction, which means each gym's individual
+rate moves as the league grows — one gym fires at exactly today's rate, and by
+eight gyms the first is 2.1x faster and the last 3.2x slower. That is accepted
+rather than worked around: the opening is untouched, which matters because
+Block 10 had just softened it, and "your first gym gets busier as you become
+famous" needs no defending.
+
+### Decided
+
+| Question | Call |
+|---|---|
+| Where the curve comes from | **Derived** from a badge-population pass rate; **displayed** as a steady cycle. A bar driven by a stochastic population is unreadable, and legibility is the entire point of the AdventureCapitalist comparison. |
+| Spread | ~1.31x interval per rank, **6.8:1** end to end. |
+| The bar | One widget. The **cycle** normally; it **becomes** the battle shield while a challenge plays out, with the status word disambiguating as it already does. |
+| Is a late gym worth more | Yes — the gate grows **1.45x per rank** against a 1.31x interval, so gym eight earns ~1.8x per second what gym one does. Building upward is correct; early gyms stay relevant. |
+| Volume | **Neutral.** The clock and unlock thresholds were just fitted against a measured curve; changing volume in the same breath would mean not knowing which change did what. |
+| Renown | Scales with rank exactly as money does. Flat would mean an unstaffed gym eight barely dents progression, contradicting the promotion gate. |
+| Badge counts | Usually exactly rank-1, with a ~15% over-qualified tail. Fully deterministic arrivals would make the threat report pointless and remove the occasional scare at an early gym. |
+| Unstaffed gyms | Show the cycle in a warning colour. A bar filling toward a certain loss is a **deadline**, which is the most useful thing that list can say. |
+| Offline | Taught the per-gym rate. With the ceiling at eight real hours most challenges resolve there, so an aggregate approximation would mean the mechanic is mostly *not* the one the player meets. |
+| The Elite | Bar only, timing untouched. Its pacing is load-bearing for forced recruitment ([#12](https://github.com/MTBasso/casting-board/issues/12), which already never fires); changing its rate here would make that harder to diagnose, not easier. |
+| Trainer slots | Ceiling by **rank**: two for gyms 1-2, three for 3-5, four for 6-8. Every gym still opens with two, and where the rank allows it the rest are bought. Replaces the old tier-based ceiling, which gave every gym on the board the same depth. |
+
+---
+
 ## Cross-cutting work
 
 Not blocks; these run alongside everything.

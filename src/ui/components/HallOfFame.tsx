@@ -26,6 +26,7 @@ export function HallOfFame() {
   const state = useGame((s) => s.state);
   const [sort, setSort] = useState<SortKey>("recent");
   const [filter, setFilter] = useState<TypeId | "all">("all");
+  const revision = useGame((s) => s.revision);
 
   const shown = useMemo(() => {
     const list = state.legends.filter(
@@ -37,7 +38,10 @@ export function HallOfFame() {
       if (sort === "served") return b.served - a.served;
       return b.retiredAt - a.retiredAt;
     });
-  }, [state.legends, sort, filter]);
+    // `state.legends` is pushed to in place, so its identity is not a signal
+    // that anything was inducted. `revision` is.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [revision, state, sort, filter]);
 
   const present = TYPES.filter((t) => state.legends.some((e) => e.type === t));
   const inducted = state.legends.filter((e) => e.inducted).length;

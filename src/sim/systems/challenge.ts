@@ -1,7 +1,7 @@
 import { catalog, encounterWeight, familyOf, minLevelFor } from "../../data/catalog.js";
 import { effectivenessAgainst } from "../../data/typechart.js";
-import { BOND, CAREER, CHALLENGE, ELITE, FATIGUE, LEVELS } from "../constants.js";
-import { chance, int, next, pick, range, weighted } from "../rng.js";
+import { BOND, CAREER, CHALLENGE, ELITE, LEAGUE, FATIGUE, LEVELS } from "../constants.js";
+import { chance, int, pick, range, weighted } from "../rng.js";
 import { damage, powerOf, statsFor, statsOf, type Stats } from "./stats.js";
 import { gainXp } from "./growth.js";
 import { bondSpeed } from "./facilities.js";
@@ -700,11 +700,27 @@ export function recordThreat(gym: Gym, challenger: Challenger, held: boolean): v
 }
 
 /** Pick a badge count for an ordinary challenger, biased toward the low end. */
+/**
+ * How many badges the person who just walked into this gym is carrying.
+ *
+ * The gym no longer *rolls* a badge count — the badge count is what put them
+ * here. Somebody standing in front of your fifth gym has taken four badges,
+ * because that is what it takes to get this far, and the arrival rates in
+ * `gymChallengeInterval` are derived from exactly that population.
+ *
+ * The exception is the point of the exception: sometimes a challenger arrives
+ * over-qualified, having taken the board out of order or come back around. It
+ * keeps the threat report meaningful — a screen that says *what is coming and
+ * can you handle it* has nothing to report if the answer is always the rank —
+ * and it is where the occasional real scare at an early gym comes from.
+ */
 export function rollBadges(state: LeagueState, gymCount: number): number {
-  const max = Math.max(0, gymCount - 1);
-  // Most people who walk in are early in their journey.
-  const roll = next(state.rng) ** CHALLENGE.badgeSkew;
-  return Math.min(max, Math.floor(roll * (max + 1)));
+  const earned = Math.max(0, gymCount - 1);
+  if (!chance(state.rng, CHALLENGE.overQualified)) return earned;
+
+  // Over-qualified: somewhere between one more badge and a full set.
+  const ceiling = Math.max(earned, LEAGUE.maxGyms - 1);
+  return Math.min(ceiling, earned + 1 + int(state.rng, 0, 2));
 }
 
 export function describeChallenger(challenger: Challenger): string {

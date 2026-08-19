@@ -16,7 +16,7 @@ import { tierMultiplier } from "./systems/promotion.js";
 import { driftMeta } from "./systems/meta.js";
 import { tickField } from "./systems/field.js";
 import { displayName, retire } from "./systems/wave.js";
-import { challengeInterval, emptyReport, log, tick } from "./tick.js";
+import { emptyReport, gymChallengeInterval, log, rankMultiplier, tick } from "./tick.js";
 import type { Creature, LeagueState, TickReport } from "./types.js";
 
 /**
@@ -146,10 +146,12 @@ function stepAnalytic(state: LeagueState, elapsed: number): TickReport {
     const gym = state.gyms[gymId];
     if (!gym) continue;
 
-    const challenges = Math.floor(elapsed / challengeInterval(state));
-    if (challenges <= 0) continue;
-
+    // Per gym, not league-wide. With the ceiling at eight real hours most of a
+    // casual player's challenges resolve here, so an aggregate approximation
+    // would mean the ladder is mostly *not* the thing they experience.
     const rank = state.gymOrder.indexOf(gymId);
+    const challenges = Math.floor(elapsed / gymChallengeInterval(state, rank));
+    if (challenges <= 0) continue;
     const defenders = [...gym.trainerIds, ...(gym.leaderId ? [gym.leaderId] : [])];
 
     // How much the gym can field, versus what a typical challenger brings.
@@ -191,9 +193,11 @@ function stepAnalytic(state: LeagueState, elapsed: number): TickReport {
     // gym being overrun even while the same gym was holding 96% of the time
     // online — which is how offline came to out-earn playing.
     const cleared = defenders.length * (1 - holdRate);
+    const byRank = rankMultiplier(state, rank);
     const gate =
       challenges *
       (CHALLENGE_GATE.base + cleared * CHALLENGE_GATE.perTrainerCleared) *
+      byRank *
       (1 + state.renown * WAVE.receiptsPerRenown) *
       tierMultiplier(state.tier) *
       away;
@@ -201,7 +205,7 @@ function stepAnalytic(state: LeagueState, elapsed: number): TickReport {
     state.money += gate;
     state.renown = Math.max(
       0,
-      state.renown + held * RENOWN.perChallengeHeld * away - lost * RENOWN.perBadgeLost,
+      state.renown + held * RENOWN.perChallengeHeld * byRank * away - lost * RENOWN.perBadgeLost * byRank,
     );
 
     report.wavesResolved += challenges;

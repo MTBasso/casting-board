@@ -3124,3 +3124,15 @@ body { padding-bottom: 3rem; }
   cursor: pointer;
 }
 .coach-replay:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ---------- the gym cycle bar ---------- */
+
+/* The steady state: how close the next challenger is. Slow at the top of the
+   board, because hardly anybody has seven badges. */
+.shield-cycle .shield-fill { background: color-mix(in srgb, var(--accent) 55%, transparent); }
+.shield-cycle .shield-label { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* A gym that cannot fight is still counting down to a challenger it will lose
+   to. Filling toward a certain loss is a deadline, not a status. */
+.shield-due .shield-fill { background: var(--danger); }
+.shield-due .shield-label { color: var(--danger); font-weight: 700; }

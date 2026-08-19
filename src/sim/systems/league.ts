@@ -415,7 +415,7 @@ export function canHireGymTrainer(
 ): { ok: true; cost: number } | { ok: false; reason: string } {
   const gym = state.gyms[gymId];
   if (!gym) return { ok: false, reason: "Gym not found" };
-  const cap = Math.min(gym.trainerSlots, gymTrainerCap(state));
+  const cap = Math.min(gym.trainerSlots, gymTrainerCap(state, gymId));
   if (gym.trainerIds.length >= cap) {
     return { ok: false, reason: "No room — expand the gym first" };
   }
@@ -481,11 +481,22 @@ export function hireGymTrainer(
   return { ok: true, trainerId: trainer.id };
 }
 
-/** How many juniors a gym may employ at the league's current tier. */
-export function gymTrainerCap(state: LeagueState): number {
-  return state.tier === "world"
-    ? GYM_TRAINERS.maxSlotsEndgame
-    : GYM_TRAINERS.maxSlots;
+/**
+ * How many juniors this gym may ever employ.
+ *
+ * By rank, not by tier: two for the first two gyms, three for the middle three,
+ * four for the last three. A seven-badge challenger should be walking into the
+ * deepest thing on the board, and a board-wide ceiling meant gym eight was the
+ * same screen gym one was.
+ */
+export function gymTrainerCap(state: LeagueState, gymId: string): number {
+  const rank = state.gymOrder.indexOf(gymId);
+  if (rank < 0) return GYM_TRAINERS.startingSlots;
+  return (
+    GYM_TRAINERS.slotsByRank[rank] ??
+    GYM_TRAINERS.slotsByRank[GYM_TRAINERS.slotsByRank.length - 1] ??
+    GYM_TRAINERS.startingSlots
+  );
 }
 
 export function hirableTypes(state: LeagueState): TypeId[] {

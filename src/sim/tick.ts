@@ -60,6 +60,64 @@ export function challengeInterval(state: LeagueState): number {
 }
 
 /**
+ * How often challengers reach *this* gym.
+ *
+ * Every gym used to run on the same interval — measured, all eight took exactly
+ * the same number of challenges over the same span — which quietly contradicted
+ * the premise the whole board rests on: you need seven badges to stand in front
+ * of the eighth gym, so hardly anybody should.
+ *
+ * The curve is derived rather than imposed. If `badgePassRate` of challengers
+ * who take a badge go on to try the next gym, the population holding exactly
+ * `k` badges falls as `passRate ** k`, and the first gym sees about 6.8x the
+ * traffic of the eighth. One parameter, and it is a fact about people rather
+ * than a number chosen to feel right.
+ *
+ * Total volume is preserved: the weights are normalised against the number of
+ * gyms, so this redistributes the crowd instead of resizing it. The consequence
+ * is that a gym's own rate moves as the league grows — with one gym it is
+ * exactly today's rate, and by eight the first is ~2.1x faster and the last
+ * ~3.2x slower. That is the intended reading: a bigger league draws a bigger
+ * crowd, and a crowd is mostly beginners.
+ */
+export function gymChallengeInterval(state: LeagueState, rank: number): number {
+  const gyms = Math.max(1, state.gymOrder.length);
+  const k: number = CHALLENGE.badgePassRate;
+  // Sum of k^0..k^(gyms-1) — the total weight the crowd is split across.
+  // A pass rate of exactly 1 would divide by zero, and is the flat league.
+  const totalWeight = k === 1 ? gyms : (1 - k ** gyms) / (1 - k);
+  const weight = k ** Math.max(0, rank);
+  return (challengeInterval(state) * totalWeight) / (gyms * weight);
+}
+
+/**
+ * Gate receipts and renown multiplier for a gym at this rank.
+ *
+ * Normalised so the *weighted average across the board is exactly 1* — weighted
+ * by how often each gym is actually challenged. Without that the ladder is not
+ * a redistribution but a 3.15x raise: gym eight paying 13x while the crowd is
+ * merely redistributed inflates total income and renown, and renown is the
+ * unlock spine that was fitted against a measured curve one block ago.
+ *
+ * So the shape is preserved and the level is not touched. Gym eight earns about
+ * 2.1x per second what gym one does, and the league as a whole earns what it
+ * earned before.
+ */
+export function rankMultiplier(state: LeagueState, rank: number): number {
+  const gyms = Math.max(1, state.gymOrder.length);
+  const k: number = CHALLENGE.badgePassRate;
+  const g: number = CHALLENGE.gatePerRank;
+
+  // Weighted mean of g^r under crowd weights k^r, over the gyms that exist.
+  const kg = k * g;
+  const paid = kg === 1 ? gyms : (1 - kg ** gyms) / (1 - kg);
+  const crowd = k === 1 ? gyms : (1 - k ** gyms) / (1 - k);
+  const mean = paid / crowd;
+
+  return g ** Math.max(0, rank) / mean;
+}
+
+/**
  * Pay out a resolved challenge.
  *
  * Every trainer the challenger got past is money in the gate — they filled the
@@ -74,8 +132,15 @@ function applyChallenge(
 ): void {
   report.wavesResolved += 1;
 
+  // The whole gate scales with rank, base and per-trainer alike. Scaling one
+  // half and not the other is the kind of split nobody remembers later, and
+  // "how far they got" should stay the shape of the payout at every rank.
+  const rank = state.gymOrder.indexOf(gym.id);
+  const byRank = rankMultiplier(state, rank);
+
   const gate =
     (CHALLENGE_GATE.base + result.cleared * CHALLENGE_GATE.perTrainerCleared) *
+    byRank *
     (1 + state.renown * WAVE.receiptsPerRenown) *
     tierMultiplier(state.tier);
 
@@ -84,14 +149,20 @@ function applyChallenge(
 
   if (result.tookBadge) {
     const pressure = threatAgainst(gym.type, gym.threat.distribution);
+    // Both directions of the ladder, or the early gyms are renown-negative:
+    // scaling the win to 0.32x while a loss still costs full means the busiest
+    // gym on the board bleeds standing no matter how well it does.
     state.renown = Math.max(
       0,
-      state.renown - RENOWN.perBadgeLost * Math.max(1, pressure ** RENOWN.mismatchExponent),
+      state.renown -
+        RENOWN.perBadgeLost * byRank * Math.max(1, pressure ** RENOWN.mismatchExponent),
     );
     report.badgesLost += 1;
   } else {
     report.wavesWon += 1;
-    state.renown += RENOWN.perChallengeHeld;
+    // Renown follows money up the ladder. Flat would mean an unstaffed gym
+    // eight barely dented progression, which contradicts the promotion gate.
+    state.renown += RENOWN.perChallengeHeld * byRank;
   }
 }
 
@@ -179,7 +250,7 @@ export function tick(state: LeagueState, dt: number = TICK_SECONDS): TickReport 
       recordThreat(gym, challenger, !result.tookBadge);
       applyChallenge(state, gym, result, report);
 
-      gym.waveCooldown += challengeInterval(state);
+      gym.waveCooldown += gymChallengeInterval(state, rank);
       guard += 1;
     }
   }

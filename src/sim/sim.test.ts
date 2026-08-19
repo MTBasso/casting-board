@@ -109,6 +109,11 @@ import {
   tradeableStock,
   typesForRank,
   TYPES,
+  gymChallengeInterval,
+  rankMultiplier,
+  challengeInterval,
+  rollBadges,
+  gymTrainerSlotCost,
   setOrders,
   standingStop,
   standingVerdict,
@@ -196,6 +201,84 @@ describe("determinism", () => {
     run(restored, 300);
 
     expect(JSON.stringify(restored)).toBe(JSON.stringify(original));
+  });
+});
+
+describe("the challenger ladder", () => {
+  function board(state: LeagueState) {
+    state.money = 99_999_999;
+    for (const type of ["water", "electric", "psychic", "rock", "ice", "dark", "steel"] as TypeId[]) {
+      if (state.gymOrder.some((id) => state.gyms[id]?.type === type)) continue;
+      state.gymOffer = [type];
+      acceptGymOffer(state, type);
+      const leader = state.leaderOffer?.trainerIds[0];
+      if (leader) chooseLeader(state, leader);
+    }
+    return state;
+  }
+
+  it("hits the first gym far harder than the last", () => {
+    // Every gym used to run on one league-wide interval, so all eight took the
+    // same number of challenges — which contradicted the premise the board
+    // rests on: you need seven badges to stand in front of the eighth gym.
+    const state = board(newLeague(101));
+    const intervals = state.gymOrder.map((_, i) => gymChallengeInterval(state, i));
+
+    for (let i = 1; i < intervals.length; i++) {
+      expect(intervals[i]!).toBeGreaterThan(intervals[i - 1]!);
+    }
+    const spread = intervals[7]! / intervals[0]!;
+    expect(spread).toBeGreaterThan(5);
+    expect(spread).toBeLessThan(9);
+  });
+
+  it("redistributes the crowd rather than resizing it", () => {
+    // Total arrival rate must match what a flat league would have produced, or
+    // this quietly becomes an economy change wearing a distribution's clothes.
+    const state = board(newLeague(102));
+    const flat = challengeInterval(state);
+    const totalRate = state.gymOrder.reduce(
+      (sum, _, i) => sum + 1 / gymChallengeInterval(state, i),
+      0,
+    );
+    expect(totalRate).toBeCloseTo(state.gymOrder.length / flat, 6);
+  });
+
+  it("pays the same in total, but not in the same places", () => {
+    // The rank multiplier is normalised against how often each gym is actually
+    // challenged, so the weighted mean is exactly 1. Without that, gym eight
+    // paying 13x is a 3x raise for the whole league rather than a ladder.
+    const state = board(newLeague(103));
+    const weighted = state.gymOrder.reduce(
+      (sum, _, i) => sum + rankMultiplier(state, i) / gymChallengeInterval(state, i),
+      0,
+    );
+    const flatEquivalent = state.gymOrder.length / challengeInterval(state);
+    expect(weighted).toBeCloseTo(flatEquivalent, 6);
+  });
+
+  it("makes a late gym worth more per second than an early one", () => {
+    const state = board(newLeague(104));
+    const perSecond = (i: number) => rankMultiplier(state, i) / gymChallengeInterval(state, i);
+    expect(perSecond(7)).toBeGreaterThan(perSecond(0));
+    // Better, but not so much better that early gyms stop mattering.
+    expect(perSecond(7) / perSecond(0)).toBeLessThan(3);
+  });
+
+  it("sends challengers who have the badges the gym implies", () => {
+    const state = board(newLeague(105));
+    let exact = 0;
+    let over = 0;
+    for (let i = 0; i < 2000; i++) {
+      const badges = rollBadges(state, 5);
+      expect(badges).toBeGreaterThanOrEqual(4);
+      if (badges === 4) exact += 1;
+      else over += 1;
+    }
+    // Mostly the rank, with a tail — a fully deterministic arrival would leave
+    // the threat report with nothing to report.
+    expect(exact / 2000).toBeGreaterThan(0.75);
+    expect(over).toBeGreaterThan(0);
   });
 });
 
@@ -2016,9 +2099,32 @@ describe("gym trainers", () => {
     while (canHireGymTrainer(state, gymId).ok) hireGymTrainer(state, gymId);
     expect(gym.trainerIds.length).toBe(gym.trainerSlots);
     expect(canHireGymTrainer(state, gymId).ok).toBe(false);
+  });
 
-    expandGymTrainers(state, gymId);
+  it("can be expanded, but only at a gym whose rank has the room", () => {
+    const state = newLeague(707);
+    state.money = 99_999_999;
+    // The third gym is the first with a rank that allows a bought slot.
+    for (const type of ["water", "electric"] as TypeId[]) {
+      state.gymOffer = [type];
+      acceptGymOffer(state, type);
+      const leader = state.leaderOffer?.trainerIds[0];
+      if (leader) chooseLeader(state, leader);
+    }
+    const gymId = state.gymOrder[2];
+    if (!gymId) throw new Error("expected a third gym");
+
+    while (canHireGymTrainer(state, gymId).ok) hireGymTrainer(state, gymId);
+    expect(canHireGymTrainer(state, gymId).ok).toBe(false);
+
+    expect(expandGymTrainers(state, gymId).ok).toBe(true);
     expect(canHireGymTrainer(state, gymId).ok).toBe(true);
+
+    // And it stops at the rank's ceiling rather than going on forever.
+    while (expandGymTrainers(state, gymId).ok) {
+      /* buy every slot this rank allows */
+    }
+    expect(state.gyms[gymId]?.trainerSlots).toBe(gymTrainerCap(state, gymId));
   });
 
   it("arrive with their own creatures, matching the gym type", () => {
@@ -2047,11 +2153,35 @@ describe("gym trainers", () => {
     expect(partyCapOf(junior!)).toBeGreaterThanOrEqual(2);
   });
 
-  it("are capped at three before the endgame and four at World tier", () => {
+  it("get deeper the further up the board they are", () => {
+    // The cap is a property of the gym's rank, not of the league's tier: a
+    // seven-badge challenger should be walking into the deepest thing on the
+    // board, and a board-wide ceiling made gym eight the same screen as gym one.
     const state = newLeague(715);
-    expect(gymTrainerCap(state)).toBe(3);
+    state.money = 99_999_999;
+    for (const type of ["water", "electric", "psychic", "rock", "ice", "dark", "steel"] as TypeId[]) {
+      if (state.gymOrder.some((id) => state.gyms[id]?.type === type)) continue;
+      state.gymOffer = [type];
+      acceptGymOffer(state, type);
+      const leader = state.leaderOffer?.trainerIds[0];
+      if (leader) chooseLeader(state, leader);
+    }
+    expect(state.gymOrder.length).toBe(8);
+
+    const caps = state.gymOrder.map((id) => gymTrainerCap(state, id));
+    expect(caps).toEqual([2, 2, 3, 3, 3, 4, 4, 4]);
+    // The tier no longer has anything to say about it.
     state.tier = "world";
-    expect(gymTrainerCap(state)).toBe(4);
+    expect(state.gymOrder.map((id) => gymTrainerCap(state, id))).toEqual(caps);
+  });
+
+  it("only sells slots to gyms whose rank allows them", () => {
+    const state = newLeague(716);
+    state.money = 99_999_999;
+    const first = state.gymOrder[0];
+    if (!first) throw new Error("no gym");
+    // Gym one opens at its ceiling, so there is nothing to sell.
+    expect(gymTrainerSlotCost(state, first)).toBeNull();
   });
 });
 

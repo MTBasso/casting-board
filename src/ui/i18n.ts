@@ -718,6 +718,8 @@ export const en = {
   "coach.daycare.body": "Creatures left here keep gaining levels without fighting, and a retired pair sharing a type will eventually produce an egg. It is the one place a career ending leads somewhere rather than simply stopping.",
   "coach.facilities.title": "Facilities change what the front line can do.",
   "coach.facilities.body": "They hold nobody. Each one multiplies something — how many crews you can post, how fast creatures bond, how long careers run, how well the league runs while you are away. This is where money goes once you have more of it than gyms to build.",
+  "map.nextIn": "Next challenger in {n}s",
+  "map.nextDue": "Undefended — a challenger is on the way",
 } as const;
 
 export type Key = keyof typeof en;
@@ -1336,4 +1338,6 @@ export const pt: Dict = {
   "coach.daycare.body": "Os Pokémon deixados aqui continuam subindo de nível sem lutar, e um casal aposentado do mesmo tipo acaba gerando um ovo. É o único lugar onde o fim de uma carreira leva a algum lugar em vez de simplesmente parar.",
   "coach.facilities.title": "As instalações mudam o que a linha de frente consegue fazer.",
   "coach.facilities.body": "Elas não abrigam ninguém. Cada uma multiplica alguma coisa — quantas equipes você mantém, a velocidade do entrosamento, a duração das carreiras, o quanto a liga rende enquanto você está fora. É para cá que vai o dinheiro quando você tem mais dele do que ginásios para construir.",
+  "map.nextIn": "Próximo desafiante em {n}s",
+  "map.nextDue": "Indefeso — vem desafiante aí",
 };

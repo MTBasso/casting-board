@@ -1,5 +1,6 @@
 import { FACILITIES, facilityDef } from "../../data/facilities.js";
 import { AWAY, GYM_TRAINERS } from "../constants.js";
+import { gymTrainerCap } from "./league.js";
 import type { FacilityId, LeagueState } from "../types.js";
 
 /**
@@ -104,9 +105,8 @@ export function tradeEfficiency(state: LeagueState): number {
 export function gymTrainerSlotCost(state: LeagueState, gymId: string): number | null {
   const gym = state.gyms[gymId];
   if (!gym) return null;
-  const ceiling =
-    state.tier === "world" ? GYM_TRAINERS.maxSlotsEndgame : GYM_TRAINERS.maxSlots;
-  if (gym.trainerSlots >= ceiling) return null;
+  // Rank decides how deep this gym is ever allowed to be.
+  if (gym.trainerSlots >= gymTrainerCap(state, gymId)) return null;
   const bought = gym.trainerSlots - GYM_TRAINERS.startingSlots;
   return Math.round(GYM_TRAINERS.slotCostBase * GYM_TRAINERS.slotCostGrowth ** bought);
 }

@@ -18,6 +18,7 @@ import {
   kitCost,
   openRoutes,
   passOnCrewOffer,
+  setOrders,
   recall,
   routeById,
   send,
@@ -232,6 +233,23 @@ function OnTheGround({ crew }: { crew: Crew }) {
         </button>
       </div>
 
+      <p className="standing-state">
+        {crew.orders ? (
+          <>
+            {t("crews.standingOn", { route: t(`route.${crew.orders.routeId}` as never) })}
+            <button
+              type="button"
+              className="linky"
+              onClick={() => act((s) => void setOrders(s, crew.id, null))}
+            >
+              {t("crews.stopOrders")}
+            </button>
+          </>
+        ) : (
+          <span className="dim">{t("crews.standingOff")}</span>
+        )}
+      </p>
+
       <div className="kit-left">
         {(["balls", "potions", "revives", "lures"] as const).map((k) => (
           <span key={k} className={trip.kit[k] === 0 ? "is-out" : ""}>
@@ -289,6 +307,8 @@ function Outfit({ crew, onDone }: { crew: Crew; onDone: () => void }) {
   const [toward, setToward] = useState<string | null>(null);
   const [kit, setKit] = useState<Kit>({ balls: 10, potions: 5, revives: 1, lures: 0 });
   const [party, setParty] = useState<string[]>([]);
+  const [standing, setStanding] = useState(false);
+  const [floor, setFloor] = useState(0);
 
   const route = routeById(routeId);
   const onward = route
@@ -410,6 +430,37 @@ function Outfit({ crew, onDone }: { crew: Crew; onDone: () => void }) {
         </div>
       )}
 
+      {/* Standing orders remove the repetition, never the decision — the route
+          and the kit above are still the player's, and this only says whether
+          to do it again. */}
+      <div className="standing">
+        <label className="standing-toggle">
+          <input
+            type="checkbox"
+            checked={standing}
+            onChange={(e) => setStanding(e.target.checked)}
+          />
+          <span>
+            <b>{t("crews.standing")}</b>
+            <span className="dim">{t("crews.standingHint")}</span>
+          </span>
+        </label>
+
+        {standing && (
+          <label className="field">
+            <span>{t("crews.floor")}</span>
+            <input
+              type="number"
+              min={0}
+              step={1000}
+              value={floor}
+              onChange={(e) => setFloor(Math.max(0, Number(e.target.value)))}
+            />
+            <span className="dim">{t("crews.floorHint")}</span>
+          </label>
+        )}
+      </div>
+
       <div className="outfit-foot">
         <span>
 {t("crews.kitCost", { n: kitCost(kit).toLocaleString() })}
@@ -421,7 +472,14 @@ function Outfit({ crew, onDone }: { crew: Crew; onDone: () => void }) {
           disabled={!check.ok}
           title={check.ok ? undefined : check.reason}
           onClick={() => {
-            act((s) => void send(s, crew.id, routeId, objective, toward, kit, party));
+            act((s) => {
+              setOrders(
+                s,
+                crew.id,
+                standing ? { routeId, objective, towardId: toward, kit, floor } : null,
+              );
+              send(s, crew.id, routeId, objective, toward, kit, party);
+            });
             onDone();
           }}
         >

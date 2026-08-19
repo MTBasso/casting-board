@@ -187,6 +187,9 @@ export function normalize(raw: unknown): LeagueState | null {
   // the league starts the new system from its opening ground — the alternative
   // is inventing a crew for two people who never worked together.
   state.crews ??= [];
+  // Standing orders arrived with Block 10; a crew that predates them works one
+  // trip at a time, which is exactly what it was doing before.
+  for (const crew of state.crews) crew.orders ??= null;
   state.expeditions ??= [];
   state.crewOffer ??= [];
   state.explored ??= [];

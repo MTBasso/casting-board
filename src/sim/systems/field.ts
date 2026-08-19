@@ -25,6 +25,8 @@ import type {
   Kit,
   LeagueState,
   Route,
+  StandingOrders,
+  StandingStop,
   TickReport,
   Trainer,
   TypeId,
@@ -216,6 +218,7 @@ export function hireCrew(
     handlerId: handler.id,
     trait: offer.trait,
     familiar: {},
+    orders: null,
   };
   state.crews.push(crew);
   rollCrewOffer(state);
@@ -850,6 +853,29 @@ function discovery(state: LeagueState, trip: Expedition): void {
   trip.progress += roundSeconds(state, trip) * 2;
 }
 
+/**
+ * Tell a crew to keep going, or to stop.
+ *
+ * Set while they are out or while they are home; either way it takes effect the
+ * next time a trip ends. Giving fresh orders clears whatever stopped the last
+ * ones, because the player has just answered that.
+ */
+export function setOrders(
+  state: LeagueState,
+  crewId: string,
+  orders: Omit<StandingOrders, "stoppedBecause"> | null,
+): { ok: true } | { ok: false; reason: string } {
+  const crew = crewById(state, crewId);
+  if (!crew) return { ok: false, reason: "No such crew" };
+  crew.orders = orders ? { ...orders, stoppedBecause: null } : null;
+  return { ok: true };
+}
+
+/** Why a crew stopped working, if it did. */
+export function standingStop(state: LeagueState, crewId: string): StandingStop | null {
+  return crewById(state, crewId)?.orders?.stoppedBecause ?? null;
+}
+
 /** Answer a held choice. */
 export function decide(
   state: LeagueState,
@@ -965,6 +991,68 @@ function finish(
   if (report && how !== "recalled") {
     report.returned.push({ name: crewName(state, crew), caught: trip.caught });
   }
+
+  if (crew) reissue(state, crew, how);
+}
+
+/**
+ * Should this crew go straight back out, and if not, why not?
+ *
+ * Pulled out as a pure decision so it can be tested as a rule rather than as
+ * weather: simulating until a crew happens to come home a particular way makes
+ * the test depend on the seed, and it will start failing for reasons that have
+ * nothing to do with the rule.
+ *
+ * Order matters. Everything above the floor check is a fact about the world
+ * that money cannot fix, so reporting "you are out of money" when the real
+ * problem is a full box would send the player to the wrong screen.
+ */
+export function standingVerdict(
+  state: LeagueState,
+  crew: Crew,
+  how: "returned" | "beaten" | "recalled",
+): StandingStop | "go" {
+  if (!crew.orders) return "stopped";
+  // Pulling a crew back by hand is an instruction; re-sending them ignores it.
+  if (how === "recalled") return "stopped";
+  // Coming home beaten is the crew telling you the ground is rougher than the
+  // kit you sent them with.
+  if (how === "beaten") return "worn";
+  if (usableReserve(state) >= reserveCeiling(state)) return "boxFull";
+  if (expeditionOn(state, crew.orders.routeId)) return "routeTaken";
+  if (state.money - kitCost(crew.orders.kit) < crew.orders.floor) return "floor";
+  return "go";
+}
+
+/**
+ * Send a crew straight back out, if that is what they were told to do.
+ *
+ * Everything that stops them is something the player would want to hear about,
+ * which is the point — the Desk can report *why* the crew is home rather than
+ * simply that it is.
+ */
+function reissue(state: LeagueState, crew: Crew, how: "returned" | "beaten" | "recalled"): void {
+  const orders = crew.orders;
+  if (!orders) return;
+
+  const verdict = standingVerdict(state, crew, how);
+  if (verdict !== "go") {
+    orders.stoppedBecause = verdict;
+    return;
+  }
+
+  const again = send(
+    state,
+    crew.id,
+    orders.routeId,
+    orders.objective,
+    orders.towardId,
+    orders.kit,
+    // The party stays home. A standing order should never quietly walk off with
+    // creatures the player cast into a gym while they were not looking.
+    [],
+  );
+  if (!again.ok) orders.stoppedBecause = "stopped";
 }
 
 /** Reach a new place. Its resident and its landmark come with it. */

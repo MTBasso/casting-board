@@ -2227,13 +2227,23 @@ body { padding-bottom: 3rem; }
 .posting-who > span:nth-child(2) { flex: 1; min-width: 0; }
 .posting .warn { margin: 0; font-size: 0.72rem; color: var(--warn); }
 
+/*
+ * Routes lay out in columns where there is room.
+ *
+ * A route row carries two slots side by side, so it wants about thirty rems to
+ * itself — below that the slots stack and the row is still fine, above twice
+ * that two routes sit abreast. The screen was capped at 52rem inside
+ * `.single-screen`, which meant a desktop window showed the phone layout with
+ * empty space either side of it.
+ */
 .route-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(30rem, 100%), 1fr));
   gap: 0.5rem;
+  align-items: start;
 }
 .route-card {
   display: flex;
@@ -2411,7 +2421,7 @@ body { padding-bottom: 3rem; }
 
 .hire-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
   gap: 0.6rem;
 }
 .hire-card {

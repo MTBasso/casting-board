@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync, readdirSync } from "node:fs";
+import { basename, join } from "node:path";
 import { en, pt, translate } from "./i18n";
+
+const UI = new URL(".", import.meta.url).pathname;
+const COMPONENTS = join(UI, "components");
 
 /**
  * The translation is hand-maintained, and the ways it breaks are quiet: a hole
@@ -60,4 +65,54 @@ describe("translation", () => {
       }
     }
   });
+});
+
+/**
+ * The English-string sweep.
+ *
+ * Sixty user-facing strings were still hardcoded English when the first
+ * Portuguese playtest was being prepared — including the two screens a new
+ * player sees before anything else. They were invisible because nothing failed:
+ * the page rendered, in the wrong language. This is the check that would have
+ * caught them.
+ *
+ * It is deliberately a lint, not a proof. It looks for capitalised prose in JSX
+ * text nodes and in the attributes a screen reader or tooltip will read out.
+ * DevBar is exempt: it is a developer tool, and no playtester sees it.
+ */
+describe("no hardcoded English in the interface", () => {
+  const EXEMPT = /DevBar\.tsx$/;
+  const files = readdirSync(COMPONENTS)
+    .filter((f) => f.endsWith(".tsx") && !EXEMPT.test(f))
+    .map((f) => join(COMPONENTS, f))
+    .concat([join(UI, "App.tsx")]);
+
+  it("has files to check", () => {
+    expect(files.length).toBeGreaterThan(20);
+  });
+
+  for (const file of files) {
+    it(`${basename(file)} routes its text through t()`, () => {
+      const src = readFileSync(file, "utf8");
+      const offenders: string[] = [];
+
+      for (const [i, line] of src.split("\n").entries()) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith("//") || trimmed.startsWith("*") || trimmed.startsWith("import")) {
+          continue;
+        }
+        // Prose sitting directly in a JSX text node.
+        for (const m of line.matchAll(/>([^<>{}\n]*[A-Za-z]{3}[^<>{}\n]*)</g)) {
+          const text = (m[1] ?? "").trim();
+          if (text && /[a-z]{3}/.test(text)) offenders.push(`${i + 1}: ${text}`);
+        }
+        // Prose in the attributes a user actually reads.
+        for (const m of line.matchAll(/\b(title|placeholder|aria-label|alt)="([^"]{3,})"/g)) {
+          offenders.push(`${i + 1}: ${m[1]}="${m[2]}"`);
+        }
+      }
+
+      expect(offenders, offenders.join("\n")).toEqual([]);
+    });
+  }
 });

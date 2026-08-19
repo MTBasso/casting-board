@@ -38,6 +38,7 @@ export function FieldMap({
   selected: string | null;
   onSelect: (routeId: string) => void;
 }) {
+  const t = useT();
   const state = useGame((s) => s.state);
 
   // Every edge once, drawn under the nodes.
@@ -59,7 +60,7 @@ export function FieldMap({
 
   return (
     <div className="fieldmap">
-      <svg viewBox="0 0 100 92" role="img" aria-label="The league's map">
+      <svg viewBox="0 0 100 92" role="img" aria-label={t("a11y.map")}>
         {edges.map(({ a, b, known }) => (
           <line
             key={`${a.id}-${b.id}`}

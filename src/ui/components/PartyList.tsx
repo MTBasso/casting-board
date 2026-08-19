@@ -4,6 +4,7 @@ import { join, partyCapOf, partyOf, unbench, type Creature } from "../../sim/ind
 import { CreaturePicker } from "./CreaturePicker.js";
 import { CreatureCard } from "./CreatureCard.js";
 import { CreatureSummary } from "./CreatureSummary.js";
+import { useT } from "../i18n.js";
 
 /**
  * A party, in lead order, rearrangeable by dragging.
@@ -20,6 +21,7 @@ export function PartyList({
   trainerId: string;
   onRemove?: (creature: Creature) => void;
 }) {
+  const t = useT();
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
   const [dragging, setDragging] = useState<string | null>(null);
@@ -99,7 +101,7 @@ export function PartyList({
         >
           <span className="party-order" title={i === 0 ? "Leads the battle" : undefined}>
             {i + 1}
-            {i === 0 && <span className="lead-mark">lead</span>}
+            {i === 0 && <span className="lead-mark">{t("party.lead")}</span>}
           </span>
 
           <CreatureCard creature={c} onOpen={() => setOpen(c.id)} />
@@ -113,7 +115,7 @@ export function PartyList({
               className="slot-remove"
               onClick={() => onRemove(c)}
               aria-label={`Take ${c.speciesId} out of the party`}
-              title="Take out of the party"
+              title={t("common.remove")}
             >
               ×
             </button>
@@ -133,7 +135,7 @@ export function PartyList({
             <span className="slot-plus" aria-hidden="true">
               +
             </span>
-            <span>Add</span>
+            <span>{t("common.add")}</span>
           </button>
         </li>
       ))}

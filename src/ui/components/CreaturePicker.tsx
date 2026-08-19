@@ -76,7 +76,7 @@ export function CreaturePicker({
           <span className="section-tag">
             {trainer.party.length}/{partyCapOf(trainer, state)}
           </span>
-          <button type="button" className="summary-close" onClick={onClose} aria-label="Close">
+          <button type="button" className="summary-close" onClick={onClose} aria-label={t("common.close")}>
             ×
           </button>
         </header>

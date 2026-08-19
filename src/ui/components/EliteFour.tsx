@@ -111,7 +111,7 @@ function SeatRow({ seat }: { seat: EliteSeat }) {
             {hiring ? "Cancel" : `Hire · ${cost.toLocaleString()}`}
           </button>
         </div>
-        <p className="seat-empty">Unstaffed — challengers walk straight through.</p>
+        <p className="seat-empty">{t("elite.unstaffedWarning")}</p>
         {hiring && (
           <div className="offer-choices compact">
             {options.map((t) => (

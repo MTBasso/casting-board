@@ -50,55 +50,73 @@ export function GymPanel({ gymId }: { gymId: string }) {
 
   return (
     <div className="panel">
-      {/* The gym as a place with a person in it, washed in its own type colour.
-          The header used to be a coloured sliver, a name and a line of mono
-          text — accurate, and it read like a database row for something the
-          player is meant to feel ownership of. */}
-      <header
+      {/* Order matters: what is happening now, then who holds this gym, then
+          the bench behind them. The identity banner used to sit on top, which
+          made the live battle — the only thing on this screen that changes by
+          itself — the second thing you saw. */}
+      <BattleFeed gymId={gym.id} />
+
+      {/* The Leader and their party as one banner, washed in the gym's own type
+          colour. They were two sections at opposite ends of the screen, which
+          asked the player to hold "who this is" in their head while scrolling to
+          "what they field". */}
+      <section
         className="gym-banner"
         style={{ "--gym": TYPE_COLORS[gym.type] } as CSSProperties}
       >
-        {leader ? (
-          <Portrait trainer={leader} size={72} />
-        ) : (
-          <span className="gym-vacant lg" aria-hidden="true">
-            ?
-          </span>
+        <header className="gym-banner-head">
+          {leader ? (
+            <Portrait trainer={leader} size={72} />
+          ) : (
+            <span className="gym-vacant lg" aria-hidden="true">
+              ?
+            </span>
+          )}
+          <div className="gym-banner-id">
+            <h2>{gym.name}</h2>
+            <p className="gym-banner-sub">
+              {leader ? (
+                <>
+                  <b>{leader.name}</b>
+                  <span className="dot" aria-hidden="true">
+                    ·
+                  </span>
+                  {t(`arch.${leader.doctrine}` as Key, {})}
+                </>
+              ) : (
+                t("gyms.noLeader")
+              )}
+            </p>
+            {leader && <StaffStanding trainer={leader} />}
+          </div>
+          {leader ? (
+            <span className="counter">
+              {leader.party.length}/{partyCapOf(leader, state)}
+            </span>
+          ) : (
+            <button
+              type="button"
+              className="btn"
+              disabled={state.money < leaderCost}
+              onClick={() => act((s) => void hireTrainer(s, gym.type))}
+            >
+              {t("gyms.hireLeader", { n: leaderCost.toLocaleString() })}
+            </button>
+          )}
+        </header>
+
+        {leader && (
+          <div className="gym-banner-party">
+            <PartyList
+              trainerId={leader.id}
+              onRemove={(c) => act((s) => bench(s, c.id))}
+            />
+            <p className="hint">{t("gyms.partyHint")}</p>
+          </div>
         )}
-        <div className="gym-banner-id">
-          <h2>{gym.name}</h2>
-          <p className="gym-banner-sub">
-            {leader ? (
-              <>
-                <b>{leader.name}</b>
-                <span className="dot" aria-hidden="true">
-                  ·
-                </span>
-                {t(`arch.${leader.doctrine}` as Key, {})}
-              </>
-            ) : (
-              t("gyms.noLeader")
-            )}
-          </p>
-          {leader && <StaffStanding trainer={leader} />}
-        </div>
-        {!leader && (
-          <button
-            type="button"
-            className="btn"
-            disabled={state.money < leaderCost}
-            onClick={() => act((s) => void hireTrainer(s, gym.type))}
-          >
-            {t("gyms.hireLeader", { n: leaderCost.toLocaleString() })}
-          </button>
-        )}
-      </header>
+      </section>
 
-      <BattleFeed gymId={gym.id} />
-
-      <ThreatReport gym={gym} />
-
-      <section className="group">
+      <section className="group gym-juniors">
         <h3>
           {t("gyms.gymTrainers")}
           <span className="counter">
@@ -126,41 +144,22 @@ export function GymPanel({ gymId }: { gymId: string }) {
         </h3>
 
         <p className="absorbed">
-{t("gyms.absorbed", { n: gym.threat.absorbed.toLocaleString(), c: juniors.length })}
+          {t("gyms.absorbed", { n: gym.threat.absorbed.toLocaleString(), c: juniors.length })}
         </p>
 
         {juniors.length === 0 ? (
-          <p className="empty">
-{t("gyms.noJuniors")}
-          </p>
+          <p className="empty">{t("gyms.noJuniors")}</p>
         ) : (
           <ul className="trainer-list">
-            {juniors.map((t) => (
-              <TrainerRow key={t.id} trainer={t} />
+            {juniors.map((junior) => (
+              <TrainerRow key={junior.id} trainer={junior} />
             ))}
           </ul>
         )}
       </section>
 
-      {leader && (
-        <section className="group">
-          <h3>
-            {t("gyms.partyOf", { name: leader.name })}
-            <span className="counter">
-              {leader.party.length}/{partyCapOf(leader, state)}
-            </span>
-          </h3>
-          <p className="hint">
-{t("gyms.partyHint")}
-          </p>
-          <PartyList
-            trainerId={leader.id}
-            onRemove={(c) => act((s) => bench(s, c.id))}
-          />
-
-        </section>
-      )}
-
+      {/* Last: useful, but it is a forecast rather than a thing you act on. */}
+      <ThreatReport gym={gym} />
     </div>
   );
 }

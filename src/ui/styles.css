@@ -2420,6 +2420,22 @@ body { padding-bottom: 3rem; }
   image-rendering: pixelated;
 }
 
+/* Cropped to the head. The image is scaled past the frame and offset, so the
+   frame shows only the face — see scripts/face-bounds.ts for the measurement. */
+.portrait.is-face {
+  place-items: start;
+  border-radius: 5px;
+  background: var(--sunken);
+}
+.portrait.is-face img {
+  max-width: none;
+  max-height: none;
+  /* `fill`, not `none`: the element is sized past the frame and the content has
+     to scale with it. `none` renders the sprite at its intrinsic 80px inside
+     the enlarged box, which is an uncropped sprite with extra padding. */
+  object-fit: fill;
+}
+
 /* -- The Hall of Fame ------------------------------------------------------ */
 
 .hall { display: flex; flex-direction: column; gap: 0.6rem; min-width: 0; }
@@ -3133,10 +3149,9 @@ body { padding-bottom: 3rem; }
    `--gym` is the type colour, set inline; everything here is derived from it so
    each gym looks like itself rather than like the eight others. */
 .gym-banner {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
+  display: grid;
+  gap: 0.9rem;
+  margin: 1.25rem 0;
   padding: 0.9rem 1rem;
   border-radius: var(--radius);
   border: 1px solid color-mix(in srgb, var(--gym, var(--accent)) 35%, var(--rule));
@@ -3150,7 +3165,11 @@ body { padding-bottom: 3rem; }
     var(--surface);
 }
 
+.gym-banner-head { display: flex; align-items: center; gap: 1rem; }
 .gym-banner-id { flex: 1; min-width: 0; display: grid; gap: 0.2rem; }
+.gym-banner-party { display: grid; gap: 0.5rem; }
+.gym-banner-party .hint { margin: 0; }
+.gym-juniors { margin-top: 0; }
 .gym-banner h2 { margin: 0; font-size: 1.35rem; letter-spacing: -0.02em; }
 .gym-banner-sub {
   margin: 0;
@@ -3186,6 +3205,6 @@ body { padding-bottom: 3rem; }
 }
 
 @media (max-width: 640px) {
-  .gym-banner { flex-wrap: wrap; gap: 0.75rem; }
+  .gym-banner-head { flex-wrap: wrap; gap: 0.75rem; }
   .gym-banner h2 { font-size: 1.15rem; }
 }

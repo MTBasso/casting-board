@@ -667,15 +667,6 @@ button { font: inherit; color: inherit; }
 .expeditions { margin-bottom: 0.75rem; }
 .expeditions li { border-left: 2px solid var(--accent); }
 
-.route-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
-
-.route {
-  background: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  padding: 0.6rem 0.7rem;
-}
-
 .route-head {
   display: flex;
   align-items: center;
@@ -683,7 +674,6 @@ button { font: inherit; color: inherit; }
   gap: 0.5rem;
   margin-bottom: 0.5rem;
 }
-.route-name { font-weight: 600; font-size: 0.875rem; }
 
 .supply { display: flex; flex-wrap: wrap; gap: 0.25rem; }
 .supply-chip {

@@ -299,7 +299,7 @@ function Outfit({ crew, onDone }: { crew: Crew; onDone: () => void }) {
   const objective = toward ? "explore" : "work";
   const check = route
     ? canSend(state, crew.id, route.id, objective, toward, kit)
-    : { ok: false as const, reason: "Nowhere free" };
+    : { ok: false as const, reason: t("crews.nowhereFree") };
 
   const candidates = route ? trainableFor(state, crew, route).slice(0, 12) : [];
 

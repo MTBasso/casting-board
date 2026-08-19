@@ -116,7 +116,7 @@ export function App() {
           type="button"
           className="lang"
           onClick={() => setLang(lang === "pt" ? "en" : "pt")}
-          title={lang === "pt" ? "Switch to English" : "Mudar para português"}
+          title={t("app.switchTo")}
         >
           {lang === "pt" ? "EN" : "PT"}
         </button>
@@ -135,14 +135,14 @@ export function App() {
           <div className="league-screen">
             <aside className="league-side">
               <RivalWatch />
-              <h2 className="col-title">Gyms</h2>
+              <h2 className="col-title">{t("app.gyms")}</h2>
               <LeagueMap selected={activeGymId} onSelect={setSelected} />
             </aside>
             <section className="league-detail">
               {activeGymId ? (
                 <GymPanel gymId={activeGymId} />
               ) : (
-                <p className="empty">No gyms yet.</p>
+                <p className="empty">{t("app.noGyms")}</p>
               )}
             </section>
           </div>

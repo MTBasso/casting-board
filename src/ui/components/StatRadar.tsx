@@ -1,4 +1,5 @@
 import type { Stats } from "../../sim/index.js";
+import { useT } from "../i18n.js";
 
 const AXES: { key: keyof Stats; label: string }[] = [
   { key: "hp", label: "HP" },
@@ -26,6 +27,7 @@ export function StatRadar({
   size?: number;
   max?: number;
 }) {
+  const t = useT();
   const cx = size / 2;
   const cy = size / 2;
   const r = size / 2 - 18;
@@ -50,7 +52,7 @@ export function StatRadar({
       width={size}
       height={size}
       role="img"
-      aria-label="Base stat spread"
+      aria-label={t("creature.statSpread")}
     >
       {[0.25, 0.5, 0.75, 1].map((ratio) => (
         <polygon key={ratio} className="radar-ring" points={ring(ratio)} />

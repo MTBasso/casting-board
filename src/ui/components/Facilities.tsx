@@ -1,5 +1,5 @@
 import { useGame } from "../../engine/store.js";
-import { useT } from "../i18n.js";
+import { useT, type Key } from "../i18n.js";
 import {
   allFacilities,
   canUpgrade,
@@ -37,7 +37,7 @@ export function Facilities() {
             <li key={def.id} className={`facility ${lvl > 0 ? "is-built" : ""}`}>
               <div className="facility-head">
                 <span className="facility-name">
-                  {def.name}
+                  {t(`facility.${def.id}.name`)}
                   <span className="facility-level">
                     {maxed ? "max" : `lv ${lvl}/${def.maxLevel}`}
                   </span>
@@ -50,12 +50,18 @@ export function Facilities() {
                   onClick={() => act((s) => void upgrade(s, def.id))}
                 >
                   {maxed
-                    ? "Complete"
-                    : `${lvl === 0 ? "Build" : "Upgrade"} · ${cost?.toLocaleString() ?? ""}`}
+                    ? t("facilities.complete")
+                    : t(lvl === 0 ? "facilities.build" : "facilities.upgradeCost", {
+                        cost: cost?.toLocaleString() ?? "",
+                      })}
                 </button>
               </div>
-              <p className="facility-blurb">{def.blurb}</p>
-              {lvl > 0 && <p className="facility-effect">{def.effect(lvl)}</p>}
+              <p className="facility-blurb">{t(`facility.${def.id}.blurb`)}</p>
+              {lvl > 0 &&
+                (() => {
+                  const e = def.effect(lvl);
+                  return <p className="facility-effect">{t(e.key as Key, e.params)}</p>;
+                })()}
             </li>
           );
         })}

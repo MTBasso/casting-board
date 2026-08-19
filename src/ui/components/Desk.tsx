@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { useGame } from "../../engine/store.js";
 import {
   claim,
-  facilityDef,
   objectives,
   pendingDecisions,
   type DeskTarget,
@@ -146,7 +145,7 @@ function rewardOf(t: ReturnType<typeof useT>, reward: Reward): string {
     case "crew":
       return t("reward.crew");
     case "facility":
-      return t("reward.facility", { name: facilityDef(reward.id)?.name ?? "" });
+      return t("reward.facility", { name: t(`facility.${reward.id}.name`) });
     case "kit":
       return t("reward.kit", { balls: reward.balls, potions: reward.potions });
     case "money":

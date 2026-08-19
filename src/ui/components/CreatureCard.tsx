@@ -4,6 +4,7 @@ import { type Creature } from "../../sim/index.js";
 import { speciesName } from "../sprites.js";
 import { TYPE_COLORS } from "../typeColors.js";
 import { TypeBadges } from "./TypeBadge.js";
+import { useT } from "../i18n.js";
 
 /**
  * A party slot.
@@ -25,6 +26,7 @@ export function CreatureCard({
   creature: Creature;
   onOpen?: () => void;
 }) {
+  const t = useT();
   const state = useGame((s) => s.state);
 
   const species = speciesName(creature.speciesId);
@@ -47,7 +49,7 @@ export function CreatureCard({
         type="button"
         className="creature-open"
         onClick={onOpen}
-        title="Open summary"
+        title={t("creature.openSummary")}
         aria-label={`Open ${creature.nickname ?? species} summary`}
       >
         <div className="creature-portrait">
@@ -72,19 +74,19 @@ export function CreatureCard({
 
           <div className="card-foot">
             {/* Bond fills, so it reads as pips earned rather than a level. */}
-            <span className="pips" title="How well you know each other">
+            <span className="pips" title={t("creature.bondTitle")}>
               {"●".repeat(bondPips)}
               <span className="pips-empty">{"○".repeat(5 - bondPips)}</span>
             </span>
             <span className="card-condition">
               {creature.fatigue > 0.9
-                ? "Exhausted"
+                ? t("creature.exhausted")
                 : creature.fatigue > 0.5
-                  ? "Tiring"
-                  : "Rested"}
+                  ? t("creature.tiring")
+                  : t("creature.rested")}
             </span>
             {creature.pinned && <span className="card-pin">★</span>}
-            {isSignature && <span className="card-sig">SIG</span>}
+            {isSignature && <span className="card-sig">{t("creature.sigShort")}</span>}
           </div>
         </div>
       </button>

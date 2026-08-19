@@ -107,7 +107,7 @@ export function CreatureSummary({
         <div className="summary-bar">
           <span>{t("creature.info")}</span>
           <span className="summary-tag">{t("creature.summary")}</span>
-          <button type="button" className="summary-close" onClick={onClose} aria-label="Close">
+          <button type="button" className="summary-close" onClick={onClose} aria-label={t("common.close")}>
             ✕
           </button>
         </div>
@@ -123,7 +123,7 @@ export function CreatureSummary({
                 type="button"
                 className={`pin ${creature.pinned ? "is-on" : ""}`}
                 onClick={() => act((s) => togglePin(s, creature.id))}
-                title={creature.pinned ? "Pinned" : "Pin so this one is never swapped out"}
+                title={t(creature.pinned ? "pc.pinned" : "pc.pin")}
               >
                 {creature.pinned ? "★" : "☆"}
               </button>
@@ -155,7 +155,7 @@ export function CreatureSummary({
               </div>
               <div>
                 <dt>{t("creature.trainer")}</dt>
-                <dd>{trainer?.name ?? "In the box"}</dd>
+                <dd>{trainer?.name ?? t("creature.inTheBox")}</dd>
               </div>
             </dl>
           </div>
@@ -163,7 +163,7 @@ export function CreatureSummary({
 
         <div className="summary-bar">
           <span>{t("creature.skills")}</span>
-          <span className="summary-tag">Stats</span>
+          <span className="summary-tag">{t("creature.stats")}</span>
         </div>
 
         <div className="summary-stats">
@@ -173,7 +173,7 @@ export function CreatureSummary({
 
         <div className="summary-bar">
           <span>{t("creature.memo")}</span>
-          <span className="summary-tag">Condition</span>
+          <span className="summary-tag">{t("creature.condition")}</span>
         </div>
 
         <div className="summary-memo">
@@ -190,7 +190,7 @@ export function CreatureSummary({
           </section>
 
           <section>
-            <h4>Career</h4>
+            <h4>{t("creature.careerHead")}</h4>
             <p className="memo-label">
               {t(career.label)} — <b>{career.left.toLocaleString()}</b>{" "}
               {t("creature.battlesLeft", { n: career.left })}
@@ -207,13 +207,13 @@ export function CreatureSummary({
           </section>
 
           <section>
-            <h4>Condition</h4>
+            <h4>{t("creature.condition")}</h4>
             <p className="memo-label">
               {creature.fatigue > 0.9
-                ? "Exhausted"
+                ? t("creature.exhausted")
                 : creature.fatigue > 0.5
-                  ? "Tiring"
-                  : "Rested"}
+                  ? t("creature.tiring")
+                  : t("creature.rested")}
             </p>
             <p className="memo-effect">
               {Math.round((1 - creature.fatigue) * 100)}% fresh. A tired creature
@@ -223,7 +223,7 @@ export function CreatureSummary({
 
           {ancestry.length > 0 && (
             <section>
-              <h4>Pedigree</h4>
+              <h4>{t("creature.pedigree")}</h4>
               <p className="memo-effect">
                 {[creature, ...ancestry]
                   .map((c) => creatureName(c))
@@ -234,7 +234,7 @@ export function CreatureSummary({
 
           {isSignature && (
             <section>
-              <h4>Signature</h4>
+              <h4>{t("creature.signature")}</h4>
               <p className="memo-effect">
                 {trainer?.name}&rsquo;s own. Never reassignable, and they leave
                 together.

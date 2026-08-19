@@ -144,10 +144,10 @@ export function PcBox() {
         <label className="field">
           <span>{t("common.sort")}</span>
           <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
-            <option value="power">Power</option>
-            <option value="level">Level</option>
-            <option value="name">Name</option>
-            <option value="type">Type</option>
+            <option value="power">{t("pc.power")}</option>
+            <option value="level">{t("common.level")}</option>
+            <option value="name">{t("pc.name")}</option>
+            <option value="type">{t("common.type")}</option>
           </select>
         </label>
       </div>
@@ -254,6 +254,7 @@ function BoxCell({
   onPin: () => void;
   onBench: () => void;
 }) {
+  const t = useT();
   const state = useGame((s) => s.state);
   const trainer = creature.trainerId ? state.trainers[creature.trainerId] : undefined;
   const where =
@@ -273,7 +274,7 @@ function BoxCell({
         type="button"
         className="box-open"
         onClick={onOpen}
-        title={trading ? "Offer this one" : "Open summary"}
+        title={t(trading ? "pc.offerThis" : "creature.openSummary")}
       >
         {trading && <span className="offer-tick">{selected ? "✓" : ""}</span>}
         <Sprite speciesId={creature.speciesId} size={56} />
@@ -287,7 +288,7 @@ function BoxCell({
           type="button"
           className={`pin ${creature.pinned ? "is-on" : ""}`}
           onClick={onPin}
-          title={creature.pinned ? "Pinned" : "Pin so this one is never swapped out"}
+          title={t(creature.pinned ? "pc.pinned" : "pc.pin")}
         >
           {creature.pinned ? "★" : "☆"}
         </button>

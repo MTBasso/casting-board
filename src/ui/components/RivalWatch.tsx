@@ -1,6 +1,7 @@
 import { useGame } from "../../engine/store.js";
 import { nextRival, readinessAgainst, timeUntil } from "../../sim/index.js";
 import { TypeBadge } from "./TypeBadge.js";
+import { useT } from "../i18n.js";
 
 /**
  * The rival countdown.
@@ -10,6 +11,7 @@ import { TypeBadge } from "./TypeBadge.js";
  * everything the player needs to decide whether to act now or let it come.
  */
 export function RivalWatch() {
+  const t = useT();
   const state = useGame((s) => s.state);
   const rival = nextRival(state);
   if (!rival) return null;
@@ -20,12 +22,7 @@ export function RivalWatch() {
 
   const status =
     readiness >= 1.15 ? "ready" : readiness >= 0.9 ? "close" : "outmatched";
-  const label =
-    status === "ready"
-      ? "Your gym should hold"
-      : status === "close"
-        ? "Too close to call"
-        : "You are outmatched";
+  const label = t(`rival.${status}` as const);
 
   return (
     <div className={`rival-watch is-${status}`}>

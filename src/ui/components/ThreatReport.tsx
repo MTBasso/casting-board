@@ -51,11 +51,12 @@ export function ThreatReport({ gym }: { gym: Gym }) {
 }
 
 function Row({ type, pct, beats }: { type: TypeId; pct: number; beats: boolean }) {
+  const t = useT();
   return (
     <div className={`bar-row ${beats ? "is-threat" : ""}`}>
       <span className="bar-label">
         <TypeBadge type={type} size="sm" />
-        {beats && <b title="Super effective against this gym">▲</b>}
+        {beats && <b title={t("threat.superEffective")}>▲</b>}
       </span>
       <span className="track">
         <span

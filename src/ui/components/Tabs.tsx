@@ -31,7 +31,7 @@ export function Tabs({
 }) {
   const t = useT();
   return (
-    <nav className="tabs" aria-label="Sections">
+    <nav className="tabs" aria-label={t("a11y.sections")}>
       {TABS.map((tab) => (
         <button
           key={tab.id}

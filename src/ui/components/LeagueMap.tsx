@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useGame } from "../../engine/store.js";
 import { isDone, leaderStanding, shieldOf, useReplay } from "../replay.js";
 import { TYPE_COLORS } from "../typeColors.js";
+import { useT } from "../i18n.js";
 
 /**
  * How much of the Leader's shield is left, live.
@@ -13,6 +14,7 @@ import { TYPE_COLORS } from "../typeColors.js";
  * bothers to replay battles at all.
  */
 function Shield({ gymId }: { gymId: string }) {
+  const t = useT();
   const record = useGame((s) => s.state.battles[gymId]);
   const sync = useReplay((s) => s.sync);
   const entry = useReplay((s) => s.cursors[gymId]);
@@ -42,13 +44,15 @@ function Shield({ gymId }: { gymId: string }) {
         <span className="shield-fill" style={{ width: `${shield * 100}%` }} />
       </span>
       <span className="shield-label">
-        {state === "leader"
-          ? "Leader is fighting — watch"
-          : state === "pressed"
-            ? "Challenger inside"
-            : state === "lost"
-              ? "Badge lost"
-              : "Held"}
+        {t(
+          state === "leader"
+            ? "map.leaderFighting"
+            : state === "pressed"
+              ? "map.challengerInside"
+              : state === "lost"
+                ? "map.badgeLost"
+                : "map.held",
+        )}
       </span>
     </span>
   );
@@ -66,6 +70,7 @@ export function LeagueMap({
   selected: string | null;
   onSelect: (id: string) => void;
 }) {
+  const t = useT();
   const state = useGame((s) => s.state);
 
   return (
@@ -91,20 +96,16 @@ export function LeagueMap({
               <span className="gym-body">
                 <span className="gym-name">{gym.name}</span>
                 <span className="gym-leader">
-                  {leader ? leader.name : "No leader — undefended"}
+                  {leader ? leader.name : t("map.noLeader")}
                 </span>
                 <span className="gym-counts">
-                  {gym.trainerIds.length}/{gym.trainerSlots} trainers
+                  {t("map.trainers", { n: gym.trainerIds.length, max: gym.trainerSlots })}
                 </span>
                 <Shield gymId={id} />
               </span>
               <span className={`light light-${gym.threat.status}`} aria-hidden="true" />
               <span className="sr-only">
-                {gym.threat.status === "critical"
-                  ? "Critical"
-                  : gym.threat.status === "watch"
-                    ? "Watch"
-                    : "Stable"}
+                {t(`threat.${gym.threat.status}` as const)}
               </span>
             </button>
           </li>

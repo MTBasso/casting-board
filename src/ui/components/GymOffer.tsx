@@ -32,7 +32,7 @@ export function GymOffer() {
         className="offer-chip"
         onClick={() => act((s) => void (s.gymOfferMinimized = false))}
       >
-        New gym available · {gymCost(state).toLocaleString()}
+        {t("gymOffer.chip", { cost: gymCost(state).toLocaleString() })}
       </button>
     );
   }
@@ -45,7 +45,7 @@ export function GymOffer() {
       <div className="offer-body">
         <div className="offer-top">
           <p className="offer-eyebrow">
-            {founding ? "Found your league" : "New gym available"}
+            {t(founding ? "gymOffer.foundEyebrow" : "gymOffer.newEyebrow")}
           </p>
           {!founding && (
             <button
@@ -53,7 +53,7 @@ export function GymOffer() {
               className="btn sm ghost"
               onClick={() => act((s) => void (s.gymOfferMinimized = true))}
             >
-              Later
+              {t("gymOffer.later")}
             </button>
           )}
         </div>
@@ -90,15 +90,15 @@ export function GymOffer() {
                 </span>
                 <dl className="brief">
                   <div>
-                    <dt>Owned</dt>
+                    <dt>{t("gymOffer.owned")}</dt>
                     <dd>{brief.owned}</dd>
                   </div>
                   <div>
-                    <dt>Challengers</dt>
+                    <dt>{t("gymOffer.challengers")}</dt>
                     <dd>{Math.round(brief.metaShare * 100)}%</dd>
                   </div>
                   <div>
-                    <dt>Supplied by</dt>
+                    <dt>{t("gymOffer.suppliedBy")}</dt>
                     <dd>
                       {brief.routes.length > 0
                         ? brief.routes.join(", ")

@@ -14,24 +14,12 @@ import { Portrait } from "./Portrait.js";
  * already trained and fully bonded, so the decision has a face on it instead of
  * being three interchangeable stat blocks.
  */
-const ARCHETYPES: Record<string, { name: string; blurb: string }> = {
-  stall: {
-    name: "Defensive",
-    blurb: "Wears challengers down. Their party tires more slowly and holds harder.",
-  },
-  sweep: {
-    name: "Aggressive",
-    blurb: "Ends battles fast, and tires fast doing it.",
-  },
-  mentor: {
-    name: "Mentor",
-    blurb: "Creatures under them settle in far quicker.",
-  },
-  drillmaster: {
-    name: "Drillmaster",
-    blurb: "Spends their creatures' careers sparingly. They last longer.",
-  },
-};
+const ARCHETYPES = ["stall", "sweep", "mentor", "drillmaster"] as const;
+
+/** A doctrine the offer screen has words for. Others fall back to their id. */
+function known(doctrine: string): doctrine is (typeof ARCHETYPES)[number] {
+  return (ARCHETYPES as readonly string[]).includes(doctrine);
+}
 
 export function LeaderOffer() {
   const t = useT();
@@ -67,13 +55,13 @@ export function LeaderOffer() {
 }
 
 function LeaderCard({ trainer, onPick }: { trainer: Trainer; onPick: () => void }) {
+  const t = useT();
   const state = useGame((s) => s.state);
   const party = partyOf(state, trainer.id);
   const partner = party[0];
-  const archetype = ARCHETYPES[trainer.doctrine] ?? {
-    name: trainer.doctrine,
-    blurb: "",
-  };
+  const archetype = known(trainer.doctrine)
+    ? { name: t(`arch.${trainer.doctrine}`), blurb: t(`arch.${trainer.doctrine}.blurb`) }
+    : { name: trainer.doctrine, blurb: "" };
 
   return (
     <button type="button" className="leader-card" onClick={onPick}>

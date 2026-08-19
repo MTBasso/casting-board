@@ -170,6 +170,14 @@ export interface Trainer {
   /** Sim-seconds employed. Salary escalates with this. */
   tenure: number;
   /**
+   * Which portrait they wear.
+   *
+   * Chosen once, at hire, and never re-rolled — a person's face is not a
+   * function of their current posting. Promotion changes what they do, not who
+   * they are, so a junior who rises to Leader keeps their own look.
+   */
+  look: string;
+  /**
    * Which slot leads the next challenge.
    *
    * The party takes turns. Without this, one creature fought essentially every

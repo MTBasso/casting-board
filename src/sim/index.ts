@@ -53,6 +53,7 @@ export {
   seedBench,
   slotsAvailable,
   stretchOf,
+  takesCrew,
   throughBand,
   tickField,
   usableReserve,

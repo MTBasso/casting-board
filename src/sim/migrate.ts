@@ -1,5 +1,5 @@
 import { GYM_TRAINERS, META } from "./constants.js";
-import { emptyThreatReport } from "./factory.js";
+import { emptyThreatReport, pickLook } from "./factory.js";
 import { uniformTally } from "../data/typechart.js";
 import { catalog } from "../data/catalog.js";
 import { refreshPower } from "./systems/growth.js";
@@ -124,6 +124,7 @@ export function normalize(raw: unknown): LeagueState | null {
     trainer.demotionLockedUntil ??= null;
     trainer.origin ??= "hired";
     trainer.leadIndex ??= 0;
+    trainer.look ||= pickLook(state.rng, trainer.affinity, trainer.kind);
   }
 
   for (const gym of Object.values(state.gyms)) {
@@ -261,6 +262,8 @@ const STEPS: Record<number, (state: LeagueState) => LeagueState> = {
   19: (state) => state,
   // v20 → v21: parties take turns leading; career, bond and wages re-derived.
   20: (state) => state,
+  // v21 → v22: every trainer has a face; Rangers work alone.
+  21: (state) => state,
 };
 
 export function migrateState(

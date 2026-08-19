@@ -1,5 +1,8 @@
 name: Deploy to GitHub Pages
 
+# Playtesting an idle game means playing it on a phone, over days, away from a
+# dev server. Every push to main publishes, so the phone always has the build
+# the desk has.
 on:
   push:
     branches: [main]
@@ -10,7 +13,8 @@ permissions:
   pages: write
   id-token: write
 
-# Let an in-flight deploy finish rather than cancelling it mid-publish.
+# Let a running deploy finish rather than cancelling it; a half-published PWA
+# serves a stale service worker to anyone who opens it mid-deploy.
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -25,8 +29,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # The build runs `tsc --noEmit` first, so a type error never ships.
       - run: npm test
       - run: npm run build
+      - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

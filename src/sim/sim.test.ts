@@ -301,127 +301,68 @@ describe("identity", () => {
 
 describe("rangers", () => {
   /**
-   * A league with a Ranger hired and a partner of their own type crewed.
+   * A league with a Ranger hired.
    *
-   * Field staff are drawn from an offer and are type-bound like everyone else,
-   * so the fixture takes whatever type turns up and makes a partner to match.
+   * Rangers work alone — their job is to find creatures, not to train them — so
+   * there is no partner to arrange, and any open ground will take them.
    */
-  function withRanger(seed: number): {
-    state: LeagueState;
-    trainerId: string;
-    partner: Creature;
-  } {
+  function withRanger(seed: number): { state: LeagueState; trainerId: string } {
     const state = newLeague(seed);
     state.money = 200_000;
     const type = fieldOffer(state, "ranger")[0];
     if (!type) throw new Error("no offer");
     const hired = hire(state, "ranger", type);
     if (!hired.ok) throw new Error(hired.reason);
-
-    const trainer = state.trainers[hired.trainerId];
-    if (!trainer) throw new Error("no trainer");
-    // Their signature creature is already the crew; use it.
-    const partner = state.creatures[trainer.party[0] ?? ""];
-    if (!partner) throw new Error("no partner");
-    return { state, trainerId: hired.trainerId, partner };
+    return { state, trainerId: hired.trainerId };
   }
 
-  /** Lift the crew to a level the route will take, rather than hoping. */
-  function readyFor(partner: Creature, routeId: string): Creature {
-    partner.level = Math.max(partner.level, routeById(routeId)?.levelMin ?? 1);
-    return partner;
-  }
-
-  it("opens a league with a bench, so there is somebody to post", () => {
+  it("opens a league with a bench, so there is somebody to field", () => {
     const state = newLeague(2101);
     expect(Object.values(state.creatures).length).toBeGreaterThan(0);
   });
 
+  it("works alone — no partner tied up on a route", () => {
+    const { state, trainerId } = withRanger(2102);
+    const trainer = state.trainers[trainerId];
+    expect(trainer?.party).toHaveLength(0);
+    expect(crewOf(state, trainerId)).toHaveLength(0);
+    // And nothing of theirs is sitting in a `field` role.
+    expect(Object.values(state.creatures).some((c) => c.role === "field")).toBe(false);
+  });
+
   it("brings creatures in over time rather than on purchase", () => {
-    const { state, trainerId, partner } = withRanger(2102);
+    const { state, trainerId } = withRanger(2103);
     const route = eligibleRoutes(state)[0];
     if (!route) throw new Error("no routes");
-    readyFor(partner, route.id);
 
     expect(post(state, route.id, trainerId).ok).toBe(true);
     const before = Object.keys(state.creatures).length;
-    run(state, 60 * 60);
+    run(state, Math.round(constants.RANGER.shiftSeconds * 0.9));
     expect(Object.keys(state.creatures).length).toBeGreaterThan(before);
   });
 
-  it("refuses a partner the ground would overwhelm", () => {
-    const { state, trainerId, partner } = withRanger(2103);
+  it("takes any open ground, since nobody is at risk on it", () => {
+    const { state, trainerId } = withRanger(2104);
     state.peakRenown = 100000;
     const hard = [...eligibleRoutes(state)].sort((a, b) => b.levelMin - a.levelMin)[0];
     if (!hard) throw new Error("no routes");
-
-    partner.level = 1;
-    expect(canPost(state, hard.id, trainerId).ok).toBe(false);
-  });
-
-  it("takes the partner off the board while they are posted", () => {
-    const { state, trainerId, partner } = withRanger(2104);
-    const route = eligibleRoutes(state)[0];
-    if (!route) throw new Error("no routes");
-    readyFor(partner, route.id);
-
-    post(state, route.id, trainerId);
-    expect(state.creatures[partner.id]?.role).toBe("field");
-    // Auto-fill must not quietly pull them into a gym.
-    autoFill(state, trainerId);
-    expect(state.creatures[partner.id]?.role).toBe("field");
-  });
-
-  it("spends fatigue and never career", () => {
-    const { state, trainerId, partner } = withRanger(2105);
-    const route = eligibleRoutes(state)[0];
-    if (!route) throw new Error("no routes");
-    readyFor(partner, route.id);
-    const spentBefore = partner.careerSpent;
-
-    post(state, route.id, trainerId);
-    // Inside the shift: once it ends they come home and rest it off.
-    run(state, Math.round(constants.RANGER.shiftSeconds * 0.5));
-
-    const after = state.creatures[partner.id];
-    expect(after?.careerSpent).toBe(spentBefore);
-    expect(after?.fatigue).toBeGreaterThan(0);
-  });
-
-  it("levels a partner only as far as the route goes", () => {
-    const { state, trainerId, partner } = withRanger(2106);
-    const route = eligibleRoutes(state)[0];
-    if (!route) throw new Error("no routes");
-    readyFor(partner, route.id);
-
-    post(state, route.id, trainerId);
-    // Long enough to cap out several times over, with fatigue recovery running.
-    run(state, 40 * 60 * 60);
-    expect(state.creatures[partner.id]?.level).toBeLessThanOrEqual(
-      ceilingFor(route.id),
-    );
+    expect(canPost(state, hard.id, trainerId).ok).toBe(true);
   });
 
   it("only yields types the route actually supplies", () => {
-    const { state, trainerId, partner } = withRanger(2107);
+    const { state, trainerId } = withRanger(2105);
     const route = eligibleRoutes(state)[0];
     if (!route) throw new Error("no routes");
-    readyFor(partner, route.id);
-    const before = new Set(Object.keys(state.creatures));
 
     post(state, route.id, trainerId);
     const caught: string[] = [];
-    for (let i = 0; i < 6 * 60 * 60; i++) {
-      const report = tick(state, 1);
-      caught.push(...report.caught);
+    for (let i = 0; i < Math.round(constants.RANGER.shiftSeconds * 0.9); i++) {
+      caught.push(...tick(state, 1).caught);
     }
 
-    // Only what the posting itself reported, since the Day-Care can hatch
-    // creatures during the same span and those answer to different rules.
     const supplied = TYPES.filter((t) => route.supply[t] > 0);
     let seen = 0;
     for (const id of caught) {
-      if (before.has(id)) continue;
       const c = state.creatures[id];
       if (!c) continue;
       expect(c.types.some((t) => supplied.includes(t))).toBe(true);
@@ -431,42 +372,34 @@ describe("rangers", () => {
   });
 
   it("stops once the box holds all the trainers could field", () => {
-    const { state, trainerId, partner } = withRanger(2108);
+    const { state, trainerId } = withRanger(2106);
     const route = eligibleRoutes(state)[0];
     if (!route) throw new Error("no routes");
-    readyFor(partner, route.id);
     post(state, route.id, trainerId);
 
     run(state, 200 * 60 * 60);
     // The ceiling counts creatures the league could actually put in a party.
-    // Counting everything deadlocked the game: a box full of types no gym can
-    // field would stop the only thing that could bring in the ones it needs.
     expect(usableReserve(state)).toBeLessThanOrEqual(reserveCeiling(state) + 4);
-    // And spillover is still bounded, so an unattended league cannot grow a
-    // roster of hundreds.
     expect(reserveCount(state)).toBeLessThanOrEqual(
       reserveCeiling(state) * constants.RANGER.hardCeilingFactor + 8,
     );
   });
 
-  it("keeps the crew together on recall, and frees them on request", () => {
-    const { state, trainerId, partner } = withRanger(2109);
+  it("works a shift and then comes home", () => {
+    const { state, trainerId } = withRanger(2107);
     const route = eligibleRoutes(state)[0];
     if (!route) throw new Error("no routes");
-    readyFor(partner, route.id);
 
     post(state, route.id, trainerId);
-    recall(state, trainerId);
-    expect(postingFor(state, trainerId)).toBeUndefined();
-    // A crew you assembled survives being taken off a route — you built it.
-    expect(state.creatures[partner.id]?.role).toBe("field");
+    expect(postingFor(state, trainerId)).toBeDefined();
 
-    removeFromCrew(state, partner.id);
-    expect(state.creatures[partner.id]?.role).toBe("reserve");
+    run(state, constants.RANGER.shiftSeconds + 5);
+    // A posting that never ended made the whole screen one decision made once.
+    expect(postingFor(state, trainerId)).toBeUndefined();
   });
 
   it("caps hiring at the slots the facilities support", () => {
-    const state = newLeague(2110);
+    const state = newLeague(2108);
     state.money = 10_000_000;
     let guard = 0;
     while (canHire(state, "ranger").ok && guard < 20) {
@@ -480,7 +413,7 @@ describe("rangers", () => {
   });
 
   it("hires only from the drawn offer, and redraws on taking one", () => {
-    const state = newLeague(2112);
+    const state = newLeague(2109);
     state.money = 200_000;
     const offer = [...fieldOffer(state, "ranger")];
     const outside = TYPES.find((t) => !offer.includes(t));
@@ -491,49 +424,8 @@ describe("rangers", () => {
     expect(fieldOffer(state, "ranger")).not.toEqual(offer);
   });
 
-  it("keeps field staff type-bound, like every other trainer", () => {
-    const { state, trainerId } = withRanger(2113);
-    const trainer = state.trainers[trainerId];
-    if (!trainer) throw new Error("no trainer");
-
-    const wrong = Object.values(state.creatures).find(
-      (c) => c.role === "reserve" && !c.types.includes(trainer.affinity),
-    );
-    if (wrong) expect(canCrew(state, wrong.id, trainerId).ok).toBe(false);
-  });
-
-  it("works a shift and then comes home", () => {
-    const { state, trainerId, partner } = withRanger(2114);
-    const route = eligibleRoutes(state)[0];
-    if (!route) throw new Error("no routes");
-    readyFor(partner, route.id);
-
-    post(state, route.id, trainerId);
-    expect(postingFor(state, trainerId)).toBeDefined();
-
-    run(state, constants.RANGER.shiftSeconds + 5);
-    // A posting that never ended made the whole screen one decision made once.
-    expect(postingFor(state, trainerId)).toBeUndefined();
-  });
-
-  it("no longer teaches its partner anything — that is a Handler's job", () => {
-    const { state, trainerId, partner } = withRanger(2115);
-    const route = eligibleRoutes(state)[0];
-    if (!route) throw new Error("no routes");
-    readyFor(partner, route.id);
-    const level = partner.level;
-    const xp = partner.xp;
-
-    post(state, route.id, trainerId);
-    run(state, Math.round(constants.RANGER.shiftSeconds * 0.8));
-
-    const after = state.creatures[partner.id];
-    expect(after?.level).toBe(level);
-    expect(after?.xp).toBe(xp);
-  });
-
   it("sells intel about ground you have not worked yet", () => {
-    const state = newLeague(2111);
+    const state = newLeague(2110);
     state.money = 200_000;
     const route = eligibleRoutes(state)[0];
     if (!route) throw new Error("no routes");
@@ -630,6 +522,43 @@ describe("handlers", () => {
     expect(stretchOf(state, easy)).toBe(4);
     // Stretching costs the crew more than standing on level ground does.
     expect(fatigueRate(state, easy)).toBeGreaterThan(restedRate);
+  });
+
+  it("keeps the crew together on recall, and frees them on request", () => {
+    const { state, trainerId, crew } = withHandler(2206);
+    const route = eligibleRoutes(state)[0];
+    if (!route || crew.length === 0) throw new Error("no route or crew");
+    crew[0]!.level = route.levelMin;
+
+    post(state, route.id, trainerId);
+    recall(state, trainerId);
+    expect(postingFor(state, trainerId)).toBeUndefined();
+    // A crew you assembled survives being taken off a route — you built it.
+    expect(state.creatures[crew[0]!.id]?.role).toBe("field");
+
+    removeFromCrew(state, crew[0]!.id);
+    expect(state.creatures[crew[0]!.id]?.role).toBe("reserve");
+  });
+
+  it("keeps its crew type-bound, like every other trainer", () => {
+    const { state, trainerId } = withHandler(2207);
+    const trainer = state.trainers[trainerId];
+    if (!trainer) throw new Error("no trainer");
+
+    const wrong = Object.values(state.creatures).find(
+      (c) => c.role === "reserve" && !c.types.includes(trainer.affinity),
+    );
+    if (wrong) expect(canCrew(state, wrong.id, trainerId).ok).toBe(false);
+  });
+
+  it("stops levelling at the ceiling the route sets", () => {
+    const { state, trainerId, crew } = withHandler(2208);
+    const route = eligibleRoutes(state)[0];
+    if (!route || crew.length === 0) throw new Error("no route or crew");
+    crew[0]!.level = route.levelMin;
+    post(state, route.id, trainerId);
+    run(state, 40 * 60 * 60);
+    expect(state.creatures[crew[0]!.id]?.level).toBeLessThanOrEqual(ceilingFor(route.id));
   });
 
   it("never spends career, however hard the ground", () => {

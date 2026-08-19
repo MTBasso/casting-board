@@ -1,6 +1,7 @@
 import { useGame } from "../../engine/store.js";
 import { Sprite } from "./Sprite.js";
 import { StaffStanding } from "./StaffStanding.js";
+import { Portrait } from "./Portrait.js";
 import {
   bench,
   canHireGymTrainer,
@@ -48,6 +49,7 @@ export function GymPanel({ gymId }: { gymId: string }) {
     <div className="panel">
       <header className="panel-head">
         <span className="gym-type lg" style={{ background: TYPE_COLORS[gym.type] }} />
+        {leader && <Portrait trainer={leader} size={52} />}
         <div>
           <h2>{gym.name}</h2>
           <p className="panel-sub">
@@ -171,6 +173,7 @@ function TrainerRow({ trainer }: { trainer: Trainer }) {
     <li className="trainer-row">
       <div className="trainer-head">
         <span className="trainer-id">
+          <Portrait trainer={trainer} size={34} />
           <span>{trainer.name}</span>
           <span className="dim">
             {trainer.affinity} · {trainer.doctrine}

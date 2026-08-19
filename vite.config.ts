@@ -37,6 +37,25 @@ export default defineConfig({
               expiration: { maxEntries: 400, maxAgeSeconds: 60 * 60 * 24 * 90 },
             },
           },
+          {
+            urlPattern: /\/icons\/.*\.png$/,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "box-icons",
+              expiration: { maxEntries: 400, maxAgeSeconds: 60 * 60 * 24 * 90 },
+            },
+          },
+          {
+            // Trainer portraits are small and there are only a hundred or so,
+            // but they are the faces of the league — an offline app that shows
+            // blank squares where its people should be is not really offline.
+            urlPattern: /\/trainers\/.*\.png$/,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "trainer-portraits",
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 90 },
+            },
+          },
         ],
       },
       manifest: {

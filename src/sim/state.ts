@@ -11,7 +11,7 @@ import type { LeagueState } from "./types.js";
  * it, which let stale saves through the version check and crashed the app on
  * load — hence v2 and the defensive normalize pass.
  */
-export const SAVE_VERSION = 21;
+export const SAVE_VERSION = 22;
 
 /**
  * The first hour, per the design doc: one trainer, one signature creature,

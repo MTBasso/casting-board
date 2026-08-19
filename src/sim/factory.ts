@@ -1,4 +1,5 @@
 import { catalog, grantableAtLevel, minLevelFor, type Species } from "../data/catalog.js";
+import { CHAMPION_LOOKS, TRAINER_LOOKS } from "../data/trainerLooks.js";
 import { trainerName } from "../data/names.js";
 import { emptyTally } from "../data/typechart.js";
 import { CAREER, GYM_TRAINERS, LEVELS, PARTY, STAFF, WAVE } from "./constants.js";
@@ -16,6 +17,7 @@ import type {
   ThreatReport,
   Trainer,
   TrainerKind,
+  RngState,
   TypeId,
 } from "./types.js";
 
@@ -92,6 +94,25 @@ export function makeCreature(
  * the party, and gone when they go. That is what makes every hire an emotional
  * unit from the first second rather than a line on a payroll.
  */
+/**
+ * A face for a new hire.
+ *
+ * Type first, then rank. A Fire specialist never wears a Bug Catcher's hat, and
+ * nobody takes a league post looking like a schoolkid — Leaders, Elite seats and
+ * Champions draw from the senior pool, which is the canon Leaders of that type
+ * plus veterans where the canon roster is thin.
+ */
+export function pickLook(rng: RngState, affinity: TypeId, kind: TrainerKind): string {
+  if (kind === "champion") return pick(rng, CHAMPION_LOOKS as string[]);
+
+  const pools = TRAINER_LOOKS[affinity];
+  if (!pools) return "acetrainer";
+
+  const league = kind === "leader" || kind === "elite" || kind === "candidate";
+  const pool = league ? pools.senior : pools.junior;
+  return pick(rng, (pool.length > 0 ? pool : pools.junior) as string[]);
+}
+
 export function makeTrainer(
   state: LeagueState,
   affinity: TypeId,
@@ -131,6 +152,7 @@ export function makeTrainer(
       range(rng, 0.9, 1.2) *
       (kind === "gym" ? GYM_TRAINERS.salaryFactor : 1),
     morale: 1,
+    look: pickLook(rng, affinity, kind),
     tenure: 0,
     leadIndex: 0,
     standing: 1,

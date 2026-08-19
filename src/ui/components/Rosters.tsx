@@ -2,6 +2,7 @@ import { useGame } from "../../engine/store.js";
 import { bench, partyCapOf, partyOf, type Trainer } from "../../sim/index.js";
 import { PartyList } from "./PartyList.js";
 import { TypeBadge } from "./TypeBadge.js";
+import { Portrait } from "./Portrait.js";
 
 /**
  * Every party in the league, on one screen.
@@ -81,6 +82,7 @@ function Roster({
     <section className="roster">
       <header className="roster-head">
         <span className="roster-id">
+          <Portrait trainer={trainer} size={32} />
           <TypeBadge type={trainer.affinity} size="sm" />
           <span>
             <strong>{title}</strong>

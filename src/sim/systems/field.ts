@@ -165,7 +165,11 @@ export function hire(
   }
 
   state.money -= check.cost;
-  const cap = role === "ranger" ? 1 : HANDLER.partyMax;
+  // A Ranger works alone. Their job is to find creatures, not to train them —
+  // pairing them with a partner meant every Ranger tied up a creature that a
+  // gym could have fielded, and gave the role a training function it was
+  // explicitly not supposed to have.
+  const cap = role === "ranger" ? 0 : HANDLER.partyMax;
   // They arrive with a working partner, not a hatchling. A level 1 signature
   // meant a Ranger could never be posted anywhere at all — every route has a
   // floor, and theirs was below all of them.
@@ -177,10 +181,22 @@ export function hire(
     STAFF.baseSalaryPerHour *
     (role === "ranger" ? RANGER.salaryFactor : HANDLER.salaryFactor);
 
-  // Their signature creature is their first field partner, not a defender.
-  for (const id of trainer.party) {
-    const c = state.creatures[id];
-    if (c) c.role = "field";
+  if (role === "ranger") {
+    // Even the signature creature goes to the box: a Ranger travels light.
+    for (const id of trainer.party) {
+      const c = state.creatures[id];
+      if (c) {
+        c.role = "reserve";
+        c.trainerId = null;
+      }
+    }
+    trainer.party = [];
+    trainer.signatureId = "";
+  } else {
+    for (const id of trainer.party) {
+      const c = state.creatures[id];
+      if (c) c.role = "field";
+    }
   }
 
   rollFieldOffer(state, role);
@@ -299,6 +315,11 @@ export function crewLevel(state: LeagueState, trainerId: string): number {
   return Math.min(...crew.map((c) => c.level));
 }
 
+/** Whether this role brings creatures with it. Rangers do not. */
+export function takesCrew(trainer: Trainer): boolean {
+  return trainer.kind === "handler";
+}
+
 /**
  * How far under a route's floor this crew is standing.
  *
@@ -335,15 +356,14 @@ export function canPost(
   }
   if (postingFor(state, trainerId)) return { ok: false, reason: "Already posted" };
 
+  // A Ranger goes alone, so any open ground will take them.
+  if (trainer.kind === "ranger") return { ok: true };
+
   const crew = crewOf(state, trainerId);
   if (crew.length === 0) return { ok: false, reason: "Nobody in their crew" };
 
   const level = Math.min(...crew.map((c) => c.level));
-  if (trainer.kind === "ranger") {
-    if (level < route.levelMin) {
-      return { ok: false, reason: `Needs Lv${route.levelMin} to work here` };
-    }
-  } else if (level < route.levelMin - HANDLER.maxStretch) {
+  if (level < route.levelMin - HANDLER.maxStretch) {
     return {
       ok: false,
       reason: `Lv${route.levelMin - HANDLER.maxStretch} at the very least — this is far over their heads`,
@@ -394,6 +414,9 @@ export function recall(state: LeagueState, trainerId: string): void {
 export function throughBand(state: LeagueState, posting: Posting): number {
   const route = routeById(posting.routeId);
   if (!route) return 0;
+  // A Ranger has no crew to have outgrown the ground; they work it at a steady
+  // pace and go home when the shift is up.
+  if (posting.role === "ranger") return 0;
   const band = Math.max(1, route.levelMax - route.levelMin);
   return clamp01((crewLevel(state, posting.trainerId) - route.levelMin) / band);
 }
@@ -550,7 +573,7 @@ export function tickField(state: LeagueState, dt: number, report: TickReport): v
   for (const posting of [...state.postings]) {
     const trainer = state.trainers[posting.trainerId];
     const crew = crewOf(state, posting.trainerId);
-    if (!trainer || crew.length === 0) {
+    if (!trainer || (posting.role === "handler" && crew.length === 0)) {
       state.postings = state.postings.filter((p) => p !== posting);
       continue;
     }
@@ -568,26 +591,28 @@ export function tickField(state: LeagueState, dt: number, report: TickReport): v
       continue;
     }
 
-    const tiredAt = posting.role === "ranger" ? RANGER.tiredAt : HANDLER.tiredAt;
-    const restedAt = posting.role === "ranger" ? RANGER.rested : HANDLER.rested;
-    const worst = Math.max(...crew.map((c) => c.fatigue));
-
-    // A shift, then a break. The hysteresis is what makes this a duty cycle
-    // rather than a stall.
-    if (posting.resting) {
-      if (worst <= restedAt) posting.resting = false;
-      continue;
-    }
-    if (worst >= tiredAt) {
-      posting.resting = true;
-      continue;
+    // Only a Handler has anyone to wear out. A Ranger's shift is its own limit.
+    if (posting.role === "handler") {
+      const worst = Math.max(...crew.map((c) => c.fatigue));
+      // A shift, then a break. The hysteresis is what makes this a duty cycle
+      // rather than a stall.
+      if (posting.resting) {
+        if (worst <= HANDLER.rested) posting.resting = false;
+        continue;
+      }
+      if (worst >= HANDLER.tiredAt) {
+        posting.resting = true;
+        continue;
+      }
     }
     // Rangers with nowhere to put anyone idle; an Handler is still training.
     if (posting.role === "ranger" && boxFull) continue;
 
     posting.progress += dt;
-    const wear = fatigueRate(state, posting) * dt;
-    for (const c of crew) c.fatigue = clamp01(c.fatigue + wear);
+    if (posting.role === "handler") {
+      const wear = fatigueRate(state, posting) * dt;
+      for (const c of crew) c.fatigue = clamp01(c.fatigue + wear);
+    }
 
     const needed = roundSeconds(state, posting);
     let guard = 0;

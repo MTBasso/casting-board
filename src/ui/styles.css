@@ -182,7 +182,14 @@ button { font: inherit; color: inherit; }
   text-align: center;
 }
 
-.screen { padding: 1.25rem; }
+.screen { padding: 1.25rem; min-width: 0; }
+
+/* Nothing may widen the page. Wide content scrolls inside its own container. */
+.app { overflow-x: hidden; }
+
+@media (max-width: 40rem) {
+  .screen { padding: 0.7rem; }
+}
 
 .league-screen {
   display: grid;
@@ -2400,11 +2407,11 @@ body { padding-bottom: 3rem; }
 
 /* -- The Field: routes, and the people working them ------------------------ */
 
-.field { display: flex; flex-direction: column; gap: 0.7rem; }
+.field { display: flex; flex-direction: column; gap: 0.7rem; min-width: 0; }
 
 .hire-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
   gap: 0.6rem;
 }
 .hire-card {
@@ -2424,14 +2431,23 @@ body { padding-bottom: 3rem; }
 .route-row {
   display: grid;
   gap: 0.45rem;
+  min-width: 0;
   padding: 0.65rem 0.75rem;
   background: var(--surface);
   border: 1px solid var(--rule);
   border-radius: var(--radius);
 }
+/*
+ * Two slots side by side where there is room, stacked where there is not.
+ *
+ * `auto-fit` with a 15rem floor sounds responsive and is not: inside a grid
+ * track that is itself narrower than 15rem the column overflows rather than
+ * wrapping, which is how a phone ended up scrolling this screen sideways. The
+ * explicit stack below the breakpoint is the part that actually holds.
+ */
 .route-slots {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
   gap: 0.5rem;
 }
 
@@ -2485,6 +2501,19 @@ body { padding-bottom: 3rem; }
 }
 button.slot-pick:hover { border-color: var(--accent); }
 .slot-pick .dim { margin-left: auto; font-size: 0.65rem; white-space: nowrap; }
+.slot-pick > span:not(.dim) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 40rem) {
+  .field { gap: 0.5rem; }
+  .route-row { padding: 0.5rem 0.55rem; }
+  .route-slots { grid-template-columns: minmax(0, 1fr); }
+  .hire-row { grid-template-columns: minmax(0, 1fr); }
+  .slot-pick .dim { white-space: normal; }
+}
 
 .crew-add {
   width: 32px;
@@ -2500,3 +2529,20 @@ button.slot-pick:hover { border-color: var(--accent); }
   cursor: pointer;
 }
 .crew-add:hover { border-color: var(--accent); color: var(--ink); }
+
+/* -- Trainer portraits ----------------------------------------------------- */
+
+.portrait {
+  display: grid;
+  place-items: end center;
+  flex: none;
+  overflow: hidden;
+}
+.portrait img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  image-rendering: pixelated;
+}

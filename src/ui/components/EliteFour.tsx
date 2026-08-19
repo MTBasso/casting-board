@@ -21,6 +21,7 @@ import { creatureName } from "../names.js";
 import { PartyList } from "./PartyList.js";
 import { StaffStanding } from "./StaffStanding.js";
 import { Promotion } from "./Promotion.js";
+import { Portrait } from "./Portrait.js";
 import { TypeBadge } from "./TypeBadge.js";
 
 /**
@@ -138,6 +139,7 @@ function SeatRow({ seat }: { seat: EliteSeat }) {
   return (
     <li className={`seat ${isChampion(seat) ? "is-champion" : ""}`}>
       <div className="seat-head">
+        <Portrait trainer={trainer} size={44} />
         <span className="seat-title">
           {seatTitle(seat)}
           <span className="seat-trainer">

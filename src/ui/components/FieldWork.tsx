@@ -9,6 +9,7 @@ import {
   ceilingFor,
   crewLevel,
   crewOf,
+  takesCrew,
   eligibleRoutes,
   fieldHireCost,
   fieldOffer,
@@ -38,6 +39,7 @@ import {
 import { TypeBadge } from "./TypeBadge.js";
 import { CreaturePicker } from "./CreaturePicker.js";
 import { creatureName } from "../names.js";
+import { Portrait } from "./Portrait.js";
 
 /**
  * The Field: routes, and the people working them.
@@ -119,7 +121,7 @@ function HireCard({ role }: { role: FieldRole }) {
       </div>
       <p className="hint">
         {role === "ranger"
-          ? "Bring creatures back. One partner of their own type, a shift at a time."
+          ? "Bring creatures back. They work alone, a shift at a time — finding creatures is their whole job, not training them."
           : `Take up to ${constants.HANDLER.partyMax} of their own type out and bring them back levelled.`}
       </p>
 
@@ -265,12 +267,17 @@ function Slot({ route, role }: { route: Route; role: FieldRole }) {
                   setChoosing(false);
                 }}
               >
+                <Portrait trainer={t} size={26} />
                 <TypeBadge type={t.affinity} size="sm" />
                 <span>{t.name}</span>
                 <span className="dim">
-                  crew Lv{crewLevel(state, t.id)}
-                  {route.levelMin - crewLevel(state, t.id) > 0 &&
-                    ` · ${route.levelMin - crewLevel(state, t.id)} under`}
+                  {takesCrew(t)
+                    ? `crew Lv${crewLevel(state, t.id)}${
+                        route.levelMin - crewLevel(state, t.id) > 0
+                          ? ` · ${route.levelMin - crewLevel(state, t.id)} under`
+                          : ""
+                      }`
+                    : "works alone"}
                 </span>
               </button>
             </li>
@@ -278,11 +285,12 @@ function Slot({ route, role }: { route: Route; role: FieldRole }) {
           {blocked.map(({ trainer, why }) => (
             <li key={trainer.id} className="is-blocked">
               <span className="slot-pick">
+                <Portrait trainer={trainer} size={26} />
                 <TypeBadge type={trainer.affinity} size="sm" />
                 <span>{trainer.name}</span>
                 <span className="dim">{why}</span>
               </span>
-              <Crew trainer={trainer} />
+              {takesCrew(trainer) && <Crew trainer={trainer} />}
             </li>
           ))}
           <li>
@@ -323,6 +331,7 @@ function AtWork({
       <span className="slot-role">{label}</span>
 
       <div className="slot-who">
+        <Portrait trainer={trainer} size={30} />
         <TypeBadge type={trainer.affinity} size="sm" />
         <strong>{trainer.name}</strong>
         <button
@@ -334,7 +343,7 @@ function AtWork({
         </button>
       </div>
 
-      <Crew trainer={trainer} />
+      {takesCrew(trainer) && <Crew trainer={trainer} />}
 
       <span className="track" title={`${Math.round(secs)}s per round`}>
         <span className="fill" style={{ width: `${pct * 100}%` }} />

@@ -3,6 +3,7 @@ import { chooseLeader, partyOf, type Trainer } from "../../sim/index.js";
 import { spriteUrl } from "../sprites.js";
 import { creatureName } from "../names.js";
 import { TypeBadges } from "./TypeBadge.js";
+import { Portrait } from "./Portrait.js";
 
 /**
  * Choosing a Gym Leader.
@@ -75,6 +76,7 @@ function LeaderCard({ trainer, onPick }: { trainer: Trainer; onPick: () => void 
 
   return (
     <button type="button" className="leader-card" onClick={onPick}>
+      <Portrait trainer={trainer} size={56} />
       <span className="leader-name">{trainer.name}</span>
       <span className="leader-archetype">{archetype.name}</span>
       <span className="leader-blurb">{archetype.blurb}</span>

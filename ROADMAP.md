@@ -1022,6 +1022,43 @@ Every route now carries **two slots**, a Ranger's and a Handler's, and each slot
 is either the work happening in it or the way to start some — eligible staff,
 their crew, and why anyone ineligible is. Crews are edited in place.
 
+### Rangers become people
+
+**A Ranger catches their own type and nothing else.** They were type-bound on
+paper — it decided who could partner them — while what they actually brought
+back was whatever the route held, so the binding did nothing. Now a Grass Ranger
+is only worth what your Grass gym is worth, ground that holds no Grass is closed
+to them, and hiring is how you answer a starved gym rather than a thing you do
+when you can afford it.
+
+**Skill is earned by catching.** `experience` counts creatures brought in, and
+`skillOf` turns it into a 0..1 figure that widens the draw twice over: a seasoned
+Ranger reaches a few levels above the route's own ceiling, and the rarity
+weighting is applied as an exponent so rare species stop being nearly impossible.
+They are not making creatures stronger — they are finding the ones a rookie walks
+past.
+
+That also gives firing a cost. A veteran's replacement starts at nothing, so the
+dismiss control says what you are throwing away.
+
+**Field staff can be told to keep working.** They draw wages posted or not, so a
+Ranger standing about between shifts is money going out for nothing. `autoWork`
+re-posts them when idle — a Ranger to the richest ground for their type, a
+Handler to the hardest they can stand on. The same bargain as auto-fill: the
+chore goes, the decision stays, because *who you employ* is still entirely yours.
+
+Measured: with hiring aimed at whatever the board is short of, short-handed gyms
+fell from four to one over twenty-five hours.
+
+### The Field gets a desktop layout
+
+Widening it twice did not fix it, because narrowness was not the problem — it was
+**one column of cards**, which is a phone design at any width. It is now two
+panes: the payroll on the left, the ground on the right, with the rail sticky and
+the routes flowing into columns beside it. Staffing and posting are one decision
+— you hire *because* a route needs working — and the stacked layout made the
+player scroll between the two halves of it.
+
 ### Build order
 
 Morale staircase ✅ → title loss, forced recruitment, prestige fork ✅ →

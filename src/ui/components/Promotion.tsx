@@ -3,12 +3,11 @@ import { useGame } from "../../engine/store.js";
 import { Sprite } from "./Sprite.js";
 import {
   constants,
-  displayName,
   inductable,
   promote,
   readiness,
 } from "../../sim/index.js";
-import { speciesName } from "../sprites.js";
+
 
 /**
  * The two ways up, and the choice between them.
@@ -85,9 +84,9 @@ export function Promotion() {
       ) : check.ok ? (
         <>
           <p className="hint">
-            Choose up to {max} to induct. Each becomes a Mentor: they train every
-            creature of their type in every league that follows. This is the only
-            thing that survives.
+            Choose up to {max} from the Hall to induct. Each becomes a Mentor:
+            they train every creature of their type in every league that follows.
+            This is the only thing that survives.
           </p>
           <ul className="induct-grid">
             {candidates.map((c) => {
@@ -100,9 +99,9 @@ export function Promotion() {
                     onClick={() => toggle(c.id)}
                   >
                     <Sprite speciesId={c.speciesId} size={48} />
-                    <span className="induct-name">{displayName(c)}</span>
+                    <span className="induct-name">{c.name}</span>
                     <span className="dim">
-                      {speciesName(c.speciesId)} · {c.wins}W
+                      {c.wins}W · bond {Math.round(c.bond * 100)}%
                     </span>
                   </button>
                 </li>

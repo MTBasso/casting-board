@@ -240,6 +240,7 @@ function battleSeat(
     leaderId: trainer.id,
     trainerIds: [],
     trainerSlots: 0,
+    everBonded: false,
     waveCooldown: 0,
     threat: emptyThreatReport(),
   };

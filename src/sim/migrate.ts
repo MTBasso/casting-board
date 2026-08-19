@@ -99,6 +99,7 @@ export function normalize(raw: unknown): LeagueState | null {
   state.usurperId ??= null;
   state.titleLost ??= false;
   state.grudges ??= [];
+  state.legends ??= [];
   state.lastSeenAt ??= 0;
   state.dayCare ??= [];
   state.eggProgress ??= 0;
@@ -126,6 +127,7 @@ export function normalize(raw: unknown): LeagueState | null {
     trainer.leadIndex ??= 0;
     trainer.look ||= pickLook(state.rng, trainer.affinity, trainer.kind);
     trainer.experience ??= 0;
+    trainer.handover ??= 0;
     trainer.autoWork ??= false;
   }
 
@@ -134,6 +136,7 @@ export function normalize(raw: unknown): LeagueState | null {
     gym.trainerIds ??= [];
     gym.trainerSlots ??= GYM_TRAINERS.startingSlots;
     gym.waveCooldown ??= 0;
+    gym.everBonded ??= false;
     gym.threat ??= emptyThreatReport();
     gym.threat.distribution ??= emptyThreatReport().distribution;
   }
@@ -269,6 +272,8 @@ const STEPS: Record<number, (state: LeagueState) => LeagueState> = {
   // v22 → v23: Ranger skill, type-bound catching, and staff who re-post
   // themselves.
   22: (state) => state,
+  // v23 → v24: the Hall of Fame, a ratcheting promotion gate, and handover.
+  23: (state) => state,
 };
 
 export function migrateState(

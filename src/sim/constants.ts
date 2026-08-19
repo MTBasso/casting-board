@@ -175,8 +175,36 @@ export const BOND = {
    *
    * Bond has to arrive within a creature's career, or the arc the whole design
    * is about never completes.
+   *
+   * Then halved again, once losses started counting and retiring veterans began
+   * handing bond to their successors: three multipliers stacked put every gym in
+   * the league at a flat 1.00 after forty hours, which is not an arc, it is a
+   * formality. At 0.006 a league still reaches the promotion bar inside forty
+   * hours and roughly half its fighting creatures are still short of it.
    */
-  perWave: 0.012,
+  perWave: 0.006,
+  /**
+   * What a *lost* bout is worth, against a won one.
+   *
+   * Bond used to be awarded only on a win, which quietly made it a record of
+   * victories rather than of service — and a weaker party member loses most of
+   * its bouts, so it could serve for twenty hours and end at nothing. Measured:
+   * a gym's second creature finished a run with 9 wins, 37 losses and no bond
+   * at all, and no gym with an uneven party could ever meet the promotion bar.
+   *
+   * A creature that stood up and got knocked down was still there. It learns
+   * less than one that won, and it does learn.
+   */
+  perLoss: 0.45,
+  /**
+   * Bond a creature must have reached before it leaves anything to a successor.
+   *
+   * Only a genuine veteran hands over. A fraction from every washout would just
+   * be a flat discount on bonding.
+   */
+  handoverFloor: 0.75,
+  /** Share of a veteran's bond that its replacement starts with. */
+  handoverShare: 0.4,
   /** Mentor doctrine multiplier on bond gain. */
   mentorMultiplier: 1.6,
   /**
@@ -886,6 +914,26 @@ export const DAYCARE = {
   feePerLevel: 100,
   /** Sim-seconds two compatible parents need before an egg appears. */
   eggSeconds: 45 * 60,
+} as const;
+
+/**
+ * The Hall of Fame.
+ *
+ * A record of creatures whose careers ended in your service — and deliberately
+ * not all of them. Careers now end properly, which is roughly eighty a run, and
+ * a hall that everyone enters is a staff list rather than an honour.
+ */
+export const HALL = {
+  /**
+   * Fraction of its own career a creature must have spent to be remembered.
+   *
+   * A creature that served most of a life earned the record; one benched after
+   * a dozen battles did not. Reading it as a *fraction* rather than a count is
+   * what makes it fair to a short-lived creature.
+   */
+  minCareerServed: 0.55,
+  /** However distinguished the league, the record has to stay readable. */
+  cap: 300,
 } as const;
 
 export const PROMOTION = {

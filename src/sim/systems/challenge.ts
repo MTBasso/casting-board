@@ -489,6 +489,7 @@ function battleParty(
       defender.losses += 1;
       defender.fatigue = clamp01(defender.fatigue + FATIGUE.faintPenalty);
       spend(state, defender, CAREER.faintPenalty, trainer, report);
+      gainBondFor(state, defender, trainer, "lost");
       us.hp = 0;
       // The challenger's creature carries its damage onward.
       attackerMon.hp = them.hp;
@@ -540,11 +541,18 @@ function nextDefender(roster: readonly Fighter[], current: number, rotate: boole
   return standing(current) ? current : -1;
 }
 
-function gainBondFor(state: LeagueState, c: Creature, trainer: Trainer): void {
+function gainBondFor(
+  state: LeagueState,
+  c: Creature,
+  trainer: Trainer,
+  /** A lost bout still counts — see `BOND.perLoss`. */
+  outcome: "won" | "lost" = "won",
+): void {
   if (c.role !== "party" || !c.owned) return;
+  const share = outcome === "won" ? 1 : BOND.perLoss;
   const doctrine = trainer.doctrine === "mentor" ? BOND.mentorMultiplier : 1;
   c.bond = clamp01(
-    c.bond + BOND.perWave * doctrine * mentorBonus(state, c.types) * bondSpeed(state),
+    c.bond + BOND.perWave * share * doctrine * mentorBonus(state, c.types) * bondSpeed(state),
   );
 }
 

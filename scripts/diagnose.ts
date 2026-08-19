@@ -236,10 +236,21 @@ row("Career used (all)", `${(careerUsed * 100).toFixed(1)}%`);
 }
 row("Day-Care slots", `${state.dayCare.length}/${constants.DAYCARE.slots}`);
 
-console.log("\n  ── Why promotion has not happened ─────────────────────────");
+console.log("\n  ── Promotion ──────────────────────────────────────────────");
 const check = readiness(state);
 console.log(`  path ${check.path}, ${check.ok ? "READY" : "blocked"}`);
 for (const b of check.blockers) console.log(`    · ${b}`);
+console.log(
+  `  gyms that have held a bonded core: ${state.gymOrder.filter((id) => state.gyms[id]?.everBonded).length}/${state.gymOrder.length}`,
+);
+
+console.log("\n  ── The Hall ───────────────────────────────────────────────");
+row("Legends", state.legends.length);
+for (const e of [...state.legends].sort((a, b) => b.wins - a.wins).slice(0, 5)) {
+  console.log(
+    `    ${e.name.padEnd(12)} ${String(e.wins).padStart(4)}W  bond ${e.bond.toFixed(2)}  served ${Math.round((e.served / e.careerTotal) * 100)}%`,
+  );
+}
 
 console.log("\n  ── Bond, per gym ──────────────────────────────────────────");
 for (const id of state.gymOrder) {

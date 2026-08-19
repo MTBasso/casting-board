@@ -1,5 +1,5 @@
 import { catalog } from "../../data/catalog.js";
-import { GYM_TRAINERS } from "../constants.js";
+import { BOND, GYM_TRAINERS, HALL } from "../constants.js";
 import { grantParty } from "./party.js";
 import { nickname } from "../../data/names.js";
 import type { Creature, LeagueState, Trainer } from "../types.js";
@@ -43,6 +43,12 @@ export function nameOnBond(state: LeagueState, c: Creature): void {
 export function retire(state: LeagueState, c: Creature): void {
   const employer = c.trainerId ? state.trainers[c.trainerId] : undefined;
 
+  remember(state, c);
+  // What they knew goes to whoever takes their place. A career ending becomes
+  // the next creature's start, which is the only way a gym's bonded core can
+  // outlive the creature that built it.
+  const legacy = handoverFrom(c);
+
   for (const trainer of Object.values(state.trainers)) {
     trainer.party = trainer.party.filter((id) => id !== c.id);
   }
@@ -51,12 +57,69 @@ export function retire(state: LeagueState, c: Creature): void {
   c.trainerId = null;
   c.pinned = false;
 
-  // A junior Gym Trainer's creatures are their own, not yours, so the box can
-  // never restock them — and once careers ran at a realistic rate they simply
-  // emptied out and became free passes standing in a gym. They bring a
-  // replacement, the way anyone whose partner retires would.
-  if (employer && (employer.kind === "gym" || employer.kind === "elite" || employer.kind === "champion")) {
-    replaceRetired(state, employer);
+  if (employer) {
+    if (legacy > 0) employer.handover = Math.max(employer.handover, legacy);
+    // A junior Gym Trainer's creatures are their own, not yours, so the box can
+    // never restock them — and once careers ran at a realistic rate they simply
+    // emptied out and became free passes standing in a gym. They bring a
+    // replacement, the way anyone whose partner retires would.
+    if (
+      employer.kind === "gym" ||
+      employer.kind === "elite" ||
+      employer.kind === "champion"
+    ) {
+      replaceRetired(state, employer);
+    }
+  }
+}
+
+/**
+ * The bond a retiring creature leaves behind, if it earned the right to.
+ *
+ * Only a genuine veteran hands anything over. A fraction from every washout
+ * would just be a flat discount on bonding; a threshold makes seeing a career
+ * through worth more than rotating a creature out early.
+ */
+function handoverFrom(c: Creature): number {
+  if (c.bond < BOND.handoverFloor) return 0;
+  return c.bond * BOND.handoverShare;
+}
+
+/**
+ * Write a creature into the Hall of Fame, if its career earned the record.
+ *
+ * Careers now end about eighty times a run. A hall everyone enters is a staff
+ * list, so entry takes a real share of a life served — read as a fraction of
+ * that creature's own career, which is what makes it fair to a short-lived one.
+ */
+function remember(state: LeagueState, c: Creature): void {
+  const served = c.careerTotal > 0 ? c.careerSpent / c.careerTotal : 0;
+  if (served < HALL.minCareerServed) return;
+
+  state.legends.push({
+    id: c.id,
+    speciesId: c.speciesId,
+    name: displayName(c),
+    type: c.types[0] ?? "normal",
+    level: c.level,
+    wins: c.wins,
+    losses: c.losses,
+    bond: c.bond,
+    served: Math.round(c.careerSpent),
+    careerTotal: Math.round(c.careerTotal),
+    retiredAt: state.time,
+    tier: state.tier,
+    inducted: false,
+  });
+
+  // The record has to stay readable. The least distinguished go first, and a
+  // creature already carried forward as a Mentor is never dropped.
+  if (state.legends.length > HALL.cap) {
+    state.legends.sort((a, b) => {
+      if (a.inducted !== b.inducted) return a.inducted ? 1 : -1;
+      return a.wins + a.bond * 100 - (b.wins + b.bond * 100);
+    });
+    state.legends = state.legends.slice(state.legends.length - HALL.cap);
   }
 }
 

@@ -24,6 +24,7 @@ import {
   retrain,
   constants,
   autoFill,
+  autoFillAll,
   canHireGymTrainer,
   canJoin,
   chooseLeader,
@@ -81,6 +82,8 @@ import {
   facilityLevel,
   gainXp,
   inductable,
+  markBondedGyms,
+  retire,
   mentorBonus,
   mentorLevels,
   mentorsFor,
@@ -2053,7 +2056,47 @@ describe("promotion", () => {
     state.money = 5_000_000;
     // Build out and staff every gym the readiness check demands.
     buildOutLeague(state);
+    // The gate ratchets on gyms that have *held* a bonded core, so a fixture
+    // has to have reached that standard rather than merely be standing there.
+    for (const id of state.gymOrder) {
+      const gym = state.gyms[id];
+      if (!gym?.leaderId) continue;
+      for (const c of partyOf(state, gym.leaderId)) c.bond = 1;
+    }
+    markBondedGyms(state);
     return state;
+  }
+
+  /**
+   * Retire a few creatures into the Hall, since Mentors are inducted from there.
+   *
+   * A creature enters the Hall only after serving most of its career, which is
+   * what keeps the record an honour rather than a staff list.
+   */
+  function fillHall(state: LeagueState, count = 3): void {
+    const serving = Object.values(state.creatures).filter((c) => c.role === "party");
+    for (const c of serving.slice(0, count)) {
+      c.careerSpent = c.careerTotal;
+      c.wins = 50;
+      c.bond = 1;
+      retire(state, c);
+      // Restock behind them, or retiring a one-deep gym leaves the board
+      // unready for a reason that has nothing to do with the Hall.
+      const trainer = Object.values(state.trainers).find((t) => t.gymId !== null);
+      if (trainer) scoutCatch(state, trainer.affinity);
+    }
+    for (const id of state.gymOrder) {
+      const gym = state.gyms[id];
+      if (!gym?.leaderId) continue;
+      for (let i = 0; i < 3; i++) scoutCatch(state, gym.type);
+    }
+    autoFillAll(state);
+    for (const id of state.gymOrder) {
+      const gym = state.gyms[id];
+      if (!gym?.leaderId) continue;
+      for (const c of partyOf(state, gym.leaderId)) c.bond = 1;
+    }
+    markBondedGyms(state);
   }
 
   it("refuses while any gym is unstaffed or unbonded", () => {
@@ -2073,7 +2116,9 @@ describe("promotion", () => {
     const state = readyLeague(403);
     expect(readiness(state).ok).toBe(true);
 
+    fillHall(state);
     const induct = inductable(state).slice(0, 3).map((c) => c.id);
+    expect(induct.length).toBe(3);
     const result = promote(state, induct);
     expect(result.ok).toBe(true);
     expect(state.tier).toBe("national");
@@ -2087,6 +2132,7 @@ describe("promotion", () => {
     // quietly made every run after the first worse than the first. Both now go
     // through foundLeague, so both start by choosing a type and a Leader.
     const promoted = readyLeague(404);
+    fillHall(promoted);
     promote(promoted, inductable(promoted).slice(0, 3).map((c) => c.id));
 
     expect(promoted.gymOrder.length).toBe(0);
@@ -2108,6 +2154,7 @@ describe("promotion", () => {
 
   it("makes Mentors train new arrivals of their type", () => {
     const state = readyLeague(405);
+    fillHall(state);
     promote(state, inductable(state).slice(0, 3).map((c) => c.id));
 
     const mentored = state.hall[0]?.type;
@@ -2211,8 +2258,20 @@ describe("losing the title", () => {
 
   it("the earned path still carries Mentors", () => {
     const state = fullBoard(4206);
+    // Mentors are inducted from the Hall now, so a league with no finished
+    // careers has nobody to carry — which is the point: retirement is what
+    // feeds prestige.
+    const serving = Object.values(state.creatures).filter((c) => c.role === "party");
+    for (const c of serving.slice(0, 3)) {
+      c.careerSpent = c.careerTotal;
+      c.wins = 40;
+      c.bond = 1;
+      retire(state, c);
+    }
+    expect(state.legends.length).toBeGreaterThan(0);
+
     const check = readiness(state);
-    if (!check.ok) return; // board not bonded enough on this seed; nothing to assert
+    if (!check.ok) return; // board not ready on this seed; nothing to assert
     promote(state, inductable(state).slice(0, 3).map((c) => c.id));
     expect(state.hall.length).toBeGreaterThan(0);
   });

@@ -96,6 +96,17 @@ export function canJoin(
   return { ok: true };
 }
 
+/**
+ * Give a new arrival whatever the creature it replaced left behind.
+ *
+ * Claimed once and then spent, so a single retirement lifts a single successor.
+ */
+function inherit(trainer: Trainer, creature: Creature): void {
+  if (trainer.handover <= 0) return;
+  creature.bond = Math.max(creature.bond, trainer.handover);
+  trainer.handover = 0;
+}
+
 export function join(
   state: LeagueState,
   creatureId: string,
@@ -110,6 +121,7 @@ export function join(
 
   leaveParty(state, creatureId);
   nameOnBond(state, creature);
+  inherit(trainer, creature);
   creature.role = "party";
   creature.trainerId = trainerId;
   creature.gymId = trainer.gymId;

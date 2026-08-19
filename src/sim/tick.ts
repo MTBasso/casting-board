@@ -19,6 +19,7 @@ import { tierMultiplier } from "./systems/promotion.js";
 import { payroll, recover } from "./systems/economy.js";
 import { tickMorale } from "./systems/morale.js";
 import { tickUsurper } from "./systems/title.js";
+import { markBondedGyms } from "./systems/promotion.js";
 import { checkGymUnlock } from "./systems/league.js";
 import { driftMeta } from "./systems/meta.js";
 import { tickElite } from "./systems/elite.js";
@@ -181,6 +182,9 @@ export function tick(state: LeagueState, dt: number = TICK_SECONDS): TickReport 
   // Payroll moves morale; the staircase reads it. Order matters — a trainer
   // suspended this tick should not also have been paid for it.
   tickMorale(state, dt, report);
+  // The promotion gate ratchets, so the moment a gym reaches the standard has
+  // to be caught while it is happening.
+  markBondedGyms(state);
   recover(state, dt);
   checkGymUnlock(state);
 

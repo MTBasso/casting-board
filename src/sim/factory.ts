@@ -154,6 +154,7 @@ export function makeTrainer(
     morale: 1,
     look: pickLook(rng, affinity, kind),
     experience: 0,
+    handover: 0,
     autoWork: false,
     tenure: 0,
     leadIndex: 0,
@@ -188,6 +189,7 @@ export function makeGym(state: LeagueState, type: TypeId): Gym {
     leaderId: null,
     trainerIds: [],
     trainerSlots: GYM_TRAINERS.startingSlots,
+    everBonded: false,
     waveCooldown: range(state.rng, 0, WAVE.intervalSeconds),
     threat: emptyThreatReport(),
   };

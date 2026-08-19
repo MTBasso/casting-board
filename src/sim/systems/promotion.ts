@@ -4,8 +4,7 @@ import { makeCreature, makeTrainer } from "../factory.js";
 import { log } from "../tick.js";
 import { partyOf } from "./party.js";
 import { foundLeague } from "../state.js";
-import { displayName } from "./wave.js";
-import type { Creature, LeagueState, Mentor, Tier, TypeId } from "../types.js";
+import type { Creature, HallEntry, LeagueState, Mentor, Tier, TypeId } from "../types.js";
 
 /**
  * Promotion and the Hall of Fame.
@@ -54,6 +53,21 @@ export function hasBondedCore(party: readonly Creature[]): boolean {
   const needed = Math.min(PROMOTION.coreSize, party.length);
   const best = [...party].sort((a, b) => b.bond - a.bond).slice(0, needed);
   return best.every((c) => c.bond >= PROMOTION.bondBar);
+}
+
+/**
+ * Record gyms that currently hold a bonded core.
+ *
+ * Called on the tick rather than read at promotion time, because the whole
+ * point of the ratchet is that the moment passes: a gym reaches the standard,
+ * its veterans age out, and the fact that it *got there* has to survive that.
+ */
+export function markBondedGyms(state: LeagueState): void {
+  for (const gymId of state.gymOrder) {
+    const gym = state.gyms[gymId];
+    if (!gym || gym.everBonded || !gym.leaderId) continue;
+    if (hasBondedCore(partyOf(state, gym.leaderId))) gym.everBonded = true;
+  }
 }
 
 export interface Readiness {
@@ -121,8 +135,8 @@ export function readiness(state: LeagueState): Readiness {
       blockers.push(`${gym.name} has an empty party`);
       continue;
     }
-    if (!hasBondedCore(party)) {
-      blockers.push(`${gym.name} has no bonded core`);
+    if (!gym.everBonded) {
+      blockers.push(`${gym.name} has never had a bonded core`);
     }
   }
 
@@ -135,10 +149,19 @@ export function readiness(state: LeagueState): Readiness {
 }
 
 /** Creatures eligible for induction: anything currently serving the league. */
-export function inductable(state: LeagueState) {
-  return Object.values(state.creatures)
-    .filter((c) => c.role === "party")
-    .sort((a, b) => b.wins - a.wins);
+/**
+ * Who can be carried forward as a Mentor.
+ *
+ * Drawn from the **Hall** — creatures whose careers ended in your service and
+ * earned the record — rather than from whoever happens to be serving when you
+ * press the button. Induction is meant to be the loaded choice in the game, and
+ * choosing between finished stories is a better decision than choosing between
+ * whoever is currently on the board.
+ */
+export function inductable(state: LeagueState): HallEntry[] {
+  return [...state.legends]
+    .filter((e) => !e.inducted)
+    .sort((a, b) => b.wins + b.bond * 100 - (a.wins + a.bond * 100));
 }
 
 /** How many Mentors in the Hall match any of these types. */
@@ -192,15 +215,15 @@ export function promote(
   }
 
   for (const id of induct) {
-    const creature = state.creatures[id];
-    if (!creature) continue;
-    const species = catalog.get(creature.speciesId);
+    const entry = state.legends.find((e) => e.id === id);
+    if (!entry || entry.inducted) continue;
+    entry.inducted = true;
     const mentor: Mentor = {
-      speciesId: creature.speciesId,
-      name: displayName(creature),
-      type: species?.types[0] ?? creature.types[0] ?? "normal",
-      wins: creature.wins,
-      losses: creature.losses,
+      speciesId: entry.speciesId,
+      name: entry.name,
+      type: entry.type,
+      wins: entry.wins,
+      losses: entry.losses,
       tier: state.tier,
     };
     state.hall.push(mentor);
@@ -227,6 +250,8 @@ export function promote(
 
   state.usurperId = null;
   state.titleLost = false;
+  // The ratchet is per tier: a new board earns its own bonded cores.
+  for (const gym of Object.values(state.gyms)) gym.everBonded = false;
 
   // Re-found through the same path a brand new league takes, so a promoted
   // league can never start out worse than a fresh one.

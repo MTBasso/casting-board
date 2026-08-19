@@ -186,6 +186,14 @@ export interface Trainer {
    */
   experience: number;
   /**
+   * Bond waiting to be handed to the next creature this trainer takes on.
+   *
+   * Left by a retiring veteran. Held on the trainer rather than applied
+   * immediately because the successor usually does not exist yet — the slot
+   * empties first and auto-fill arrives a moment later.
+   */
+  handover: number;
+  /**
    * Whether they take themselves back out when idle.
    *
    * Field staff draw wages whether or not they are on a route, so a Ranger
@@ -284,6 +292,18 @@ export interface Gym {
   trainerIds: string[];
   /** How many junior trainers this gym can employ. */
   trainerSlots: number;
+  /**
+   * Whether this gym has ever held a bonded core at the current tier.
+   *
+   * Promotion reads this rather than the party as it stands right now. Careers
+   * end, gyms cycle, and demanding eight bonded cores *simultaneously* made the
+   * requirement a moving target that never aligned — measured over 120 hours, a
+   * league had three gyms fully bonded and five that had just lost their
+   * veterans, and could never promote. Peak renown already works exactly this
+   * way: progress is a thing the league achieved, not a thing that happens to be
+   * true this second. Cleared on promotion, with everything else.
+   */
+  everBonded: boolean;
   /** Sim-seconds until the next challenger wave arrives here. */
   waveCooldown: number;
   threat: ThreatReport;
@@ -522,6 +542,40 @@ export interface Mentor {
   tier: Tier;
 }
 
+/**
+ * A creature whose career ended in your service, and who earned the record.
+ *
+ * Not everyone: a hall everyone enters is a payroll record, and it would bury
+ * the twelve you remember under four hundred you do not. Entry takes a real
+ * career served — see `HALL.minCareerServed`.
+ *
+ * This is where retirement finally leads. Careers used to end into a role
+ * change and nothing else, which left the design's founding promise — that a
+ * career ends by becoming a lineage — unfulfilled after eighty retirements a
+ * run. Mentors are now inducted *from* here at promotion, so the Hall is the
+ * whole arc: serve, retire into the record, and the best are carried forward.
+ */
+export interface HallEntry {
+  id: string;
+  speciesId: string;
+  name: string;
+  type: TypeId;
+  level: number;
+  wins: number;
+  losses: number;
+  /** Bond at the end. What they were to you. */
+  bond: number;
+  /** Battles fought, of the life they had. */
+  served: number;
+  careerTotal: number;
+  /** Sim-time their career ended. */
+  retiredAt: number;
+  /** The tier they served. */
+  tier: Tier;
+  /** Whether they were later carried forward as a Mentor. */
+  inducted: boolean;
+}
+
 export interface RngState {
   seed: number;
 }
@@ -597,6 +651,11 @@ export interface LeagueState {
 
   /** Inducted creatures, kept across every promotion. */
   hall: Mentor[];
+  /**
+   * Everyone who earned the record. Survives promotion, like the Mentors drawn
+   * from it — a league resets, its history does not.
+   */
+  legends: HallEntry[];
 
   /** Facility levels. Absent or 0 means unbuilt. Resets on promotion. */
   facilities: Partial<Record<FacilityId, number>>;

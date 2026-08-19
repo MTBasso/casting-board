@@ -108,6 +108,7 @@ import {
   tradeableStock,
   typesForRank,
   TYPES,
+  pendingDecisions,
 } from "./index.js";
 import { resolveOffline } from "./offline.js";
 import { effectivenessAgainst, emptyTally, threatAgainst } from "../data/typechart.js";
@@ -697,6 +698,26 @@ describe("save migration", () => {
     if (!state) return;
     expect(() => resolveOffline(state, 6 * 3600)).not.toThrow();
     expect(() => run(state, 120)).not.toThrow();
+  });
+
+  it("survives the screens, not just the tick", () => {
+    // A migrated save used to be checked only by running it forward. The
+    // reads the *interface* makes on load were never exercised, and that is
+    // where it broke: `briefType` reached for `state.routeIntel`, a field
+    // normalize deleted on the way in, and the founding screen threw before
+    // the first frame. Anything a screen calls on load belongs here.
+    const result = migrateState(legacySave(), 1);
+    const state = result?.state;
+    expect(state).toBeDefined();
+    if (!state) return;
+
+    for (const type of TYPES) {
+      expect(() => briefType(state, type), type).not.toThrow();
+    }
+    expect(() => pendingDecisions(state)).not.toThrow();
+    expect(() => objectives(state)).not.toThrow();
+    expect(() => readiness(state)).not.toThrow();
+    expect(() => openRoutes(state)).not.toThrow();
   });
 
   it("rejects junk rather than pretending it is a league", () => {

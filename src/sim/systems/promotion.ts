@@ -245,7 +245,6 @@ export function promote(
   state.explored = [];
   state.known = {};
   state.bans = {};
-  state.routeIntel = {};
   state.nextIds = {};
   state.facilities = {};
   state.elite = [];

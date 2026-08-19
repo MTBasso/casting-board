@@ -251,6 +251,42 @@ describe("crew offers", () => {
   });
 });
 
+describe("what waits for you", () => {
+  it("holds a rare find for the trip, and settles common ones on a timer", () => {
+    // The threshold is the catalog's own wild-draw weight, so this asserts the
+    // rule against the data rather than against a hand-picked species.
+    const staples = catalog.all().filter((sp) => encounterWeight(sp) > constants.FIELD.rareWeight);
+    const rarities = catalog.all().filter(
+      (sp) => encounterWeight(sp) > 0 && encounterWeight(sp) <= constants.FIELD.rareWeight,
+    );
+    expect(staples.length).toBeGreaterThan(0);
+    expect(rarities.length).toBeGreaterThan(0);
+
+    // Final forms are the ones worth waking someone for; the staples are not.
+    expect(rarities.every((sp) => sp.stage >= 2)).toBe(true);
+    expect(staples.some((sp) => sp.stage <= 1)).toBe(true);
+  });
+
+  it("never leaves a held choice behind when the crew comes home", () => {
+    // A choice with no deadline has to be settled by the trip ending, or the
+    // creature it refers to is stranded in state forever.
+    const state = newLeague(19);
+    state.money += 500_000;
+    const offer = crewOffer(state)[0];
+    if (!offer) throw new Error("no offer");
+    const hired = hireCrew(state, offer.id);
+    if (!hired.ok) throw new Error(hired.reason);
+    const route = openRoutes(state)[0];
+    if (!route) throw new Error("no route");
+    send(state, hired.crewId, route.id, "work", null, { balls: 6, potions: 2, revives: 1, lures: 0 }, []);
+
+    for (let i = 0; i < 6000 && expeditionOf(state, hired.crewId); i++) tick(state, 30);
+
+    expect(expeditionOf(state, hired.crewId)).toBeUndefined();
+    expect(state.expeditions.some((e) => e.pending !== null)).toBe(false);
+  });
+});
+
 describe("standing orders", () => {
   /** A crew, hired, with orders for open ground. */
   function crewWithOrders(state: LeagueState, floor = 0) {

@@ -421,6 +421,14 @@ export const FIELD = {
    * this is the lean applied to everything between them.
    */
   offerRelevance: 0.7,
+  /**
+   * Wild-draw weight at or below which a find is worth waking someone for.
+   *
+   * The catalog scores staples at 1.0 and 0.55, second-stage forms at 0.35 and
+   * 0.12, and final third-stage forms at 0.04. This threshold takes the last
+   * two — the things a crew should not quietly decide on your behalf.
+   */
+  rareWeight: 0.12,
   /** Crews employable before the Scouting Office is upgraded. */
   baseSlots: 2,
   /** Further crews per level of the Scouting Office. */

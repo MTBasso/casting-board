@@ -618,7 +618,7 @@ export function tickField(state: LeagueState, dt: number, report: TickReport): v
 
     // A held choice does not stop the work; it just waits, and then the crew
     // decides for themselves.
-    if (trip.pending && state.time >= trip.pending.decidesAt) {
+    if (trip.pending?.decidesAt !== null && trip.pending && state.time >= trip.pending.decidesAt) {
       resolveInCharacter(state, trip, crew.trait);
     }
 
@@ -832,6 +832,11 @@ function encounter(
     return;
   }
 
+  // How unlikely this was to turn up at all. Final forms and stage three sit at
+  // or below the threshold; the staples are well above it.
+  const species = catalog.get(found.speciesId);
+  const rare = species !== undefined && encounterWeight(species) <= FIELD.rareWeight;
+
   trip.pending = {
     id: `enc_${found.id}`,
     prompt: "ev.choicePrompt",
@@ -840,7 +845,7 @@ function encounter(
       { id: `take:${found.id}:${cost}`, label: "ev.choiceTake", labelParams: { n: cost } },
       { id: "leave", label: "ev.choiceLeave" },
     ],
-    decidesAt: state.time + FIELD.choiceWindow,
+    decidesAt: rare ? null : state.time + FIELD.choiceWindow,
   };
   note(trip, "encounter", "ev.encounter", { name: displayName(found), route: route.id }, state.time);
 }
@@ -938,6 +943,12 @@ function finish(
 ): void {
   const crew = crewById(state, trip.crewId);
   const route = routeById(trip.routeId);
+
+  // A rare find waits for the whole trip rather than a timer, so one can still
+  // be open when the crew starts for home. They settle it themselves on the way
+  // — which is what bounds the waiting to one per crew instead of a backlog.
+  if (trip.pending && crew) resolveInCharacter(state, trip, crew.trait);
+
   state.expeditions = state.expeditions.filter((e) => e !== trip);
 
   // Unspent kit is sold on, at a loss. Carrying it home in full would make

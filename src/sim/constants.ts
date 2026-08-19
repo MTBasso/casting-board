@@ -422,6 +422,30 @@ export const RANGER = {
   slotsPerOfficeLevel: 1,
   /** Level field staff arrive at, per thousand peak renown. */
   levelPerThousandRenown: 5,
+  /**
+   * Catches a Ranger must make to count as fully seasoned.
+   *
+   * Skill is the whole reason a Ranger is a *person* rather than a route
+   * upgrade: a veteran walks the same ground and comes back with things a rookie
+   * never sees. Below, `skillOf` turns catches into a 0..1 figure that widens
+   * what they can find in two ways at once.
+   */
+  catchesToMaster: 400,
+  /**
+   * Levels above a route's own ceiling a fully seasoned Ranger can find.
+   *
+   * They are not making the creatures stronger; they are finding the ones that
+   * were always out there and a rookie walked past.
+   */
+  skillLevelBonus: 6,
+  /**
+   * How far a seasoned Ranger tilts the draw toward rare species.
+   *
+   * Encounter weight already falls off sharply with evolution stage, so this is
+   * applied as an exponent: at full skill the common things stay common and the
+   * rare things stop being nearly impossible.
+   */
+  rarityTilt: 0.55,
   /** Cost of a survey, as a multiple of the route's old scouting fee. */
   intelCostFactor: 2.5,
 } as const;

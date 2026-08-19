@@ -25,7 +25,11 @@ import {
   removeFromCrew,
   reserveCeiling,
   roundSeconds,
+  setAutoWork,
+  skillOf,
   slotsAvailable,
+  suppliesType,
+  dismiss,
   stretchOf,
   unbench,
   usableReserve,
@@ -73,25 +77,109 @@ export function FieldWork() {
         </span>
       </h2>
 
-      <div className="hire-row">
-        <HireCard role="ranger" />
-        <HireCard role="handler" />
+      {/*
+        Two panes on a desktop: the payroll on the left, the ground on the right.
+        Staffing and posting are one decision — you hire *because* a route needs
+        working — and a single stacked column made the player scroll between the
+        two halves of it. Below 62rem the rail moves back above the routes.
+      */}
+      <div className="field-layout">
+        <aside className="field-rail">
+          <HireCard role="ranger" />
+          <HireCard role="handler" />
+
+          {unposted.length > 0 && (
+            <p className="warn-banner">
+              {unposted.length} on the payroll and not on a route. They draw
+              wages either way.
+            </p>
+          )}
+
+          <StaffList />
+        </aside>
+
+        <ul className="route-list">
+          {routes.map((r) => (
+            <RouteRow key={r.id} route={r} />
+          ))}
+        </ul>
       </div>
-
-      {unposted.length > 0 && (
-        <p className="warn-banner">
-          {unposted.length} on the payroll and not on a route:{" "}
-          {unposted.map((t) => t.name).join(", ")}.
-        </p>
-      )}
-
-      <ul className="route-list">
-        {routes.map((r) => (
-          <RouteRow key={r.id} route={r} />
-        ))}
-      </ul>
     </div>
   );
+}
+
+/**
+ * The payroll, and what each of them is doing.
+ *
+ * Firing lives here rather than on a route, because letting someone go is about
+ * the person and not the ground. A Ranger's skill is earned by catching, so the
+ * row shows what you would be throwing away.
+ */
+function StaffList() {
+  const state = useGame((s) => s.state);
+  const act = useGame((s) => s.act);
+
+  const staff = [...fieldStaff(state, "ranger"), ...fieldStaff(state, "handler")];
+  if (staff.length === 0) return null;
+
+  return (
+    <section className="staff-list">
+      <h3>On the payroll</h3>
+      <ul>
+        {staff.map((t) => {
+          const posting = postingFor(state, t.id);
+          const skill = t.kind === "ranger" ? skillOf(t) : 0;
+          return (
+            <li key={t.id} className={posting ? "is-working" : "is-idle"}>
+              <Portrait trainer={t} size={30} />
+              <span className="staff-id">
+                <span className="staff-name">
+                  {t.name}
+                  <TypeBadge type={t.affinity} size="sm" />
+                </span>
+                <span className="dim">
+                  {t.kind === "ranger" ? "Ranger" : "Handler"}
+                  {t.kind === "ranger" && ` · ${rankOf(skill)}`}
+                  {posting ? " · working" : " · idle"}
+                </span>
+              </span>
+
+              <span className="staff-acts">
+                <label className="toggle sm" title="Take themselves back out when idle">
+                  <input
+                    type="checkbox"
+                    checked={t.autoWork}
+                    onChange={(e) => act((s) => setAutoWork(s, t.id, e.target.checked))}
+                  />
+                  <span>auto</span>
+                </label>
+                <button
+                  type="button"
+                  className="linky danger"
+                  title={
+                    skill > 0
+                      ? `Let go. ${t.name} has ${t.experience} catches of experience — a replacement starts at none.`
+                      : "Let them go"
+                  }
+                  onClick={() => act((s) => void dismiss(s, t.id))}
+                >
+                  fire
+                </button>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+/** What a Ranger's experience has made of them. */
+function rankOf(skill: number): string {
+  if (skill >= 0.85) return "seasoned";
+  if (skill >= 0.5) return "practised";
+  if (skill >= 0.2) return "finding their feet";
+  return "green";
 }
 
 /**
@@ -233,6 +321,12 @@ function Slot({ route, role }: { route: Route; role: FieldRole }) {
 
   const staff = fieldStaff(state, role);
   const ready = staff.filter((t) => canPost(state, route.id, t.id).ok);
+  // A Ranger brings back their own type and nothing else, so a route that holds
+  // none of the types you employ is simply closed to you until you hire for it.
+  const wrongGround =
+    role === "ranger" &&
+    staff.length > 0 &&
+    staff.every((t) => !suppliesType(route, t.affinity));
   const blocked = staff
     .filter((t) => !canPost(state, route.id, t.id).ok && !postingFor(state, t.id))
     .map((t) => ({ trainer: t, why: (canPost(state, route.id, t.id) as { reason: string }).reason }));
@@ -243,6 +337,8 @@ function Slot({ route, role }: { route: Route; role: FieldRole }) {
 
       {staff.length === 0 ? (
         <p className="dim">None employed.</p>
+      ) : wrongGround ? (
+        <p className="dim">No Ranger of yours catches what lives here.</p>
       ) : ready.length === 0 && !choosing ? (
         <p className="dim">
           {blocked[0]?.why ?? "Everyone is posted elsewhere."}

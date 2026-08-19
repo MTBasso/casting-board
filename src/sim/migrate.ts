@@ -125,6 +125,8 @@ export function normalize(raw: unknown): LeagueState | null {
     trainer.origin ??= "hired";
     trainer.leadIndex ??= 0;
     trainer.look ||= pickLook(state.rng, trainer.affinity, trainer.kind);
+    trainer.experience ??= 0;
+    trainer.autoWork ??= false;
   }
 
   for (const gym of Object.values(state.gyms)) {
@@ -264,6 +266,9 @@ const STEPS: Record<number, (state: LeagueState) => LeagueState> = {
   20: (state) => state,
   // v21 → v22: every trainer has a face; Rangers work alone.
   21: (state) => state,
+  // v22 → v23: Ranger skill, type-bound catching, and staff who re-post
+  // themselves.
+  22: (state) => state,
 };
 
 export function migrateState(

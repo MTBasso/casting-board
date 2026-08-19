@@ -25,6 +25,7 @@ import {
   staffSeat,
   ensureSeats,
   eliteUnlocked,
+  setAutoWork,
   readiness,
   TYPES,
 } from "../src/sim/index.js";
@@ -70,11 +71,26 @@ function play(state: LeagueState): void {
 
   autoFillAll(state);
 
+  // What the board is short of, worst first — a Ranger only brings back their
+  // own type now, so hiring is how you answer a starved gym.
+  const needed = new Map<string, number>();
+  for (const t of Object.values(state.trainers)) {
+    if (t.kind === "candidate" || t.kind === "ranger" || t.kind === "handler") continue;
+    const gap = partyCapOf(t, state) - t.party.length;
+    if (gap > 0) needed.set(t.affinity, (needed.get(t.affinity) ?? 0) + gap);
+  }
+
   for (const role of ["ranger", "handler"] as const) {
     while (canHire(state, role).ok) {
       const offer = fieldOffer(state, role);
-      if (!offer[0]) break;
-      hire(state, role, offer[0]);
+      if (offer.length === 0) break;
+      const useful =
+        offer.slice().sort((a, b) => (needed.get(b) ?? 0) - (needed.get(a) ?? 0))[0] ??
+        offer[0];
+      if (!useful) break;
+      const hired = hire(state, role, useful);
+      // Keep them working: idle staff draw wages for nothing.
+      if (hired.ok) setAutoWork(state, hired.trainerId, true);
     }
     for (const trainer of fieldStaff(state, role)) {
       if (postingFor(state, trainer.id)) continue;

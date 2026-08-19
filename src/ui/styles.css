@@ -200,6 +200,9 @@ button { font: inherit; color: inherit; }
 
 .single-screen { max-width: 52rem; }
 
+/* A screen that earns the whole window: two panes, not one column of cards. */
+.full-screen { max-width: 96rem; min-width: 0; }
+
 .col-title {
   display: flex;
   align-items: center;
@@ -2231,9 +2234,10 @@ body { padding-bottom: 3rem; }
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(30rem, 100%), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(26rem, 100%), 1fr));
   gap: 0.5rem;
   align-items: start;
+  min-width: 0;
 }
 .route-card {
   display: flex;
@@ -2408,6 +2412,75 @@ body { padding-bottom: 3rem; }
 /* -- The Field: routes, and the people working them ------------------------ */
 
 .field { display: flex; flex-direction: column; gap: 0.7rem; min-width: 0; }
+
+/*
+ * Desktop is two panes: the payroll on the left, the ground on the right.
+ *
+ * Staffing and posting are one decision — you hire *because* a route needs
+ * working — and the single stacked column made the player scroll between the
+ * two halves of it. This is the reason the tab read as a phone screen on a
+ * desktop: not that it was too narrow, but that it was one column of cards.
+ */
+.field-layout { display: grid; gap: 0.8rem; min-width: 0; }
+
+@media (min-width: 62rem) {
+  .field-layout {
+    grid-template-columns: minmax(0, 20rem) minmax(0, 1fr);
+    align-items: start;
+  }
+  .field-rail { position: sticky; top: 7rem; }
+}
+
+.field-rail { display: grid; gap: 0.6rem; align-content: start; min-width: 0; }
+
+.staff-list {
+  padding: 0.6rem 0.7rem;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+.staff-list h3 { margin: 0 0 0.4rem; font-size: 0.8rem; }
+.staff-list ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.25rem; }
+.staff-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.3rem;
+  border-radius: var(--radius);
+  border-left: 2px solid transparent;
+  background: var(--sunken);
+  min-width: 0;
+}
+.staff-list li.is-working { border-left-color: var(--accent); }
+.staff-list li.is-idle { border-left-color: var(--warn); }
+
+.staff-id { display: grid; gap: 0.05rem; min-width: 0; flex: 1; }
+.staff-name {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  min-width: 0;
+}
+.staff-name > :first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.staff-id .dim { font-size: 0.65rem; }
+
+.staff-acts { display: flex; align-items: center; gap: 0.4rem; flex: none; }
+.toggle.sm {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+}
+.toggle.sm input { margin: 0; }
+.linky.danger { color: var(--danger); }
+.linky.danger:hover { color: var(--ink); }
 
 .hire-row {
   display: grid;

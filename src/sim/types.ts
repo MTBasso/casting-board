@@ -178,6 +178,24 @@ export interface Trainer {
    */
   look: string;
   /**
+   * Work done that made them better at it. Catches, for a Ranger.
+   *
+   * Kept on the trainer rather than the posting so it survives a shift ending,
+   * which is the point — a Ranger you have kept on for a week is worth more than
+   * one you hired this morning, and firing them throws that away.
+   */
+  experience: number;
+  /**
+   * Whether they take themselves back out when idle.
+   *
+   * Field staff draw wages whether or not they are on a route, so a Ranger
+   * standing around between shifts is money going out for nothing. This is the
+   * player saying "just keep working" — the same bargain as auto-fill: the
+   * chore goes away, the decision stays, because *where* they go is still
+   * whatever you last chose for them.
+   */
+  autoWork: boolean;
+  /**
    * Which slot leads the next challenge.
    *
    * The party takes turns. Without this, one creature fought essentially every

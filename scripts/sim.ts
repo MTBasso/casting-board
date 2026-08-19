@@ -30,6 +30,7 @@ import {
   stretchOf,
   eligibleRoutes,
   hire,
+  setAutoWork,
   post,
   partyCapOf,
   postingFor,
@@ -197,7 +198,9 @@ function greedyPolicy(
       const offer = fieldOffer(state, role);
       const useful = offer.find((t) => wanted.has(t)) ?? offer[0];
       if (!useful) break;
-      hire(state, role, useful);
+      const hired = hire(state, role, useful);
+      // Keep them working: idle field staff draw wages for nothing.
+      if (hired.ok) setAutoWork(state, hired.trainerId, true);
     }
 
     for (const trainer of fieldStaff(state, role)) {

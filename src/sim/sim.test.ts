@@ -64,6 +64,10 @@ import {
   reserveCount,
   usableReserve,
   slotsAvailable,
+  skillOf,
+  suppliesType,
+  dismiss,
+  setAutoWork,
   runChallenge,
   forceRecruit,
   isProtected,
@@ -112,7 +116,7 @@ import {
   familyOf,
   minLevelFor,
 } from "../data/catalog.js";
-import type { Creature, LeagueState } from "./types.js";
+import type { Creature, LeagueState, Route } from "./types.js";
 
 function run(state: LeagueState, seconds: number): void {
   for (let i = 0; i < seconds; i++) tick(state, 1);
@@ -306,14 +310,34 @@ describe("rangers", () => {
    * Rangers work alone — their job is to find creatures, not to train them — so
    * there is no partner to arrange, and any open ground will take them.
    */
-  function withRanger(seed: number): { state: LeagueState; trainerId: string } {
+  function withRanger(seed: number): {
+    state: LeagueState;
+    trainerId: string;
+    /** Ground that actually holds their type — they catch nothing elsewhere. */
+    route: Route;
+  } {
     const state = newLeague(seed);
     state.money = 200_000;
     const type = fieldOffer(state, "ranger")[0];
     if (!type) throw new Error("no offer");
     const hired = hire(state, "ranger", type);
     if (!hired.ok) throw new Error(hired.reason);
-    return { state, trainerId: hired.trainerId };
+
+    const trainer = state.trainers[hired.trainerId];
+    if (!trainer) throw new Error("no trainer");
+
+    // A Ranger brings back their own type and nothing else, so the fixture has
+    // to send them somewhere it lives. Where the drawn type has no ground open,
+    // re-specialise them rather than making the test depend on the draw.
+    let route = eligibleRoutes(state).find((r) => suppliesType(r, trainer.affinity));
+    if (!route) {
+      route = eligibleRoutes(state)[0];
+      if (!route) throw new Error("no routes");
+      const supplied = TYPES.find((t) => suppliesType(route!, t));
+      if (!supplied) throw new Error("route supplies nothing");
+      trainer.affinity = supplied;
+    }
+    return { state, trainerId: hired.trainerId, route };
   }
 
   it("opens a league with a bench, so there is somebody to field", () => {
@@ -331,29 +355,65 @@ describe("rangers", () => {
   });
 
   it("brings creatures in over time rather than on purchase", () => {
-    const { state, trainerId } = withRanger(2103);
-    const route = eligibleRoutes(state)[0];
-    if (!route) throw new Error("no routes");
-
+    const { state, trainerId, route } = withRanger(2103);
     expect(post(state, route.id, trainerId).ok).toBe(true);
     const before = Object.keys(state.creatures).length;
     run(state, Math.round(constants.RANGER.shiftSeconds * 0.9));
     expect(Object.keys(state.creatures).length).toBeGreaterThan(before);
   });
 
-  it("takes any open ground, since nobody is at risk on it", () => {
+  it("refuses ground that does not hold their type", () => {
     const { state, trainerId } = withRanger(2104);
-    state.peakRenown = 100000;
-    const hard = [...eligibleRoutes(state)].sort((a, b) => b.levelMin - a.levelMin)[0];
-    if (!hard) throw new Error("no routes");
-    expect(canPost(state, hard.id, trainerId).ok).toBe(true);
+    const trainer = state.trainers[trainerId];
+    if (!trainer) throw new Error("no trainer");
+
+    const barren = eligibleRoutes(state).find(
+      (r) => !suppliesType(r, trainer.affinity),
+    );
+    // A Ranger catches their own type and nothing else, so ground without it is
+    // a shift spent walking.
+    if (barren) expect(canPost(state, barren.id, trainerId).ok).toBe(false);
+  });
+
+  it("brings back their own type, whatever else lives there", () => {
+    const { state, trainerId, route } = withRanger(2111);
+    const trainer = state.trainers[trainerId];
+    if (!trainer) throw new Error("no trainer");
+
+    post(state, route.id, trainerId);
+    const caught: string[] = [];
+    for (let i = 0; i < Math.round(constants.RANGER.shiftSeconds * 0.9); i++) {
+      caught.push(...tick(state, 1).caught);
+    }
+    expect(caught.length).toBeGreaterThan(0);
+    for (const id of caught) {
+      expect(state.creatures[id]?.types).toContain(trainer.affinity);
+    }
+  });
+
+  it("gets better at it, and finds more as it does", () => {
+    const { state, trainerId } = withRanger(2112);
+    const trainer = state.trainers[trainerId];
+    if (!trainer) throw new Error("no trainer");
+
+    expect(skillOf(trainer)).toBe(0);
+    trainer.experience = constants.RANGER.catchesToMaster;
+    expect(skillOf(trainer)).toBe(1);
+
+    // A seasoned Ranger reaches above the route's own ceiling — they are not
+    // making creatures stronger, they are finding the ones a rookie walks past.
+    const route = eligibleRoutes(state).find((r) => suppliesType(r, trainer.affinity));
+    if (!route) return;
+    let best = 0;
+    for (let i = 0; i < 200; i++) {
+      const c = drawFrom(state, route, trainer);
+      if (c) best = Math.max(best, c.level);
+    }
+    expect(best).toBeGreaterThan(route.levelMax);
   });
 
   it("only yields types the route actually supplies", () => {
-    const { state, trainerId } = withRanger(2105);
-    const route = eligibleRoutes(state)[0];
-    if (!route) throw new Error("no routes");
-
+    const { state, trainerId, route } = withRanger(2105);
     post(state, route.id, trainerId);
     const caught: string[] = [];
     for (let i = 0; i < Math.round(constants.RANGER.shiftSeconds * 0.9); i++) {
@@ -372,9 +432,7 @@ describe("rangers", () => {
   });
 
   it("stops once the box holds all the trainers could field", () => {
-    const { state, trainerId } = withRanger(2106);
-    const route = eligibleRoutes(state)[0];
-    if (!route) throw new Error("no routes");
+    const { state, trainerId, route } = withRanger(2106);
     post(state, route.id, trainerId);
 
     run(state, 200 * 60 * 60);
@@ -386,10 +444,7 @@ describe("rangers", () => {
   });
 
   it("works a shift and then comes home", () => {
-    const { state, trainerId } = withRanger(2107);
-    const route = eligibleRoutes(state)[0];
-    if (!route) throw new Error("no routes");
-
+    const { state, trainerId, route } = withRanger(2107);
     post(state, route.id, trainerId);
     expect(postingFor(state, trainerId)).toBeDefined();
 
@@ -433,6 +488,35 @@ describe("rangers", () => {
     expect(hasIntel(state, route.id)).toBe(false);
     expect(buyIntel(state, route.id).ok).toBe(true);
     expect(hasIntel(state, route.id)).toBe(true);
+  });
+
+  it("can be let go, and their skill goes with them", () => {
+    const { state, trainerId, route } = withRanger(2113);
+    const trainer = state.trainers[trainerId];
+    if (!trainer) throw new Error("no trainer");
+    trainer.experience = 100;
+    post(state, route.id, trainerId);
+
+    expect(dismiss(state, trainerId).ok).toBe(true);
+    expect(state.trainers[trainerId]).toBeUndefined();
+    expect(postingFor(state, trainerId)).toBeUndefined();
+  });
+
+  it("puts itself back to work when told to", () => {
+    const { state, trainerId, route } = withRanger(2114);
+    post(state, route.id, trainerId);
+    setAutoWork(state, trainerId, true);
+
+    // Ride out the shift; they should take themselves straight back out.
+    run(state, constants.RANGER.shiftSeconds + 30);
+    expect(postingFor(state, trainerId)).toBeDefined();
+  });
+
+  it("stays idle when not told to, so the choice is still the player's", () => {
+    const { state, trainerId, route } = withRanger(2115);
+    post(state, route.id, trainerId);
+    run(state, constants.RANGER.shiftSeconds + 30);
+    expect(postingFor(state, trainerId)).toBeUndefined();
   });
 
   it("makes stronger routes rarer, derived from what lives there", () => {

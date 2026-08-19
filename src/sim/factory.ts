@@ -153,6 +153,8 @@ export function makeTrainer(
       (kind === "gym" ? GYM_TRAINERS.salaryFactor : 1),
     morale: 1,
     look: pickLook(rng, affinity, kind),
+    experience: 0,
+    autoWork: false,
     tenure: 0,
     leadIndex: 0,
     standing: 1,

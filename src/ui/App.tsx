@@ -100,7 +100,7 @@ export function App() {
         )}
 
         {tab === "field" && (
-          <div className="single-screen wide">
+          <div className="full-screen">
             <FieldWork />
           </div>
         )}

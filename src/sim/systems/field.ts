@@ -356,8 +356,14 @@ export function canPost(
   }
   if (postingFor(state, trainerId)) return { ok: false, reason: "Already posted" };
 
-  // A Ranger goes alone, so any open ground will take them.
-  if (trainer.kind === "ranger") return { ok: true };
+  if (trainer.kind === "ranger") {
+    // They go alone, but they only bring back their own type — so ground that
+    // does not hold it is a shift spent walking.
+    if (!suppliesType(route, trainer.affinity)) {
+      return { ok: false, reason: `No ${trainer.affinity} lives here` };
+    }
+    return { ok: true };
+  }
 
   const crew = crewOf(state, trainerId);
   if (crew.length === 0) return { ok: false, reason: "Nobody in their crew" };
@@ -399,6 +405,75 @@ export function post(
     endsAt: role === "ranger" ? state.time + RANGER.shiftSeconds : null,
   });
   return { ok: true };
+}
+
+/**
+ * Let a field trainer go.
+ *
+ * Their crew goes back to the box — those creatures are yours, and always were.
+ * What you lose is the person and everything they had learned: a Ranger's skill
+ * is earned by catching, so dismissing a veteran and hiring a replacement is a
+ * real step backwards, not a sideways move.
+ */
+export function dismiss(
+  state: LeagueState,
+  trainerId: string,
+): { ok: true } | { ok: false; reason: string } {
+  const trainer = state.trainers[trainerId];
+  if (!trainer || (trainer.kind !== "ranger" && trainer.kind !== "handler")) {
+    return { ok: false, reason: "Not field staff" };
+  }
+
+  recall(state, trainerId);
+  for (const id of [...trainer.party]) removeFromCrew(state, id);
+
+  delete state.trainers[trainerId];
+  log(state, "quit", `${trainer.name} has been let go.`);
+  return { ok: true };
+}
+
+/** Whether they take themselves back out when a shift ends. */
+export function setAutoWork(state: LeagueState, trainerId: string, on: boolean): void {
+  const trainer = state.trainers[trainerId];
+  if (trainer) trainer.autoWork = on;
+}
+
+/**
+ * Put idle staff who asked for it back to work.
+ *
+ * Field staff draw wages whether or not they are on a route, so a Ranger
+ * standing about between shifts is money going out for nothing. The player is
+ * still choosing *what kind* of work — a Ranger only ever takes ground holding
+ * their own type, a Handler the hardest they can stand on — so this removes the
+ * chore of re-posting without removing the decision of who to employ.
+ */
+function repostIdle(state: LeagueState): void {
+  const open = eligibleRoutes(state);
+
+  for (const trainer of Object.values(state.trainers)) {
+    if (trainer.kind !== "ranger" && trainer.kind !== "handler") continue;
+    if (!trainer.autoWork) continue;
+    if (postingFor(state, trainer.id)) continue;
+
+    const ranked =
+      trainer.kind === "ranger"
+        ? [...open]
+            .filter((r) => suppliesType(r, trainer.affinity))
+            // Richest ground for their type first, then the best they can reach.
+            .sort(
+              (a, b) =>
+                (b.supply[trainer.affinity] ?? 0) - (a.supply[trainer.affinity] ?? 0) ||
+                b.levelMax - a.levelMax,
+            )
+        : [...open].sort((a, b) => b.levelMax - a.levelMax);
+
+    for (const route of ranked) {
+      if (canPost(state, route.id, trainer.id).ok) {
+        post(state, route.id, trainer.id);
+        break;
+      }
+    }
+  }
 }
 
 /** End a posting. The crew stays together — you built that team. */
@@ -538,26 +613,64 @@ function releaseSpillover(state: LeagueState, report: TickReport): void {
  * species within it. That is what keeps starters and legendaries out of the
  * wild and fully evolved forms rare.
  */
-export function drawFrom(state: LeagueState, route: Route): Creature | null {
-  const type = weighted(state.rng, route.supply) as TypeId;
-  const pool = catalog
-    .wildByType(type)
-    .filter((s) => minLevelFor(s) <= route.levelMax);
+export function drawFrom(
+  state: LeagueState,
+  route: Route,
+  /** The Ranger walking it. Their type decides what they bring back. */
+  ranger?: Trainer,
+): Creature | null {
+  // A Ranger catches their own type and nothing else. It is what makes hiring
+  // one a decision rather than a purchase: a Grass Ranger is only worth what
+  // your Grass gym is worth, and the ground you send them to has to hold Grass
+  // in the first place.
+  const type = ranger
+    ? ranger.affinity
+    : (weighted(state.rng, route.supply) as TypeId);
+
+  const skill = ranger ? skillOf(ranger) : 0;
+  // Skill does not make creatures stronger; it finds the ones a rookie walks
+  // past. A seasoned Ranger reaches a little above the route's own ceiling.
+  const ceiling = route.levelMax + Math.round(skill * RANGER.skillLevelBonus);
+
+  const pool = catalog.wildByType(type).filter((s) => minLevelFor(s) <= ceiling);
   if (pool.length === 0) return null;
 
   const weights: Record<string, number> = {};
-  for (const species of pool) weights[species.slug] = encounterWeight(species);
+  for (const species of pool) {
+    // Encounter weight falls off sharply with evolution stage, so skill is
+    // applied as an exponent: common things stay common, and rare things stop
+    // being nearly impossible.
+    const base = encounterWeight(species);
+    weights[species.slug] = Math.pow(base, 1 - skill * RANGER.rarityTilt);
+  }
 
   const slug = weighted(state.rng, weights);
   const species = catalog.get(slug);
   if (!species) return null;
 
   return makeCreature(state, species, "reserve", {
-    level: int(state.rng, route.levelMin, route.levelMax),
+    level: int(state.rng, route.levelMin, ceiling),
   });
 }
 
+/**
+ * How good a Ranger has got at the job, 0..1.
+ *
+ * Earned by catching, so it is a record of work done rather than of time on the
+ * payroll — and it is why firing a veteran costs you something a replacement
+ * cannot make up on their first day.
+ */
+export function skillOf(trainer: Trainer): number {
+  return clamp01(trainer.experience / RANGER.catchesToMaster);
+}
+
+/** Whether this ground holds anything a Ranger of this type would find. */
+export function suppliesType(route: Route, type: TypeId): boolean {
+  return (route.supply[type] ?? 0) > 0;
+}
+
 export function tickField(state: LeagueState, dt: number, report: TickReport): void {
+  repostIdle(state);
   if (state.postings.length === 0) return;
 
   releaseSpillover(state, report);
@@ -623,7 +736,7 @@ export function tickField(state: LeagueState, dt: number, report: TickReport): v
       if (!route) break;
 
       if (posting.role === "ranger") {
-        workCatch(state, posting, route, report);
+        workCatch(state, posting, route, trainer, report);
       } else {
         workTraining(state, posting, route, trainer, crew, report);
       }
@@ -639,10 +752,17 @@ export function tickField(state: LeagueState, dt: number, report: TickReport): v
  * *and* paid you in creatures. Collecting and training are now genuinely
  * different jobs with genuinely different rewards.
  */
-function workCatch(state: LeagueState, posting: Posting, route: Route, report: TickReport): void {
-  const caught = drawFrom(state, route);
+function workCatch(
+  state: LeagueState,
+  posting: Posting,
+  route: Route,
+  ranger: Trainer,
+  report: TickReport,
+): void {
+  const caught = drawFrom(state, route, ranger);
   if (caught) {
     posting.caught += 1;
+    ranger.experience += 1;
     report.caught.push(caught.id);
   }
 }

@@ -193,7 +193,7 @@ export function CreatureSummary({
             <h4>Career</h4>
             <p className="memo-label">
               {t(career.label)} — <b>{career.left.toLocaleString()}</b>{" "}
-              {t("creature.battlesLeft", { n: "" }).trim()}
+              {t("creature.battlesLeft", { n: career.left })}
             </p>
             <span className="career-track">
               <span

@@ -4,10 +4,14 @@ import { create } from "zustand";
  * Language.
  *
  * Two dictionaries and a lookup, rather than an i18n library — the game has a
- * few hundred strings and one translator, and a framework would buy plural rules
- * and locale negotiation that nothing here needs. What it *does* need is that
- * adding an English string without its Portuguese counterpart fails to compile,
- * which the `Dict` type below enforces.
+ * few hundred strings and one translator, and a framework would buy locale
+ * negotiation and CLDR plural categories that two languages sharing one/other
+ * do not need. What it *does* need is that adding an English string without its
+ * Portuguese counterpart fails to compile, which the `Dict` type below enforces.
+ *
+ * Plurals are inline, in the string — see `fill`. They live there rather than at
+ * the call site because the caller knows a count, not a grammar: Portuguese
+ * needs the adjective to agree too, and English does not.
  *
  * The sim stays language-free: it emits keys and parameters, and translation
  * happens at render. A league saved in one language reads correctly in the
@@ -43,11 +47,28 @@ export const useLang = create<LangStore>((set) => ({
   },
 }));
 
-/** Fill `{name}` style holes. Values are stringified as they come. */
+/**
+ * Fill `{name}` style holes. Values are stringified as they come.
+ *
+ * `{n}` is the value. `{n:one|many}` is the *word* that has to agree with it —
+ * `"{n} {n:badge|badges}"`, `"{n} {n:insígnia|insígnias} {n:levada|levadas}"`.
+ * Each word gets its own group, which is what makes Portuguese gender agreement
+ * work without the string knowing any grammar.
+ *
+ * English and Portuguese share the rule that matters here: exactly one is
+ * singular, everything else — zero included — is plural. A language that splits
+ * it further would need a real plural engine, and would be the moment to stop
+ * hand-rolling this.
+ */
 function fill(text: string, params?: Record<string, string | number>): string {
   if (!params) return text;
-  return text.replace(/\{(\w+)\}/g, (whole, key: string) =>
-    key in params ? String(params[key]) : whole,
+  return text.replace(
+    /\{(\w+)(?::([^{}|]*)\|([^{}|]*))?\}/g,
+    (whole, key: string, one: string | undefined, many: string) => {
+      if (!(key in params)) return whole;
+      if (one === undefined) return String(params[key]);
+      return Number(params[key]) === 1 ? one : many;
+    },
   );
 }
 
@@ -144,13 +165,11 @@ export const en = {
   "decision.strain.title": "{name} is close to walking",
   "decision.strain.detail":
     "Pay them properly, or step them down to something they can carry.",
-  "decision.idleCrews.title": "{n} crew in from the field",
-  "decision.idleCrews.titlePlural": "{n} crews in from the field",
+  "decision.idleCrews.title": "{n} {n:crew|crews} in from the field",
   "decision.idleCrews.detail":
     "They draw wages between trips. Outfit them and send them somewhere.",
   "decision.choice.title": "A crew is waiting on you",
-  "decision.eliteEmpty.title": "{n} Elite seat unstaffed",
-  "decision.eliteEmpty.titlePlural": "{n} Elite seats unstaffed",
+  "decision.eliteEmpty.title": "{n} Elite {n:seat|seats} unstaffed",
   "decision.eliteEmpty.detail":
     "An empty seat is a free pass on the way to taking your league.",
   "decision.daycareFree.title": "{n} retired, and the Day-Care has room",
@@ -168,8 +187,7 @@ export const en = {
   "decision.boxFull.title": "The box is full and catching has stopped",
   "decision.boxFull.detail":
     "Cast what you have, or trade the types nobody can field.",
-  "decision.shortHanded.title": "{n} trainer fielding less than they could",
-  "decision.shortHanded.titlePlural": "{n} trainers fielding less than they could",
+  "decision.shortHanded.title": "{n} {n:trainer|trainers} fielding less than they could",
   "decision.shortHanded.detail":
     "Empty slots fill themselves when the box holds the right type.",
   "decision.rival.title": "{name} arrives in {mins}m",
@@ -247,7 +265,7 @@ export const en = {
   "gyms.hireJunior": "Hire {type} · ₱{n}",
   "gyms.addSlot": "+1 slot · ₱{n}",
   "gyms.absorbed":
-    "Your Leader's party fought {n} fewer battles because of these {c}.",
+    "Your Leader's party fought {n} fewer {n:battle|battles} thanks to {c} {c:junior|juniors}.",
   "gyms.noJuniors":
     "No junior trainers — every challenger goes straight at your Leader.",
   "gyms.partyOf": "{name}'s party",
@@ -295,12 +313,12 @@ export const en = {
   "creature.species": "Species",
   "creature.record": "Record",
   "creature.trainer": "Trainer",
-  "creature.battlesLeft": "{n} battles left",
+  "creature.battlesLeft": "{n:battle|battles} left",
   "creature.bondTitle": "How well you know each other",
 
   // -- PC ------------------------------------------------------------------
   "pc.title": "PC Box",
-  "pc.creatures": "{n} creatures",
+  "pc.creatures": "{n} {n:creature|creatures}",
   "pc.everything": "Everything",
   "pc.inBox": "In the box",
   "pc.inParties": "In parties",
@@ -354,7 +372,7 @@ export const en = {
   "elite.staffed": "{n}/{total} staffed · next run {m}m",
   "elite.freePass":
     "Every empty seat is a free pass. A challenger who clears all five takes your league.",
-  "elite.taken": "Your league has been taken {n} times.",
+  "elite.taken": "Your league has been taken {n} {n:time|times}.",
   "elite.tookTitle": "✦ took the title",
   "elite.champion": "Champion",
   "elite.seat": "Elite {n}",
@@ -384,7 +402,7 @@ export const en = {
   "staff.breaking": "At breaking point",
   "staff.unhappy": "Unhappy",
   "staff.backIn": "back in {t}",
-  "staff.suspensions": "{n} of {max} suspensions · ",
+  "staff.suspensions": "{n} of {max} {max:suspension|suspensions} · ",
   "staff.morale": "morale {n}%",
   "staff.warnTargets":
     "Suspension in {n}% — step them down or pay them properly.",
@@ -420,18 +438,18 @@ export const en = {
   "log.goneForGood": "{name} has left the league for good.",
   "log.stepsDown": "{name} steps down to {post}.",
   "log.rivalAgreed": "{name} has finally agreed to work for you.",
-  "log.badgesClaimed": "{n} badges claimed by challengers.",
+  "log.badgesClaimed": "{n} {n:badge|badges} claimed by challengers.",
   "log.rivalHeld": "{name} challenged and lost.",
   "log.rivalWon": "{name} beat your gym and took a badge.",
   "log.eliteLost": "A challenger beat the Elite Four and took the league.",
-  "log.eliteHeld": "A challenger cleared {n} of the Elite tier before falling.",
+  "log.eliteHeld": "A challenger cleared {n} {n:seat|seats} of the Elite tier before falling.",
   "log.upsetWon": "{name} won one they had no business winning.",
   "log.upsetLost": "{name} lost one they should have won — still settling in.",
   "log.whileAway":
     "While you were away: {waves} challenges, ₱{money} taken, {caught} caught.",
   "log.suspended": "{name} is suspended ({n} of {max}).",
   "log.crewBeaten": "{name} came back beaten from {route}.",
-  "log.crewHome": "{name} are back from {route} with {n}.",
+  "log.crewHome": "{name} are back from {route} with {n} {n:catch|catches}.",
   "log.reached": "{route} is on the map. And {resident} lives here.",
 
   "ev.hazardSalved": "Rough going on {route}. A Potion covered it.",
@@ -443,8 +461,8 @@ export const en = {
   "ev.encounterNoBalls": "A {name} on {route}, and nothing to catch it with.",
   "ev.wayThrough": "A way through toward {route}.",
   "ev.notEnough": "Not enough left to take it.",
-  "ev.tookIt": "Took it. {n} Poké Balls gone.",
-  "ev.choicePrompt": "A {name} on {route}. Taking it will cost {n} Poké Balls.",
+  "ev.tookIt": "Took it. {n} {n:Poké Ball|Poké Balls} gone.",
+  "ev.choicePrompt": "A {name} on {route}. Taking it will cost {n} {n:Poké Ball|Poké Balls}.",
   "ev.choiceTake": "Spend {n} and take it",
   "ev.choiceLeave": "Leave it",
 
@@ -523,11 +541,11 @@ export const en = {
   "obj.first-legend.detail": "A creature that serves most of a life enters the Hall. That is what retirement is for.",
   "obj.promote.title": "Climb a tier",
   "obj.promote.detail": "Induct from the Hall and start again, harder. The Mentors you choose are all that survives.",
-  "obj.held.title": "Turn away {n} challengers",
+  "obj.held.title": "Turn away {n} {n:challenger|challengers}",
   "obj.held.detail": "The board holding is the whole job.",
-  "obj.collected.title": "Bring home {n} creatures",
+  "obj.collected.title": "Bring home {n} {n:creature|creatures}",
   "obj.collected.detail": "Every one of them arrived because somebody went and got it.",
-  "obj.mapped.title": "Reach {n} places",
+  "obj.mapped.title": "Reach {n} {n:place|places}",
   "obj.mapped.detail": "The map grows because crews walked it.",
 
   "reward.crew": "a crew slot",
@@ -611,8 +629,8 @@ export const pt: Dict = {
 
   "desk.title": "Mesa",
   "desk.nothingOpen": "nada pendente",
-  "desk.open": "{n} pendente(s)",
-  "desk.openUrgent": "{n} pendente(s) · {u} urgente(s)",
+  "desk.open": "{n} {n:pendente|pendentes}",
+  "desk.openUrgent": "{n} {n:pendente|pendentes} · {u} {u:urgente|urgentes}",
   "desk.allClear":
     "Nada depende de você agora. A liga está aguentando, todo mundo está trabalhando e ainda há espaço no PC. Vá assistir a uma batalha.",
   "desk.quiet": "Tudo tranquilo desde a última vez.",
@@ -646,16 +664,14 @@ export const pt: Dict = {
   "decision.strain.title": "{name} está a ponto de sair",
   "decision.strain.detail":
     "Pague direito, ou rebaixe para um posto que ele consiga carregar.",
-  "decision.idleCrews.title": "{n} equipe de campo parada",
-  "decision.idleCrews.titlePlural": "{n} equipes de campo paradas",
+  "decision.idleCrews.title": "{n} {n:equipe|equipes} de campo {n:parada|paradas}",
   "decision.idleCrews.detail":
     "Elas recebem salário entre viagens. Equipe-as e mande para algum lugar.",
   "decision.choice.title": "Uma equipe está esperando você decidir",
-  "decision.eliteEmpty.title": "{n} cadeira da Elite vazia",
-  "decision.eliteEmpty.titlePlural": "{n} cadeiras da Elite vazias",
+  "decision.eliteEmpty.title": "{n} {n:cadeira|cadeiras} da Elite {n:vazia|vazias}",
   "decision.eliteEmpty.detail":
     "Cadeira vazia é passagem livre no caminho para tomar sua liga.",
-  "decision.daycareFree.title": "{n} aposentados, e a Creche tem vaga",
+  "decision.daycareFree.title": "{n} {n:aposentado|aposentados}, e a Creche tem vaga",
   "decision.daycareFree.detail":
     "Uma carreira longa gera filhotes melhores. Era para isso que servia a aposentadoria.",
   "decision.daycareUnbuilt.title": "Carreiras acabando sem ter para onde ir",
@@ -670,8 +686,7 @@ export const pt: Dict = {
   "decision.boxFull.title": "O PC está cheio e as capturas pararam",
   "decision.boxFull.detail":
     "Escale o que você tem, ou troque os tipos que ninguém consegue usar.",
-  "decision.shortHanded.title": "{n} treinador escalando menos do que poderia",
-  "decision.shortHanded.titlePlural": "{n} treinadores escalando menos do que poderiam",
+  "decision.shortHanded.title": "{n} {n:treinador|treinadores} escalando menos do que {n:poderia|poderiam}",
   "decision.shortHanded.detail":
     "As vagas se preenchem sozinhas quando o PC tem o tipo certo.",
   "decision.rival.title": "{name} chega em {mins}min",
@@ -689,8 +704,8 @@ export const pt: Dict = {
   "field.knownPartly":
     "Conhecida {n}% — percorra de novo para descobrir o que há além.",
   "field.crewHereNow": "Há uma equipe aqui agora.",
-  "field.metHere": "{n} encontrados aqui",
-  "field.metHereRefused": "{n} encontrados aqui, {r} recusados",
+  "field.metHere": "{n} {n:encontrado|encontrados} aqui",
+  "field.metHereRefused": "{n} {n:encontrado|encontrados} aqui, {r} {r:recusado|recusados}",
   "field.hide": "esconder",
   "field.nothingMet": "Nada encontrado aqui ainda. Mande uma equipe e isto se preenche.",
   "field.refusedNote":
@@ -746,7 +761,7 @@ export const pt: Dict = {
   "gyms.hireJunior": "Contratar {type} · ₱{n}",
   "gyms.addSlot": "+1 vaga · ₱{n}",
   "gyms.absorbed":
-    "A equipe do seu Líder lutou {n} batalhas a menos por causa destes {c}.",
+    "A equipe do seu Líder lutou {n} {n:batalha|batalhas} a menos graças a {c} {c:auxiliar|auxiliares}.",
   "gyms.noJuniors":
     "Sem treinadores auxiliares — todo desafiante vai direto no seu Líder.",
   "gyms.partyOf": "Equipe de {name}",
@@ -791,7 +806,7 @@ export const pt: Dict = {
   "creature.species": "Espécie",
   "creature.record": "Cartel",
   "creature.trainer": "Treinador",
-  "creature.battlesLeft": "{n} batalhas restantes",
+  "creature.battlesLeft": "{n:batalha|batalhas} {n:restante|restantes}",
   "creature.bondTitle": "O quanto vocês se conhecem",
 
   "pc.title": "PC",
@@ -822,7 +837,7 @@ export const pt: Dict = {
   "pc.noRosters": "Nenhuma equipe para gerenciar ainda.",
 
   "hall.title": "Hall da Fama",
-  "hall.count": "{n} lembrados · {i} levados adiante",
+  "hall.count": "{n} {n:lembrado|lembrados} · {i} {i:levado|levados} adiante",
   "hall.empty":
     "Ninguém ainda. Um Pokémon entra no Hall quando encerra a carreira depois de servir a maior parte da vida — o que exige serviço longo, não brilhante.",
   "hall.hint":
@@ -847,7 +862,7 @@ export const pt: Dict = {
   "elite.staffed": "{n}/{total} ocupadas · próxima investida em {m}min",
   "elite.freePass":
     "Cada cadeira vazia é passagem livre. Um desafiante que vencer as cinco toma sua liga.",
-  "elite.taken": "Sua liga já foi tomada {n} vezes.",
+  "elite.taken": "Sua liga já foi tomada {n} {n:vez|vezes}.",
   "elite.tookTitle": "✦ tomou o título",
   "elite.champion": "Campeão",
   "elite.seat": "Elite {n}",
@@ -876,7 +891,7 @@ export const pt: Dict = {
   "staff.breaking": "No limite",
   "staff.unhappy": "Insatisfeito",
   "staff.backIn": "volta em {t}",
-  "staff.suspensions": "{n} de {max} suspensões · ",
+  "staff.suspensions": "{n} de {max} {max:suspensão|suspensões} · ",
   "staff.morale": "moral {n}%",
   "staff.warnTargets":
     "Suspensão em {n}% — rebaixe ou pague direito.",
@@ -909,18 +924,18 @@ export const pt: Dict = {
   "log.goneForGood": "{name} deixou a liga de vez.",
   "log.stepsDown": "{name} foi rebaixado para {post}.",
   "log.rivalAgreed": "{name} finalmente aceitou trabalhar para você.",
-  "log.badgesClaimed": "{n} insígnia(s) levada(s) por desafiantes.",
+  "log.badgesClaimed": "{n} {n:insígnia|insígnias} {n:levada|levadas} por desafiantes.",
   "log.rivalHeld": "{name} desafiou e perdeu.",
   "log.rivalWon": "{name} venceu seu ginásio e levou uma insígnia.",
   "log.eliteLost": "Um desafiante venceu a Elite dos Quatro e tomou a liga.",
-  "log.eliteHeld": "Um desafiante passou por {n} da Elite antes de cair.",
+  "log.eliteHeld": "Um desafiante passou por {n} {n:cadeira|cadeiras} da Elite antes de cair.",
   "log.upsetWon": "{name} venceu uma que não tinha como vencer.",
   "log.upsetLost": "{name} perdeu uma que devia ter vencido — ainda se ambientando.",
   "log.whileAway":
     "Enquanto você esteve fora: {waves} desafios, ₱{money} arrecadados, {caught} capturados.",
   "log.suspended": "{name} está suspenso ({n} de {max}).",
   "log.crewBeaten": "{name} voltaram derrotados de {route}.",
-  "log.crewHome": "{name} voltaram de {route} com {n}.",
+  "log.crewHome": "{name} voltaram de {route} com {n} {n:captura|capturas}.",
   "log.reached": "{route} entrou no mapa. E {resident} vive por lá.",
 
   "ev.hazardSalved": "Terreno difícil em {route}. Uma Poção resolveu.",
@@ -932,8 +947,8 @@ export const pt: Dict = {
   "ev.encounterNoBalls": "Um {name} em {route}, e nada para capturar.",
   "ev.wayThrough": "Uma passagem em direção a {route}.",
   "ev.notEnough": "Não sobrou o bastante para capturar.",
-  "ev.tookIt": "Capturaram. {n} Poké Bolas gastas.",
-  "ev.choicePrompt": "Um {name} em {route}. Capturar vai custar {n} Poké Bolas.",
+  "ev.tookIt": "Capturaram. {n} {n:Poké Bola gasta|Poké Bolas gastas}.",
+  "ev.choicePrompt": "Um {name} em {route}. Capturar vai custar {n} {n:Poké Bola|Poké Bolas}.",
   "ev.choiceTake": "Gastar {n} e capturar",
   "ev.choiceLeave": "Deixar passar",
 
@@ -1010,11 +1025,11 @@ export const pt: Dict = {
   "obj.first-legend.detail": "Um Pokémon que serve a maior parte da vida entra no Hall. É para isso que serve a aposentadoria.",
   "obj.promote.title": "Suba de divisão",
   "obj.promote.detail": "Consagre alguém do Hall e recomece, mais difícil. Os Mentores que você escolher são tudo que sobrevive.",
-  "obj.held.title": "Barre {n} desafiantes",
+  "obj.held.title": "Barre {n} {n:desafiante|desafiantes}",
   "obj.held.detail": "Segurar o circuito é o trabalho inteiro.",
   "obj.collected.title": "Traga {n} Pokémon para casa",
   "obj.collected.detail": "Cada um deles chegou porque alguém foi lá buscar.",
-  "obj.mapped.title": "Alcance {n} lugares",
+  "obj.mapped.title": "Alcance {n} {n:lugar|lugares}",
   "obj.mapped.detail": "O mapa cresce porque as equipes o percorreram.",
 
   "reward.crew": "uma vaga de equipe",

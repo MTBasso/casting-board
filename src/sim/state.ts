@@ -1,7 +1,7 @@
 
 import { uniformTally } from "../data/typechart.js";
 import { META, SCOUTING } from "./constants.js";
-import { seedMap } from "./systems/field.js";
+import { seedMap } from "./systems/map.js";
 import { checkGymUnlock } from "./systems/league.js";
 import type { LeagueState } from "./types.js";
 

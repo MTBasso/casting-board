@@ -1475,11 +1475,24 @@ describe("parties", () => {
     const state = newLeague(703);
     const leaderId = state.gyms[state.gymOrder[0] ?? ""]?.leaderId ?? "";
     const trainer = state.trainers[leaderId];
-    for (let i = 0; i < 8; i++) scoutCatch(state, trainer?.affinity);
+    expect(trainer).toBeDefined();
+    if (!trainer) return;
+    for (let i = 0; i < 8; i++) scoutCatch(state, trainer.affinity);
 
-    const before = state.trainers[leaderId]?.party.length ?? 0;
+    // Open a slot rather than assuming the seed left one. Whether a fresh
+    // league happens to start its Leader below cap is a property of the RNG
+    // stream, and this is a test about refilling.
     autoFill(state, leaderId);
-    expect(state.trainers[leaderId]?.party.length).toBeGreaterThan(before);
+    const full = trainer.party.length;
+    expect(full).toBeGreaterThan(0);
+
+    const dropped = trainer.party[full - 1];
+    if (!dropped) return;
+    leaveParty(state, dropped);
+    expect(trainer.party.length).toBe(full - 1);
+
+    autoFill(state, leaderId);
+    expect(trainer.party.length).toBe(full);
   });
 
   it("never swaps out a pinned creature", () => {

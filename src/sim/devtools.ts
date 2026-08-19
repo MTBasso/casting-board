@@ -3,19 +3,9 @@ import { ROUTES } from "../data/routes.js";
 import { ELITE, MORALE } from "./constants.js";
 import { pick } from "./rng.js";
 import { makeCreature } from "./factory.js";
-import {
-  canHireCrew,
-  canPushOnFrom,
-  crewOffer,
-  expeditionOf,
-  expeditionOn,
-  hireCrew,
-  isOpen,
-  open as openRoute,
-  openRoutes,
-  send,
-  trainableFor,
-} from "./systems/field.js";
+import { canHireCrew, crewOffer, hireCrew } from "./systems/crews.js";
+import { canPushOnFrom, isOpen, open as openRoute, openRoutes } from "./systems/map.js";
+import { expeditionOf, expeditionOn, send, trainableFor } from "./systems/expeditions.js";
 import { canStaff, ensureSeats, eliteUnlocked, runGauntlet } from "./systems/elite.js";
 import { staffSeat } from "./systems/elite.js";
 import { acceptGymOffer, canHireGymTrainer, checkGymUnlock, chooseLeader, hireGymTrainer } from "./systems/league.js";

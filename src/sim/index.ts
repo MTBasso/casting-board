@@ -10,6 +10,7 @@
 export * as constants from "./constants.js";
 export { newReport, Report } from "./report.js";
 export * as roster from "./systems/roster.js";
+export { reserveCeiling, reserveCount, usableReserve } from "./systems/roster.js";
 
 export * from "./types.js";
 export * from "./state.js";
@@ -23,7 +24,9 @@ export * from "./systems/desk.js";
 export * from "./systems/objectives.js";
 export type { Reward, ObjectiveDef } from "../data/objectives.js";
 
-export * from "./systems/field.js";
+export * from "./systems/map.js";
+export * from "./systems/crews.js";
+export * from "./systems/expeditions.js";
 export * from "./systems/challenge.js";
 export {
   baseFormOf,

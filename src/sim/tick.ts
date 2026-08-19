@@ -27,7 +27,7 @@ import { tickElite } from "./systems/elite.js";
 import { tickRivals } from "./systems/rivals.js";
 import { tickDayCare } from "./systems/daycare.js";
 import { autoFillAll } from "./systems/party.js";
-import { tickField } from "./systems/field.js";
+import { tickField } from "./systems/expeditions.js";
 import { partyOf } from "./systems/party.js";
 import type { BattleRecord, Gym, LeagueState, LogKind, TickReport } from "./types.js";
 import { newReport, type Report } from "./report.js";

@@ -2,7 +2,7 @@ import { GYM_TRAINERS, META } from "./constants.js";
 import { emptyThreatReport, pickLook } from "./factory.js";
 import { uniformTally } from "../data/typechart.js";
 import { catalog } from "../data/catalog.js";
-import { seedMap } from "./systems/field.js";
+import { seedMap } from "./systems/map.js";
 import { refreshPower } from "./systems/growth.js";
 import { SAVE_VERSION } from "./state.js";
 import type { LeagueState } from "./types.js";

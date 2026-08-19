@@ -14,12 +14,13 @@ import { runGauntlet } from "./systems/elite.js";
 import { awayRate } from "./systems/facilities.js";
 import { tierMultiplier } from "./systems/promotion.js";
 import { driftMeta } from "./systems/meta.js";
-import { tickField } from "./systems/field.js";
+import { tickField } from "./systems/expeditions.js";
 import { displayName, retire } from "./systems/wave.js";
 import { emptyReport, gymChallengeInterval, log, rankMultiplier, tick } from "./tick.js";
 import { newReport } from "./report.js";
 import type { Creature, LeagueState, TickReport } from "./types.js";
 import type { Report } from "./report.js";
+import { clamp01 } from "./math.js";
 
 /**
  * Offline catch-up.
@@ -292,8 +293,4 @@ function isActive(c: Creature | undefined): c is Creature {
   return c !== undefined && c.role !== "retired";
 }
 
-
-function clamp01(n: number): number {
-  return n < 0 ? 0 : n > 1 ? 1 : n;
-}
 

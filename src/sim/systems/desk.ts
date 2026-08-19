@@ -1,7 +1,9 @@
 import { DESK, MORALE, PROMOTION } from "../constants.js";
 import { built as dayCareBuilt, freeSlots } from "./daycare.js";
 import { eliteUnlocked } from "./elite.js";
-import { crewName, expeditionOf, reserveCeiling, usableReserve } from "./field.js";
+import { crewName } from "./crews.js";
+import { expeditionOf } from "./expeditions.js";
+import { reserveCeiling, usableReserve } from "./roster.js";
 import { isSuspended } from "./morale.js";
 import { couldFill, partyCapOf } from "./party.js";
 import { readiness } from "./promotion.js";

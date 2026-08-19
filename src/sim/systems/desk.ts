@@ -107,7 +107,7 @@ export function pendingDecisions(state: LeagueState): Decision[] {
     out.push({
       id: "idle-crews",
       urgency: "idle",
-      title: idle.length === 1 ? "decision.idleCrews.title" : "decision.idleCrews.titlePlural",
+      title: "decision.idleCrews.title",
       detail: "decision.idleCrews.detail",
       params: { n: idle.length },
       where: "field",
@@ -134,7 +134,7 @@ export function pendingDecisions(state: LeagueState): Decision[] {
       out.push({
         id: "elite-empty",
         urgency: "urgent",
-        title: empty === 1 ? "decision.eliteEmpty.title" : "decision.eliteEmpty.titlePlural",
+        title: "decision.eliteEmpty.title",
         detail: "decision.eliteEmpty.detail",
         params: { n: empty },
         where: "elite",
@@ -183,8 +183,7 @@ export function pendingDecisions(state: LeagueState): Decision[] {
     out.push({
       id: "short-handed",
       urgency: "idle",
-      title:
-        short.length === 1 ? "decision.shortHanded.title" : "decision.shortHanded.titlePlural",
+      title: "decision.shortHanded.title",
       detail: "decision.shortHanded.detail",
       params: { n: short.length },
       where: "pc",

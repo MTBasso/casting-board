@@ -9,6 +9,7 @@
 
 export * as constants from "./constants.js";
 export { newReport, Report } from "./report.js";
+export * as roster from "./systems/roster.js";
 
 export * from "./types.js";
 export * from "./state.js";

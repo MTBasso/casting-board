@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { useGame } from "../engine/store.js";
-import { ROUTES, doctrineUnlocked, expeditionOf, pendingDecisions } from "../sim/index.js";
+import {
+  ROUTES,
+  doctrineUnlocked,
+  expeditionOf,
+  pendingDecisions,
+  roster,
+} from "../sim/index.js";
 import { LeagueMap } from "./components/LeagueMap.js";
 import { GymPanel } from "./components/GymPanel.js";
 import { EventLog } from "./components/EventLog.js";
@@ -67,8 +73,8 @@ export function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const activeGymId = selected ?? state.gymOrder[0] ?? null;
 
-  const inParty = Object.values(state.creatures).filter((c) => c.role === "party").length;
-  const owned = Object.values(state.creatures).filter((c) => c.role !== "retired").length;
+  const inParty = roster.fielded(state).length;
+  const owned = roster.owned(state).length;
 
   const badges: Partial<Record<TabId, string>> = {};
   // The Desk carries the count, so the other tabs stop shouting.

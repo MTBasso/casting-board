@@ -17,6 +17,7 @@ import {
   staffSeat,
   TYPES,
   type EliteSeat,
+  roster,
 } from "../../sim/index.js";
 import { creatureName } from "../names.js";
 import { PartyList } from "./PartyList.js";
@@ -134,8 +135,9 @@ function SeatRow({ seat }: { seat: EliteSeat }) {
     );
   }
 
-  const candidates = Object.values(state.creatures)
-    .filter((c) => c.role === "reserve" && canAssign(state, c.id, seat.rank).ok)
+  const candidates = roster
+    .idle(state)
+    .filter((c) => canAssign(state, c.id, seat.rank).ok)
     .sort((a, b) => b.power - a.power)
     .slice(0, 4);
 

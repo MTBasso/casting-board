@@ -10,6 +10,7 @@ import {
   unbench,
   type Creature,
   type TypeId,
+  roster,
 } from "../../sim/index.js";
 import { creatureName } from "../names.js";
 import { TypeBadges } from "./TypeBadge.js";
@@ -50,7 +51,7 @@ export function PcBox() {
   // dependency for anything derived from league state.
   const revision = useGame((s) => s.revision);
   const mine = useMemo(
-    () => Object.values(state.creatures).filter((c) => c.owned && c.role !== "retired"),
+    () => roster.owned(state),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [revision, state],
   );

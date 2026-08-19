@@ -108,6 +108,7 @@ import {
   tradeableStock,
   typesForRank,
   TYPES,
+  roster,
   newReport,
   tradePreview,
   canTrade,
@@ -203,6 +204,49 @@ describe("determinism", () => {
     run(restored, 300);
 
     expect(JSON.stringify(restored)).toBe(JSON.stringify(original));
+  });
+});
+
+describe("the roster", () => {
+  it("agrees with itself about what is spare", () => {
+    // Four screens used to answer this privately and three answered it wrongly
+    // at once. The point of the module is that there is one answer.
+    const state = newLeague(88);
+    state.money = 500_000;
+
+    const spare = roster.idle(state);
+    expect(spare.length).toBeGreaterThan(0);
+    for (const c of spare) {
+      expect(roster.isIdle(state, c.id), c.id).toBe(true);
+      expect(roster.owned(state).some((o) => o.id === c.id)).toBe(true);
+      expect(roster.inBox(state).some((o) => o.id === c.id)).toBe(true);
+      expect(roster.fielded(state).some((o) => o.id === c.id)).toBe(false);
+    }
+  });
+
+  it("stops counting a creature the Day-Care is holding", () => {
+    // "In the box" and "doing nothing" are different questions, and the second
+    // is the one most callers mean. A parked creature is still `reserve`.
+    const state = newLeague(88);
+    const parked = roster.idle(state)[0];
+    if (!parked) throw new Error("nothing spare");
+
+    state.dayCare.push({
+      creatureId: parked.id,
+      since: state.time,
+      levelAtDropoff: parked.level,
+    });
+
+    expect(roster.inBox(state).some((c) => c.id === parked.id)).toBe(true);
+    expect(roster.idle(state).some((c) => c.id === parked.id)).toBe(false);
+    expect(roster.isIdle(state, parked.id)).toBe(false);
+  });
+
+  it("is the same answer the Trade Desk gives", () => {
+    const state = newLeague(88);
+    expect(tradeableStock(state).map((c) => c.id).sort()).toEqual(
+      roster.idle(state).map((c) => c.id).sort(),
+    );
   });
 });
 

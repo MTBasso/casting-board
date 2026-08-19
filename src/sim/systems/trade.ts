@@ -8,6 +8,7 @@ import {
 import { TRADE } from "../constants.js";
 import { tradeEfficiency } from "./facilities.js";
 import { powerOf, statsFor } from "./stats.js";
+import { idle } from "./roster.js";
 import { makeCreature } from "../factory.js";
 import { int, weighted } from "../rng.js";
 import type { Creature, LeagueState, TypeId } from "../types.js";
@@ -34,10 +35,7 @@ import type { Creature, LeagueState, TypeId } from "../types.js";
  * only surfaces much later.
  */
 export function tradeableStock(state: LeagueState): Creature[] {
-  const parked = new Set(state.dayCare.map((slot) => slot.creatureId));
-  return Object.values(state.creatures).filter(
-    (c) => c.role === "reserve" && c.owned && !parked.has(c.id),
-  );
+  return idle(state);
 }
 
 /**

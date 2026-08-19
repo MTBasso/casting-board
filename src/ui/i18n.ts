@@ -732,6 +732,7 @@ export const en = {
   "trade.fee": "₱{n} on top, either way",
   "trade.nothingIdle": "Nothing is spare. Everything you own is in a party, out with a crew, or at the Day-Care.",
   "trade.noGyms": "Open a gym first — the desk trades for types your league actually fields.",
+  "gyms.noParty": "Nobody cast yet — the box will fill this in.",
 } as const;
 
 export type Key = keyof typeof en;
@@ -1364,4 +1365,5 @@ export const pt: Dict = {
   "trade.fee": "₱{n} por fora, de qualquer jeito",
   "trade.nothingIdle": "Não há ninguém de sobra. Tudo que você tem está em uma equipe, em campo com uma equipe, ou na Creche.",
   "trade.noGyms": "Abra um ginásio primeiro — a mesa troca pelos tipos que sua liga realmente escala.",
+  "gyms.noParty": "Ninguém escalado ainda — o PC vai preencher.",
 };

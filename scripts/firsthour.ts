@@ -18,7 +18,7 @@ import { translate } from "../src/ui/i18n.js";
 
 const T = (k: string, p?: Record<string, string | number>) => translate("en", k, p);
 /** Real minutes at the keyboard. The league's clock runs at TIME_SCALE. */
-const MARKS = [1, 5, 15, 30, 60];
+const MARKS = (process.env.MARKS ?? '1,5,15,30,60').split(',').map(Number);
 
 function start(seed: number): LeagueState {
   const s = createInitialState(seed);

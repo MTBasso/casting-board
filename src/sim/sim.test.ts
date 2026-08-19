@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { OFFLINE_CAP_SECONDS } from "./constants.js";
 import {
   acceptGymOffer,
   briefType,
@@ -108,6 +109,7 @@ import {
   tradeableStock,
   typesForRank,
   TYPES,
+  rollCrewOffer,
   pendingDecisions,
 } from "./index.js";
 import { resolveOffline } from "./offline.js";
@@ -119,7 +121,7 @@ import {
   familyOf,
   minLevelFor,
 } from "../data/catalog.js";
-import type { Crew, LeagueState, Route } from "./types.js";
+import type { Crew, LeagueState, Route, TypeId } from "./types.js";
 
 function run(state: LeagueState, seconds: number): void {
   for (let i = 0; i < seconds; i++) tick(state, 1);
@@ -192,6 +194,58 @@ describe("determinism", () => {
   });
 });
 
+describe("crew offers", () => {
+  /** A league fielding a known set of types. */
+  function leagueWith(types: TypeId[]): LeagueState {
+    const state = newLeague(4242);
+    acceptGymOffer(state, state.gymOffer?.[0] ?? "bug");
+    const first = state.leaderOffer?.trainerIds[0];
+    if (first) chooseLeader(state, first);
+    for (const type of types) {
+      if (state.gymOrder.some((id) => state.gyms[id]?.type === type)) continue;
+      state.money += 1_000_000;
+      state.gymOffer = [type];
+      acceptGymOffer(state, type);
+      const next = state.leaderOffer?.trainerIds[0];
+      if (next) chooseLeader(state, next);
+    }
+    return state;
+  }
+
+  const fielded = (state: LeagueState): TypeId[] =>
+    state.gymOrder.map((id) => state.gyms[id]?.type).filter((t): t is TypeId => !!t);
+
+  it("always offers at least one crew the league can use", () => {
+    // The draw used to be uniform over eighteen types, so with one gym only
+    // 28% of offers contained anybody useful — and passing is free, instant
+    // and unlimited, which made rerolling the correct play rather than an
+    // impatience. A guarantee is what removes the compulsion.
+    for (const types of [[], ["water"], ["water", "fire", "psychic"]] as TypeId[][]) {
+      const state = leagueWith(types);
+      const ours = fielded(state);
+      for (let i = 0; i < 200; i++) {
+        rollCrewOffer(state);
+        const useful = crewOffer(state).some(
+          (o) => ours.includes(o.rangerType) || ours.includes(o.handlerType),
+        );
+        expect(useful, `${ours.join(",")} draw ${i}`).toBe(true);
+      }
+    }
+  });
+
+  it("keeps one slot off-type, as the nudge toward a gym you do not have", () => {
+    const state = leagueWith(["water", "fire"]);
+    const ours = fielded(state);
+    for (let i = 0; i < 200; i++) {
+      rollCrewOffer(state);
+      const offers = crewOffer(state);
+      const last = offers[offers.length - 1];
+      expect(last).toBeDefined();
+      if (last) expect(ours.includes(last.rangerType)).toBe(false);
+    }
+  });
+});
+
 describe("offline resolution", () => {
   it("never earns more than playing the same span", () => {
     const played = newLeague(11);
@@ -206,11 +260,26 @@ describe("offline resolution", () => {
   });
 
   it("caps accrual at the offline window", () => {
+    // Relative to the constant, not to a number that happened to be the cap
+    // when this was written — the ceiling moved once already and this test was
+    // the only thing that noticed, by failing for the wrong reason.
     const a = newLeague(3);
     const b = newLeague(3);
-    resolveOffline(a, 12 * 3600);
-    resolveOffline(b, 48 * 3600);
+    resolveOffline(a, OFFLINE_CAP_SECONDS);
+    resolveOffline(b, OFFLINE_CAP_SECONDS * 4);
     expect(b.time).toBe(a.time);
+  });
+
+  it("pays a well-run league more for the same absence", () => {
+    const neglected = newLeague(5);
+    const run3 = newLeague(5);
+    run3.facilities.operations_office = 4;
+    for (const t of Object.values(run3.trainers)) t.morale = 1;
+
+    resolveOffline(neglected, OFFLINE_CAP_SECONDS);
+    resolveOffline(run3, OFFLINE_CAP_SECONDS);
+
+    expect(run3.money).toBeGreaterThan(neglected.money);
   });
 
   it("advances the clock by the elapsed span", () => {

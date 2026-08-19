@@ -1066,6 +1066,71 @@ Catchers ✅ → Evolvers ✅ → Coaches → Professor → Desk.
 
 ---
 
+## Block 10 — The idle layer, and being taught the game
+
+Two complaints, one session of grilling. *The map is good, but the idle half is
+thin*, and *there is still no onboarding*. They turned out to share a cause: the
+game has always been designed for someone already sitting in front of it.
+
+### What the measurements found first
+
+- **The offline cap was nullified.** `main.tsx` credits away-time on the league's
+  own clock — its comment says as much — but `OFFLINE_CAP_SECONDS` stayed at
+  twelve hours of *league* time. At 40× that ceiling is reached after **18 real
+  minutes**. A night's sleep and a coffee break paid identically.
+- **Nothing waits for the player.** Held encounters resolve in character on a
+  timer whether anyone is watching or not, and offline runs no gauntlets by
+  design. The return moment was a read-only digest.
+- **Crew offers were a slot machine.** Ranger and Handler are drawn uniformly
+  from eighteen types, and passing is free, instant and unlimited. With one gym,
+  **72% of offers contain nobody who can help you** — so spamming the reroll was
+  not impatience, it was correct play.
+- **Gyms already gate on renown, not time.** The coupling is one step back:
+  renown is earned per battle, battles happen on the clock, so the clock
+  multiplies the unlock rate. Changing the speed divides the same curve.
+
+### Decided
+
+| Question | Call |
+|---|---|
+| Clock | **40× → 25×.** Feel only; pacing is a separate dial. |
+| Offline ceiling | **8 real hours**, scaled with the clock so it stays 8 hours whatever the speed. |
+| Offline quality | Pessimistic by default, **upgradeable toward par** — 55% at nothing, ~85% fully invested. Never 100%: playing must win. |
+| What raises it | A new **Operations Office** facility as the floor, staff morale as a modifier on top. |
+| Crews between trips | **Standing orders**: re-outfit and go again, above a money floor you set, stopping on anything notable. |
+| Crew offers | Weighted toward types you field, **one relevant crew guaranteed**, one slot left deliberately wild. Reroll stays free. |
+| Marking the wild slot | **No.** The type badge already says it; labelling the dice makes the game explain itself. |
+| What waits for you | Encounters at wild-weight ≤ 0.12 — final forms and stage three — **hold until the trip ends**, then resolve in character. |
+| Pacing vs clock | Retune `gymUnlockRenown` now; move the gates onto counts that time cannot inflate as the real fix. |
+| Onboarding shape | A **guided sequence** driven by the objective spine, plus **coach marks** per tab. |
+| Where it lives | A strip under the header saying *what*, a tab glow saying *where*. Both stop when the spine is done. |
+| Coach marks | First visit to each tab, and a "?" in the header that replays any of them. |
+| Softened opening | **Weaker challengers** until the spine's fourth step is claimed — no special case in the battle path, nothing the player can notice as a rule. |
+
+### Why "weaker challengers" rather than "no badge can be lost"
+
+The protection has to be invisible or it is a lie the player will catch. A rule
+that says *you cannot lose this* is a special case in the one system that most
+needs to stay honest, and a new player who is doing well would feel the game
+holding their hand. A softer opening meta degrades smoothly: someone playing
+well simply wins comfortably, and never learns there was a thumb on the scale.
+
+### Why banked choices expire with the trip
+
+The first instinct was a timed window, which needs a constant nobody can guess
+right. Bounding it by the expedition is better on every axis: no new number, it
+can never accumulate past the number of crews you employ, and it explains itself
+in one sentence — *they will hold it until they come home, then decide for
+themselves*.
+
+### Deferred out of this block
+
+- **Counts-based unlock gates** (Block 10's own follow-up). Gyms unlocking on
+  badges defended, routes reached and careers completed rather than on renown,
+  so the content rate stops moving every time the clock does.
+
+---
+
 ## Cross-cutting work
 
 Not blocks; these run alongside everything.

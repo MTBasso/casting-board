@@ -103,6 +103,16 @@ export function crewHireCost(state: LeagueState): number {
   return Math.round(FIELD.hireCostBase * FIELD.hireCostGrowth ** state.crews.length);
 }
 
+/** The types the league actually fields, which is what makes a crew useful. */
+function fielded(state: LeagueState): TypeId[] {
+  const out = new Set<TypeId>();
+  for (const id of state.gymOrder) {
+    const type = state.gyms[id]?.type;
+    if (type) out.add(type);
+  }
+  return [...out];
+}
+
 /**
  * Draw a fresh set of crews to choose between.
  *
@@ -110,16 +120,49 @@ export function crewHireCost(state: LeagueState): number {
  * a component you bought — you already knew which types you wanted, so the only
  * question was affordability. Being offered *these two people, who work
  * together, and are like this* is a choice.
+ *
+ * It stopped being a choice in practice. Both members were drawn uniformly from
+ * eighteen types while passing was free, instant and unlimited, so with one gym
+ * only **28% of draws contained anybody who could help you** — and rerolling
+ * until one did was not impatience, it was correct play.
+ *
+ * So the draw is weighted toward what the league fields, and the first slot is
+ * *guaranteed* to be useful. The last is deliberately left wild: a crew for a
+ * type you do not have yet is how the Field suggests what your next gym could
+ * be, and without it the offer collapses into your own types read back to you.
+ * It carries no label — the type badge already says what it is, and annotating
+ * your own dice is a strange thing for a game to do.
  */
 export function rollCrewOffer(state: LeagueState): void {
+  const ours = fielded(state);
+  const theirs = TYPES.filter((t) => !ours.includes(t));
+  const last = FIELD.offerSize - 1;
+
+  /** Which types a given slot draws from. */
+  const drawFrom = (slot: number): TypeId[] => {
+    // Before the founding choice there is nothing to be relevant to.
+    if (ours.length === 0) return [...TYPES];
+    if (slot === 0) return ours;
+    if (slot === last && theirs.length > 0) return theirs;
+    return chance(state.rng, FIELD.offerRelevance) ? ours : [...TYPES];
+  };
+
+  const drawType = (slot: number): TypeId => pick(state.rng, drawFrom(slot));
+
   const out: CrewOffer[] = [];
   for (let i = 0; i < FIELD.offerSize; i++) {
-    const rangerType = pick(state.rng, [...TYPES]);
+    const rangerType = drawType(i);
+
     // Usually a second type, sometimes the same — a single-type crew is
     // narrower and deeper, and that is a legitimate thing to be offered.
-    const handlerType = chance(state.rng, 0.15)
-      ? rangerType
-      : pick(state.rng, TYPES.filter((t) => t !== rangerType));
+    //
+    // The handler leans the same way as its slot, so a crew drawn to be useful
+    // is useful in both halves rather than half-wasted.
+    let handlerType = rangerType;
+    if (!chance(state.rng, 0.15)) {
+      const pool = drawFrom(i).filter((t) => t !== rangerType);
+      handlerType = pool.length > 0 ? pick(state.rng, pool) : rangerType;
+    }
 
     out.push({
       id: `co_${state.time}_${i}_${state.crews.length}`,

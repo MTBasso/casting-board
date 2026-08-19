@@ -388,7 +388,8 @@ export type FacilityId =
   | "training_grounds"
   | "medical_center"
   | "trade_desk"
-  | "day_care";
+  | "day_care"
+  | "operations_office";
 
 /**
  * One Elite Four seat, or the Champion's.

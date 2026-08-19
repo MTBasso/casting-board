@@ -146,12 +146,40 @@ almost nothing.
 Deliberately last: it is a question about what the game *is* over fifty hours,
 and it cannot be answered until a run can be finished at all.
 
-## M11 — Somebody else plays it 🔲
+## M12 — The game is worth leaving 🔲
+
+An idle game whose offline ceiling is eighteen real minutes is a game with a
+pause button. Absence now pays for eight real hours, at a rate you can *invest*
+in rather than one you are silently penalised by, and crews keep working under
+standing orders instead of idling the moment a trip ends.
+
+And something waits for you: a rare encounter holds until the crew comes home,
+so the Desk has news that is a decision rather than an alert about neglect.
+
+Block 10. Grilled and decided; building.
+
+## M11 — Somebody else plays it 🔜
 
 Onboarding that works without explanation, a first hour that teaches by
 happening, and the balance to survive a stranger. Ships to
 [the Pages build](https://mtbasso.github.io/casting-board/) on every push
 already; what is missing is the confidence to point someone at it.
+
+*In progress.* The premise now gets said once, before anything else — the one
+thing that cannot teach by happening, because a Pokémon player will assume they
+are the trainer. The objective spine no longer dead-ends at its third step,
+which it had been doing since the Field rewrite. About sixty strings that had
+never been translated are, including the two screens a new player sees first.
+
+What Block 10 adds: the spine becomes *directive* rather than a list — a strip
+saying what to do next and a tab glow saying where — plus coach marks on each
+tab, replayable from a "?" in its header. And the opening meta softens until the
+spine's fourth step is claimed, so a stranger cannot lose a badge to a mistake
+they had no way to see coming. Invisible by construction: the challengers are
+weaker, rather than the loss being disallowed.
+
+Still open after that: pacing. A first hour reaches eight gyms and the promotion
+offer, which is [#16](https://github.com/MTBasso/casting-board/issues/16).
 
 ---
 

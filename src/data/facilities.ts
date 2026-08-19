@@ -1,3 +1,4 @@
+import { AWAY } from "../sim/constants.js";
 import type { FacilityId } from "../sim/types.js";
 
 /**
@@ -57,6 +58,19 @@ export const FACILITIES: readonly FacilityDef[] = [
     baseCost: 4600,
     costGrowth: 2.5,
     effect: (l) => ({ key: "facility.trade_desk.effect", params: { n: Math.round(l * 6) } }),
+  },
+  {
+    // Deliberately the most expensive thing on the board. The mid-game has far
+    // more money than it has uses for, and this is the one upgrade whose
+    // benefit is felt precisely when the player is not looking at it.
+    id: "operations_office",
+    maxLevel: 4,
+    baseCost: 9000,
+    costGrowth: 2.3,
+    effect: (l) => ({
+      key: "facility.operations_office.effect",
+      params: { n: Math.round((AWAY.base + l * AWAY.perLevel) * 100) },
+    }),
   },
   {
     id: "day_care",

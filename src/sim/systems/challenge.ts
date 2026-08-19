@@ -98,7 +98,27 @@ export function levelFor(
     CHALLENGE.minChallengerLevel,
     reference * CHALLENGE.maxLevelRatio,
   );
-  return Math.round(Math.min(raw, ceiling));
+  return Math.round(Math.min(raw, ceiling) * openingMercy(state));
+}
+
+/**
+ * How much easier the opening is while the player is still being taught.
+ *
+ * A stranger can hire wrong and watch a gym fall before they know what a gym
+ * trainer *is*. The protection has to be invisible or it is a lie they will
+ * catch: a rule saying "you cannot lose this" is a special case in the one
+ * system that most needs to stay honest, and someone doing well would feel the
+ * game holding their hand.
+ *
+ * So the challengers are simply weaker, and it degrades smoothly — a player who
+ * is doing fine wins comfortably and never learns there was a thumb on the
+ * scale. It lifts the moment they claim the objective that explains juniors,
+ * which is the point at which they know what they are being protected from.
+ */
+export function openingMercy(state: LeagueState): number {
+  return state.objectives.claimed.includes(CHALLENGE.mercyUntil)
+    ? 1
+    : CHALLENGE.openingMercy;
 }
 
 function meanLevel(creatures: readonly Creature[]): number {

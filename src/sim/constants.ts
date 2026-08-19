@@ -75,6 +75,15 @@ export const OFFLINE_ANALYTIC_THRESHOLD_SECONDS = 2 * 60 * TIME_SCALE;
  * creature's career is measured in weeks rather than an afternoon.
  */
 export const CHALLENGE = {
+  /**
+   * Challenger level multiplier while the opening objectives are unclaimed.
+   *
+   * Invisible by construction: nothing is disallowed, the arrivals are just
+   * softer. See `openingMercy`.
+   */
+  openingMercy: 0.72,
+  /** The objective whose claim ends it — the one that explains junior trainers. */
+  mercyUntil: "staff-a-gym",
   /** Sim-seconds between challengers at a single gym. */
   intervalSeconds: 6 * 60,
   maxParty: 6,

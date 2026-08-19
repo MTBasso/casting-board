@@ -146,6 +146,23 @@ almost nothing.
 Deliberately last: it is a question about what the game *is* over fifty hours,
 and it cannot be answered until a run can be finished at all.
 
+## M13 — The board reads like a ladder 🔲
+
+Eight gyms that were, measurably, the same gym eight times: identical challenge
+rate, identical payout base, identical depth, and a badge roll that sent
+*fewer*-badged challengers to the harder gyms.
+
+Block 11 makes rank mean something. Arrivals are derived from a badge
+population, so the first gym takes 26.6% of all challenges and the eighth takes
+4.1% — the fiction the board already claimed, now true. A late gym is rarer,
+deeper, and worth about 2.1x per second. The row's bar became a cycle you can
+read at a glance, and an undefended gym shows a deadline rather than a status.
+
+Two corrections found by measuring rather than by reasoning: normalising the
+rank multiplier, without which the ladder was a 3.15x raise for the whole
+league; and scaling renown in *both* directions, without which the busiest gym
+on the board lost standing no matter how well it did.
+
 ## M12 — The game is worth leaving 🔲
 
 An idle game whose offline ceiling is eighteen real minutes is a game with a

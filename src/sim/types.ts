@@ -567,7 +567,55 @@ export interface Crew {
    * to encourage — going somewhere new means neglecting somewhere known.
    */
   familiar: Record<string, number>;
+  /**
+   * What to do when they get home, if anything.
+   *
+   * A trip is finite and paid up front, so a crew that finishes while nobody is
+   * watching simply stops — and an eight-hour absence used to mean seven hours
+   * of a crew standing on a route doing nothing. Standing orders re-buy the
+   * same kit and send them out again.
+   *
+   * The decision is preserved and only the repetition is removed: the route,
+   * the kit and the floor are all still yours to choose. `null` is the default
+   * and means one trip, then home.
+   */
+  orders: StandingOrders | null;
 }
+
+/**
+ * A crew's instruction to keep working.
+ *
+ * The floor is the safety rail — the treasury cannot be emptied while you
+ * sleep. The automatic stops are the more interesting half: they are what makes
+ * coming back mean something, because you return to *why* it stopped rather
+ * than to a crew that is merely idle.
+ */
+export interface StandingOrders {
+  routeId: string;
+  objective: "work" | "explore";
+  towardId: string | null;
+  /** Re-bought each time they set off. */
+  kit: Kit;
+  /** Stop rather than outfit another trip below this. */
+  floor: number;
+  /** Why they stopped, once they have. Cleared when new orders are given. */
+  stoppedBecause: StandingStop | null;
+}
+
+/**
+ * Why a standing order came to an end.
+ *
+ * Each of these is a thing the player would want to know about, which is the
+ * whole point: the Desk can say what happened rather than reporting an idle
+ * crew and leaving them to work out why.
+ */
+export type StandingStop =
+  | "floor"
+  | "boxFull"
+  | "worn"
+  | "held"
+  | "routeTaken"
+  | "stopped";
 
 /** What a crew was sent out with. Every line of it costs money up front. */
 export interface Kit {

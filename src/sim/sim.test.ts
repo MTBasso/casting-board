@@ -109,6 +109,11 @@ import {
   tradeableStock,
   typesForRank,
   TYPES,
+  setOrders,
+  standingStop,
+  standingVerdict,
+  usableReserve,
+  reserveCeiling,
   rollCrewOffer,
   pendingDecisions,
 } from "./index.js";
@@ -243,6 +248,113 @@ describe("crew offers", () => {
       expect(last).toBeDefined();
       if (last) expect(ours.includes(last.rangerType)).toBe(false);
     }
+  });
+});
+
+describe("standing orders", () => {
+  /** A crew, hired, with orders for open ground. */
+  function crewWithOrders(state: LeagueState, floor = 0) {
+    state.money += 500_000;
+    const offer = crewOffer(state)[0];
+    if (!offer) throw new Error("no offer");
+    const hired = hireCrew(state, offer.id);
+    if (!hired.ok) throw new Error(hired.reason);
+
+    const route = openRoutes(state)[0];
+    if (!route) throw new Error("no open route");
+    const kit = { balls: 8, potions: 2, revives: 1, lures: 0 };
+    setOrders(state, hired.crewId, {
+      routeId: route.id,
+      objective: "work" as const,
+      towardId: null,
+      kit,
+      floor,
+    });
+    const crew = state.crews.find((c) => c.id === hired.crewId);
+    if (!crew) throw new Error("crew vanished");
+    return { crew, route, kit };
+  }
+
+  // The verdict is tested directly rather than by simulating until a crew
+  // happens to come home a particular way — that made the outcome a property of
+  // the seed, and the first version of these tests failed for exactly that
+  // reason while the mechanism was working correctly.
+
+  it("sends them back out when there is no reason not to", () => {
+    const state = newLeague(31);
+    const { crew } = crewWithOrders(state);
+    expect(standingVerdict(state, crew, "returned")).toBe("go");
+  });
+
+  it("will not outfit a trip that would take you below the floor", () => {
+    const state = newLeague(31);
+    const { crew, kit } = crewWithOrders(state, 400_000);
+    state.money = 400_000 + kitCost(kit) - 1;
+    expect(standingVerdict(state, crew, "returned")).toBe("floor");
+
+    state.money = 400_000 + kitCost(kit);
+    expect(standingVerdict(state, crew, "returned")).toBe("go");
+  });
+
+  it("treats coming home beaten as the ground telling you something", () => {
+    const state = newLeague(31);
+    const { crew } = crewWithOrders(state);
+    expect(standingVerdict(state, crew, "beaten")).toBe("worn");
+  });
+
+  it("does not re-send a crew the player just called back", () => {
+    const state = newLeague(31);
+    const { crew } = crewWithOrders(state);
+    expect(standingVerdict(state, crew, "recalled")).toBe("stopped");
+  });
+
+  it("stops when there is nowhere to put what they catch", () => {
+    const state = newLeague(31);
+    const { crew } = crewWithOrders(state);
+    // A full box is a fact money cannot fix, so it outranks the floor.
+    //
+    // `usableReserve` counts only creatures somebody on the board could
+    // actually field, so the filler has to share a type with a trainer — a
+    // first attempt duplicated an arbitrary creature and looped forever.
+    const gym = state.gyms[state.gymOrder[0] ?? ""];
+    const leader = gym?.leaderId ? state.trainers[gym.leaderId] : undefined;
+    const seed = Object.values(state.creatures).find((c) =>
+      leader ? c.types.includes(leader.affinity) : false,
+    );
+    if (!seed) throw new Error("nothing of the leader's type to duplicate");
+    for (let i = 0; i < reserveCeiling(state) + 5; i++) {
+      const copy = { ...seed, id: `dup_${i}`, role: "reserve" as const };
+      state.creatures[copy.id] = copy;
+    }
+    expect(usableReserve(state)).toBeGreaterThanOrEqual(reserveCeiling(state));
+    expect(standingVerdict(state, crew, "returned")).toBe("boxFull");
+  });
+
+  it("actually keeps a crew working across several trips", () => {
+    // One integration check that the rule is wired to the thing that ends a
+    // trip, rather than sitting there being correct on its own.
+    const state = newLeague(31);
+    const { crew, route, kit } = crewWithOrders(state);
+    send(state, crew.id, route.id, "work", null, kit, []);
+
+    for (let i = 0; i < 4000 && !standingStop(state, crew.id); i++) tick(state, 30);
+
+    expect(state.tally.trips).toBeGreaterThan(1);
+  });
+
+  it("forgets why it stopped once you give it fresh orders", () => {
+    const state = newLeague(31);
+    const { crew, route } = crewWithOrders(state);
+    crew.orders!.stoppedBecause = "floor";
+
+    setOrders(state, crew.id, {
+      routeId: route.id,
+      objective: "work",
+      towardId: null,
+      kit: { balls: 4, potions: 1, revives: 0, lures: 0 },
+      floor: 0,
+    });
+    expect(standingStop(state, crew.id)).toBeNull();
   });
 });
 

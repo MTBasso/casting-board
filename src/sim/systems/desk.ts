@@ -1,7 +1,7 @@
 import { DESK, MORALE, PROMOTION } from "../constants.js";
 import { built as dayCareBuilt, freeSlots } from "./daycare.js";
 import { eliteUnlocked } from "./elite.js";
-import { expeditionOf, reserveCeiling, usableReserve } from "./field.js";
+import { crewName, expeditionOf, reserveCeiling, usableReserve } from "./field.js";
 import { isSuspended } from "./morale.js";
 import { couldFill, partyCapOf } from "./party.js";
 import { readiness } from "./promotion.js";
@@ -162,6 +162,22 @@ export function pendingDecisions(state: LeagueState): Decision[] {
       "elite",
       { n: PROMOTION.inductCount },
     );
+  }
+
+  // A crew whose standing orders ended is the one Desk item that is genuinely
+  // news rather than an alert about neglect: something happened out there, and
+  // the reason is the interesting part.
+  for (const crew of state.crews) {
+    const why = crew.orders?.stoppedBecause;
+    if (!why) continue;
+    out.push({
+      id: `orders-${crew.id}`,
+      urgency: why === "floor" || why === "worn" ? "waiting" : "idle",
+      title: "decision.ordersStopped.title",
+      detail: `decision.ordersStopped.${why}`,
+      params: { name: crewName(state, crew) },
+      where: "field",
+    });
   }
 
   // --- Supply -------------------------------------------------------------

@@ -21,6 +21,7 @@ import type {
   Trainer,
   TypeId,
 } from "../types.js";
+import { clamp01 } from "../math.js";
 
 /**
  * Challenges.
@@ -218,10 +219,6 @@ export function makeChallenger(
 // ---------------------------------------------------------------------------
 // One bout, fought in rounds
 // ---------------------------------------------------------------------------
-
-function clamp01(n: number): number {
-  return n < 0 ? 0 : n > 1 ? 1 : n;
-}
 
 /**
  * Bond buys reliability, not power — this is the spread a bonded creature

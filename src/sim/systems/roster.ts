@@ -1,3 +1,4 @@
+import { FIELD } from "../constants.js";
 import type { Creature, LeagueState } from "../types.js";
 
 /**
@@ -51,4 +52,42 @@ export function isIdle(state: LeagueState, creatureId: string): boolean {
   const creature = state.creatures[creatureId];
   if (!creature || !creature.owned || creature.role !== "reserve") return false;
   return !state.dayCare.some((slot) => slot.creatureId === creatureId);
+}
+
+// ---------------------------------------------------------------------------
+// How full the box is
+// ---------------------------------------------------------------------------
+//
+// This lived in `field.ts` because catching is what fills the box, but the
+// ceiling is a fact about the roster: it is what stops a league hoarding
+// creatures nobody will ever field.
+
+export function reserveCeiling(state: LeagueState): number {
+  return FIELD.reserveCeilingBase + state.gymOrder.length * FIELD.reserveCeilingPerGym;
+}
+
+export function reserveCount(state: LeagueState): number {
+  let n = 0;
+  for (const c of Object.values(state.creatures)) if (c.role === "reserve") n += 1;
+  return n;
+}
+
+/** Types some trainer on the board could field. */
+function fieldableTypes(state: LeagueState): Set<string> {
+  const types = new Set<string>();
+  for (const t of Object.values(state.trainers)) {
+    if (t.kind === "candidate") continue;
+    types.add(t.affinity);
+  }
+  return types;
+}
+
+export function usableReserve(state: LeagueState): number {
+  const types = fieldableTypes(state);
+  let n = 0;
+  for (const c of Object.values(state.creatures)) {
+    if (c.role !== "reserve") continue;
+    if (c.types.some((t) => types.has(t))) n += 1;
+  }
+  return n;
 }

@@ -5,7 +5,6 @@ import { Sprite } from "./Sprite.js";
 import {
   bench,
   partyOf,
-  tradeableStock,
   togglePin,
   TYPES,
   unbench,
@@ -14,11 +13,12 @@ import {
 } from "../../sim/index.js";
 import { creatureName } from "../names.js";
 import { TypeBadges } from "./TypeBadge.js";
-import { TradeBar } from "./TradeDesk.js";
+import { TradeModal } from "./TradeModal.js";
 import { Rosters } from "./Rosters.js";
 import { CreatureSummary } from "./CreatureSummary.js";
 
-const PER_BOX = 30;
+/** Seven across, five down. The grid is laid out to match. */
+const PER_BOX = 35;
 
 type SortKey = "power" | "level" | "name" | "type";
 
@@ -41,9 +41,8 @@ export function PcBox() {
   const [sort, setSort] = useState<SortKey>("power");
   const [typeFilter, setTypeFilter] = useState<TypeId | "all">("all");
   const [scope, setScope] = useState<"all" | "box" | "parties" | "rosters">("all");
-  const [tradeFor, setTradeFor] = useState<TypeId | null>(null);
-  const [offered, setOffered] = useState<string[]>([]);
   const [open, setOpen] = useState<string | null>(null);
+  const [trading, setTrading] = useState(false);
 
   const mine = useMemo(
     () => Object.values(state.creatures).filter((c) => c.owned && c.role !== "retired"),
@@ -54,15 +53,9 @@ export function PcBox() {
   // there is one box on this screen rather than two — picking what to give up
   // is the same browsing task as looking through the box, with the same
   // filters and the same sort.
-  const tradable = useMemo(
-    () => new Set(tradeableStock(state).map((c) => c.id)),
-    [state.creatures, state.trainers],
-  );
-
   const shown = useMemo(() => {
     const filtered = mine.filter((c) => {
       if (typeFilter !== "all" && !c.types.includes(typeFilter)) return false;
-      if (tradeFor) return tradable.has(c.id);
       if (scope === "box" && c.role !== "reserve") return false;
       if (scope === "parties" && c.role !== "party") return false;
       return true;
@@ -75,15 +68,11 @@ export function PcBox() {
       return nameOf(a).localeCompare(nameOf(b));
     });
     return sorted;
-  }, [mine, typeFilter, scope, sort, tradeFor, tradable]);
+  }, [mine, typeFilter, scope, sort]);
 
   const boxes = Math.max(1, Math.ceil(shown.length / PER_BOX));
   const page = Math.min(box, boxes - 1);
   const slice = shown.slice(page * PER_BOX, page * PER_BOX + PER_BOX);
-
-  const gymTypes = [
-    ...new Set(state.gymOrder.map((id) => state.gyms[id]?.type).filter(Boolean)),
-  ] as TypeId[];
 
   return (
     <div className="pc">
@@ -121,25 +110,9 @@ export function PcBox() {
           </select>
         </label>
 
-        <label className="field">
-          <span>{t("pc.tradeFor")}</span>
-          <select
-            value={tradeFor ?? ""}
-            onChange={(e) => {
-              const v = e.target.value;
-              setTradeFor(v === "" ? null : (v as TypeId));
-              setOffered([]);
-              setBox(0);
-            }}
-          >
-            <option value="">{t("pc.notTrading")}</option>
-            {gymTypes.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-        </label>
+        <button type="button" className="btn sm trade-open" onClick={() => setTrading(true)}>
+          {t("trade.open")}
+        </button>
 
         <label className="field">
           <span>{t("common.sort")}</span>
@@ -152,7 +125,7 @@ export function PcBox() {
         </label>
       </div>
 
-      {scope === "rosters" && !tradeFor ? (
+      {scope === "rosters" ? (
         <Rosters />
       ) : (
         <>
@@ -179,28 +152,14 @@ export function PcBox() {
           </div>
 
           {slice.length === 0 ? (
-            <p className="empty">
-              {tradeFor
-                ? t("pc.nothingTradeable")
-                : t("common.nothing")}
-            </p>
+            <p className="empty">{t("common.nothing")}</p>
           ) : (
-            <ul className={`box-grid ${tradeFor ? "is-trading" : ""}`}>
+            <ul className="box-grid">
               {slice.map((c) => (
                 <BoxCell
                   key={c.id}
                   creature={c}
-                  trading={tradeFor !== null}
-                  selected={offered.includes(c.id)}
-                  onOpen={() =>
-                    tradeFor
-                      ? setOffered((prev) =>
-                          prev.includes(c.id)
-                            ? prev.filter((x) => x !== c.id)
-                            : [...prev, c.id],
-                        )
-                      : setOpen(c.id)
-                  }
+                  onOpen={() => setOpen(c.id)}
                   onPin={() => act((s) => togglePin(s, c.id))}
                   onBench={() =>
                     act((s) => (c.benched ? unbench(s, c.id) : bench(s, c.id)))
@@ -219,17 +178,7 @@ export function PcBox() {
         />
       )}
 
-      {tradeFor && (
-        <TradeBar
-          wanted={tradeFor}
-          offered={offered.filter((id) => state.creatures[id] !== undefined)}
-          onClear={() => setOffered([])}
-          onDone={() => {
-            setOffered([]);
-            setTradeFor(null);
-          }}
-        />
-      )}
+      {trading && <TradeModal onClose={() => setTrading(false)} />}
     </div>
   );
 }
@@ -240,16 +189,11 @@ function nameOf(c: Creature): string {
 
 function BoxCell({
   creature,
-  trading,
-  selected,
   onOpen,
   onPin,
   onBench,
 }: {
   creature: Creature;
-  /** While trading, a cell selects rather than opens. */
-  trading: boolean;
-  selected: boolean;
   onOpen: () => void;
   onPin: () => void;
   onBench: () => void;
@@ -265,18 +209,13 @@ function BoxCell({
         : "in the box";
 
   return (
-    <li
-      className={`box-cell ${creature.pinned ? "is-pinned" : ""} ${
-        selected ? "is-offered" : ""
-      }`}
-    >
+    <li className={`box-cell ${creature.pinned ? "is-pinned" : ""}`}>
       <button
         type="button"
         className="box-open"
         onClick={onOpen}
-        title={t(trading ? "pc.offerThis" : "creature.openSummary")}
+        title={t("creature.openSummary")}
       >
-        {trading && <span className="offer-tick">{selected ? "✓" : ""}</span>}
         <Sprite speciesId={creature.speciesId} size={56} />
         <span className="box-name">{nameOf(creature)}</span>
         <span className="box-meta">Lv{creature.level} · {creature.power}</span>

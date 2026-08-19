@@ -8,7 +8,7 @@ import {
   type Reward,
 } from "../../sim/index.js";
 import type { TabId } from "./Tabs.js";
-import { useT } from "../i18n.js";
+import { useT, useTk } from "../i18n.js";
 
 /**
  * The Desk: what happened, and what needs you.
@@ -36,6 +36,7 @@ const WHERE: Record<DeskTarget, TabId> = {
 
 export function Desk({ onGo }: { onGo: (tab: TabId) => void }) {
   const t = useT();
+  const tk = useTk();
   const state = useGame((s) => s.state);
   const clearDigest = useGame((s) => s.clearDigest);
 
@@ -72,8 +73,8 @@ export function Desk({ onGo }: { onGo: (tab: TabId) => void }) {
           {decisions.map((d) => (
             <li key={d.id} className={`decision is-${d.urgency}`}>
               <button type="button" onClick={() => onGo(WHERE[d.where])}>
-<span className="decision-title">{t(d.title as never, d.params)}</span>
-                <span className="decision-detail">{t(d.detail as never, d.params)}</span>
+<span className="decision-title">{tk(d.title, d.params)}</span>
+                <span className="decision-detail">{tk(d.detail, d.params)}</span>
                 <span className="decision-go" aria-hidden="true">
                   →
                 </span>
@@ -96,6 +97,7 @@ export function Desk({ onGo }: { onGo: (tab: TabId) => void }) {
  */
 function Objectives() {
   const t = useT();
+  const tk = useTk();
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
   const list = objectives(state).slice(0, 5);
@@ -108,8 +110,8 @@ function Objectives() {
         {list.map((o) => (
           <li key={o.id} className={o.done ? "is-done" : ""}>
             <span className="obj-id">
-<span className="obj-title">{t(o.title as never, o.titleParams)}</span>
-              <span className="obj-detail">{t(o.detail as never)}</span>
+<span className="obj-title">{tk(o.title, o.titleParams)}</span>
+              <span className="obj-detail">{tk(o.detail)}</span>
             </span>
 
             <span className="obj-right">

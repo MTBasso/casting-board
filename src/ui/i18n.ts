@@ -84,6 +84,26 @@ export function useT() {
     fill((lang === "pt" ? pt : en)[key] ?? en[key] ?? key, params);
 }
 
+/**
+ * Translate a key the sim produced at runtime.
+ *
+ * The strict `t()` only accepts keys that exist, which is the whole point of
+ * `Dict` — a missing Portuguese string should fail the build. But logs, field
+ * events, decisions, objectives, routes, traits and kit all arrive as `string`,
+ * because the sim is language-free and cannot import this file. Every one of
+ * those call sites was written `t(entry.key as never)`, which switched the
+ * check off at precisely the places a missing translation comes from.
+ *
+ * So they say what they mean instead. The guarantee moves from the type, which
+ * was being lied to, into `i18n.test.ts`, which reads every key literal the sim
+ * can emit and fails if either dictionary is missing it.
+ */
+export function useTk() {
+  const lang = useLang((s) => s.lang);
+  return (key: string, params?: Record<string, string | number>): string =>
+    translate(lang, key, params);
+}
+
 /** For the handful of places that need translation outside a component. */
 export function translate(
   lang: Lang,

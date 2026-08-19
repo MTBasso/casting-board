@@ -17,7 +17,7 @@ import {
 import { TypeBadge } from "./TypeBadge.js";
 import { Sprite } from "./Sprite.js";
 import { speciesName } from "../sprites.js";
-import { useT } from "../i18n.js";
+import { useT, useTk } from "../i18n.js";
 
 /**
  * The map.
@@ -95,6 +95,7 @@ function Node({
   onSelect: () => void;
 }) {
   const t = useT();
+  const tk = useTk();
   const state = useGame((s) => s.state);
   const open = isOpen(state, route.id);
   const trip = expeditionOn(state, route.id);
@@ -114,14 +115,14 @@ function Node({
       }`}
       style={{ left: `${route.at.x}%`, top: `${route.at.y}%` }}
       onClick={onSelect}
-      title={open ? t(`route.${route.id}` as never) : t("field.somewhereOut")}
+      title={open ? tk(`route.${route.id}`) : t("field.somewhereOut")}
     >
       <span className="node-dot">
         {open && lead && <TypeBadge type={lead} size="sm" />}
         {frontier && <span aria-hidden="true">?</span>}
       </span>
       <span className="node-name">
-        {open ? t(`route.${route.id}` as never) : t("field.unexplored")}
+        {open ? tk(`route.${route.id}`) : t("field.unexplored")}
       </span>
       {open && (
         <span className="node-known" title={`${Math.round(known * 100)}% known`}>
@@ -200,6 +201,7 @@ function WhatLivesHere({ route }: { route: Route }) {
 /** Everything about one place, once you have been there. */
 export function RouteDetail({ routeId }: { routeId: string }) {
   const t = useT();
+  const tk = useTk();
   const state = useGame((s) => s.state);
   const route = routeById(routeId);
   if (!route) return null;
@@ -216,7 +218,7 @@ export function RouteDetail({ routeId }: { routeId: string }) {
         <p className="hint">
           {t("field.rumourFrom", {
             from: from
-              .map((r) => (r ? t(`route.${r.id}` as never) : ""))
+              .map((r) => (r ? tk(`route.${r.id}`) : ""))
               .filter(Boolean)
               .join(" / "),
           })}
@@ -233,7 +235,7 @@ export function RouteDetail({ routeId }: { routeId: string }) {
   return (
     <section className="route-detail">
       <header>
-        <h3>{t(`route.${route.id}` as never)}</h3>
+        <h3>{tk(`route.${route.id}`)}</h3>
         <span className="dim">
           Lv{route.levelMin}&ndash;{route.levelMax} ·{" "}
           {t("field.peril", { n: Math.round(route.peril * 100) })}
@@ -252,8 +254,8 @@ export function RouteDetail({ routeId }: { routeId: string }) {
       <div className="landmark">
         <Sprite speciesId={route.resident} size={44} />
         <div>
-          <strong>{t(`mark.${route.id}` as never)}</strong>
-          <p>{t(`blurb.${route.id}` as never)}</p>
+          <strong>{tk(`mark.${route.id}`)}</strong>
+          <p>{tk(`blurb.${route.id}`)}</p>
           <span className="dim">
             {t("field.livesHere", { name: speciesName(route.resident) })}
           </span>

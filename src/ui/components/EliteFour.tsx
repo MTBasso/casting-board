@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useGame } from "../../engine/store.js";
-import { useT } from "../i18n.js";
+import { useT, useTk } from "../i18n.js";
 import {
   assignToSeat,
   canAssign,
@@ -84,6 +84,7 @@ export function EliteFour() {
 
 function SeatRow({ seat }: { seat: EliteSeat }) {
   const t = useT();
+  const tk = useTk();
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
   const [hiring, setHiring] = useState(false);
@@ -99,7 +100,7 @@ function SeatRow({ seat }: { seat: EliteSeat }) {
       <li className={`seat is-empty ${isChampion(seat) ? "is-champion" : ""}`}>
         <div className="seat-head">
           <span className="seat-title">
-            {t(seatTitle(seat).key as never, { n: seatTitle(seat).n })}
+            {tk(seatTitle(seat).key, { n: seatTitle(seat).n })}
           </span>
           <button
             type="button"
@@ -143,7 +144,7 @@ function SeatRow({ seat }: { seat: EliteSeat }) {
       <div className="seat-head">
         <Portrait trainer={trainer} size={44} />
         <span className="seat-title">
-          {t(seatTitle(seat).key as never, { n: seatTitle(seat).n })}
+          {tk(seatTitle(seat).key, { n: seatTitle(seat).n })}
           <span className="seat-trainer">
             {trainer.name} · {trainer.affinity}
             {trainer.origin === "usurper" && (

@@ -31,7 +31,7 @@ import { Portrait } from "./Portrait.js";
 import { Sprite } from "./Sprite.js";
 import { TypeBadge } from "./TypeBadge.js";
 import { creatureName } from "../names.js";
-import { useT } from "../i18n.js";
+import { useT, useTk } from "../i18n.js";
 
 /**
  * The crews, and sending them out.
@@ -214,6 +214,7 @@ function CrewRow({
 /** A crew out, what they have left, and anything waiting on you. */
 function OnTheGround({ crew }: { crew: Crew }) {
   const t = useT();
+  const tk = useTk();
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
   const trip = expeditionOf(state, crew.id);
@@ -225,8 +226,8 @@ function OnTheGround({ crew }: { crew: Crew }) {
       <div className="on-ground-head">
         <strong>
 {trip.objective === "explore"
-            ? t("crews.pushingOn", { route: t(`route.${route.id}` as never) })
-            : t("crews.working", { route: t(`route.${route.id}` as never) })}
+            ? t("crews.pushingOn", { route: tk(`route.${route.id}`) })
+            : t("crews.working", { route: tk(`route.${route.id}`) })}
         </strong>
         <button type="button" className="linky" onClick={() => act((s) => recall(s, crew.id))}>
           {t("crews.callBack")}
@@ -236,7 +237,7 @@ function OnTheGround({ crew }: { crew: Crew }) {
       <p className="standing-state">
         {crew.orders ? (
           <>
-            {t("crews.standingOn", { route: t(`route.${crew.orders.routeId}` as never) })}
+            {t("crews.standingOn", { route: tk(`route.${crew.orders.routeId}`) })}
             <button
               type="button"
               className="linky"
@@ -253,7 +254,7 @@ function OnTheGround({ crew }: { crew: Crew }) {
       <div className="kit-left">
         {(["balls", "potions", "revives", "lures"] as const).map((k) => (
           <span key={k} className={trip.kit[k] === 0 ? "is-out" : ""}>
-            {t(`kit.${k}` as never)} <b>{trip.kit[k]}</b>
+            {tk(`kit.${k}`)} <b>{trip.kit[k]}</b>
           </span>
         ))}
         <span>
@@ -266,7 +267,7 @@ function OnTheGround({ crew }: { crew: Crew }) {
 
       {trip.pending && (
         <div className="choice">
-          <p>{t(trip.pending.prompt as never, trip.pending.promptParams)}</p>
+          <p>{tk(trip.pending.prompt, trip.pending.promptParams)}</p>
           <div className="choice-options">
             {trip.pending.options.map((o) => (
               <button
@@ -275,12 +276,12 @@ function OnTheGround({ crew }: { crew: Crew }) {
                 className="btn sm"
                 onClick={() => act((s) => void decide(s, crew.id, o.id))}
               >
-                {t(o.label as never, o.labelParams)}
+                {tk(o.label, o.labelParams)}
               </button>
             ))}
           </div>
           <span className="dim">
-{t("crews.willDecide", { trait: t(`trait.${crew.trait}` as never) })}
+{t("crews.willDecide", { trait: tk(`trait.${crew.trait}`) })}
           </span>
         </div>
       )}
@@ -288,7 +289,7 @@ function OnTheGround({ crew }: { crew: Crew }) {
       <ol className="trip-log">
         {[...trip.log].reverse().slice(0, 5).map((e, i) => (
           <li key={i} className={`ev-${e.kind}`}>
-            {t(e.key as never, e.params)}
+            {tk(e.key, e.params)}
           </li>
         ))}
       </ol>
@@ -299,6 +300,7 @@ function OnTheGround({ crew }: { crew: Crew }) {
 /** Choose ground, choose a party, buy the kit. Money changes hands on setting off. */
 function Outfit({ crew, onDone }: { crew: Crew; onDone: () => void }) {
   const t = useT();
+  const tk = useTk();
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
 
@@ -341,7 +343,7 @@ function Outfit({ crew, onDone }: { crew: Crew; onDone: () => void }) {
         >
           {free.map((r) => (
             <option key={r.id} value={r.id}>
-{t(`route.${r.id}` as never)} · Lv{r.levelMin}–{r.levelMax}
+{tk(`route.${r.id}`)} · Lv{r.levelMin}–{r.levelMax}
             </option>
           ))}
         </select>
@@ -350,7 +352,7 @@ function Outfit({ crew, onDone }: { crew: Crew; onDone: () => void }) {
       {route && (
         <p className="dim">
 {t("crews.atHome", {
-            trait: t(`trait.${crew.trait}` as never),
+            trait: tk(`trait.${crew.trait}`),
             n: Math.round(competence(crew, route.id) * 100),
           })}
         </p>
@@ -367,7 +369,7 @@ function Outfit({ crew, onDone }: { crew: Crew; onDone: () => void }) {
             <option value="">{t("crews.workHere")}</option>
             {onward.map((id) => (
               <option key={id} value={id}>
-{t("crews.pushTo")} — {t(`route.${id}` as never)}
+{t("crews.pushTo")} — {tk(`route.${id}`)}
               </option>
             ))}
           </select>
@@ -382,7 +384,7 @@ function Outfit({ crew, onDone }: { crew: Crew; onDone: () => void }) {
       <div className="kit-buy">
         {(["balls", "potions", "revives", "lures"] as const).map((k) => (
           <label key={k} className="kit-line">
-            <span>{t(`kit.${k}` as never)}</span>
+            <span>{tk(`kit.${k}`)}</span>
             <input
               type="range"
               min={0}

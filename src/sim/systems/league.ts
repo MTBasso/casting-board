@@ -468,6 +468,7 @@ export function hireGymTrainer(
   });
   addGymTrainer(state, trainer.id, gymId);
   grantParty(state, trainer, catalog.staffableByType(affinity), cap, {
+    rollFactor: GYM_TRAINERS.rollPenalty,
     level,
     bond: 0.4,
     jitter: 2,

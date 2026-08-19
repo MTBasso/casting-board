@@ -608,7 +608,14 @@ export const GYM_TRAINERS = {
   maxSlots: 3,
   /** Ceiling once the league reaches the World tier. */
   maxSlotsEndgame: 4,
-  /** Juniors run small parties — they thin the field, they do not hold it. */
+  /**
+   * Juniors run small parties — they thin the field, they do not hold it.
+   *
+   * Tried at one to two, and it was worse: fewer juniors each fought *more*,
+   * and the Leader still never stood, because a thinner screen still finished
+   * the same weak challengers. Count was not the lever; whether the screen
+   * *holds* is.
+   */
   partyMin: 2,
   partyMax: 4,
   /** Level band a junior's creatures arrive at, relative to league renown. */
@@ -630,6 +637,22 @@ export const GYM_TRAINERS = {
   hireCostGrowth: 1.45,
   /** Juniors are paid less than Leaders. */
   salaryFactor: 0.35,
+  /**
+   * How good a junior's creatures are, against the real thing.
+   *
+   * A Gym Trainer's Machamp is a Machamp — and not as good a one as yours. They
+   * are the people you walk past on the way to the Leader, and they should
+   * fight like it.
+   *
+   * This exists because the undercard had quietly replaced the player's roster
+   * rather than shielding it. Measured over twenty hours: the creatures you own
+   * fought **71 battles each** while junior trainers' creatures fought **211**,
+   * and there were six times as many of them. Your own creatures were spectators
+   * in your own league — the same failure the whole design exists to answer, one
+   * level up. Weaker juniors means challengers get through them and the Leader
+   * actually stands.
+   */
+  rollPenalty: 0.55,
 } as const;
 
 export const TRADE = {

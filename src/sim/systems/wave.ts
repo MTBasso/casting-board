@@ -143,6 +143,8 @@ function replaceRetired(state: LeagueState, trainer: Trainer): void {
 
   grantParty(state, trainer, pool, trainer.party.length + 1, {
     level,
+    // A junior's replacement is a lesser version too — see GYM_TRAINERS.rollPenalty.
+    rollFactor: owned ? 1 : GYM_TRAINERS.rollPenalty,
     bond: owned ? 0.4 : 0.5,
     jitter: 2,
     owned,

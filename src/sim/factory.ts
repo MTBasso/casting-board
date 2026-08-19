@@ -40,10 +40,18 @@ export function makeCreature(
     parents?: readonly [string, string];
     level?: number;
     owned?: boolean;
+    /**
+     * Multiplier on the creature's stat roll.
+     *
+     * Below 1 makes a lesser version of the species — a junior Gym Trainer's
+     * Machamp is a Machamp, and not as good a one as yours. See
+     * `GYM_TRAINERS.rollPenalty`.
+     */
+    rollFactor?: number;
   } = {},
 ): Creature {
   const rng = state.rng;
-  const roll = range(rng, 0.9, 1.15);
+  const roll = range(rng, 0.9, 1.15) * (opts.rollFactor ?? 1);
   // Mentors of a matching type train new arrivals up before they ever fight.
   // A species can never exist below the level its pre-evolution evolves at —
   // there is no such thing as a level 12 Gengar. Enforced here so every path

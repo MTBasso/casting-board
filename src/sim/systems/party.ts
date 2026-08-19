@@ -239,7 +239,14 @@ export function grantParty(
   trainer: Trainer,
   pool: readonly Species[],
   count: number,
-  opts: { level: number; bond: number; jitter?: number; owned?: boolean },
+  opts: {
+    level: number;
+    bond: number;
+    jitter?: number;
+    owned?: boolean;
+    /** Below 1 grants a lesser version of each species. */
+    rollFactor?: number;
+  },
 ): void {
   const used = new Set(
     trainer.party.map((id) => {
@@ -270,6 +277,7 @@ export function grantParty(
       // Junior trainers bring their own; those creatures are never the
       // player's, so they stay out of the PC entirely.
       owned: opts.owned ?? true,
+      rollFactor: opts.rollFactor ?? 1,
     });
     mon.trainerId = trainer.id;
     mon.gymId = trainer.gymId;

@@ -650,8 +650,19 @@ export interface PendingChoice {
   prompt: string;
   promptParams?: Record<string, string | number>;
   options: { id: string; label: string; labelParams?: Record<string, string | number> }[];
-  /** Sim-time the crew stops waiting and acts in character. */
-  decidesAt: number;
+  /**
+   * Sim-time the crew stops waiting and acts in character.
+   *
+   * `null` means they hold it for the whole trip and only decide on the way
+   * home. Rare finds get that treatment: a crew settling a common encounter for
+   * itself is its character working, but a crew quietly deciding the best thing
+   * it ever found is the game throwing away its own best moment.
+   *
+   * Bounded by the trip rather than by a timer, so the number of things waiting
+   * can never exceed the number of crews you employ — a Desk that accumulates a
+   * backlog is how an idle game teaches people to stop opening it.
+   */
+  decidesAt: number | null;
 }
 
 /**

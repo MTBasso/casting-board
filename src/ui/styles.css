@@ -2930,3 +2930,18 @@ body { padding-bottom: 3rem; }
 .obj-track span { display: block; height: 100%; background: var(--muted); }
 .objectives li.is-done .obj-track span { background: var(--accent); }
 .objectives li.is-done .obj-title { color: var(--accent); }
+
+/* Language, where a playtester can find it. */
+.lang {
+  flex: none;
+  padding: 0.2rem 0.45rem;
+  background: var(--sunken);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+.lang:hover { color: var(--ink); border-color: var(--muted); }

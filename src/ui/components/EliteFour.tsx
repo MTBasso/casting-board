@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useGame } from "../../engine/store.js";
+import { useT } from "../i18n.js";
 import {
   assignToSeat,
   canAssign,
@@ -32,15 +33,15 @@ import { TypeBadge } from "./TypeBadge.js";
  * idle, it is a free pass on the way to taking your league.
  */
 export function EliteFour() {
+  const t = useT();
   const state = useGame((s) => s.state);
 
   if (!eliteUnlocked(state)) {
     return (
       <div className="elite">
-        <h2 className="col-title">Elite Four</h2>
+        <h2 className="col-title">{t("elite.title")}</h2>
         <p className="empty">
-          Locked. Build all {constants.LEAGUE.maxGyms} gyms
-          {" "}({state.gymOrder.length} so far) to open the Elite tier.
+{t("elite.locked", { n: constants.LEAGUE.maxGyms, have: state.gymOrder.length })}
         </p>
       </div>
     );
@@ -53,22 +54,20 @@ export function EliteFour() {
   return (
     <div className="elite">
       <h2 className="col-title">
-        Elite Four
+        {t("elite.title")}
         <span className="counter">
-          {staffed}/{seats.length} staffed · next run {nextRun}m
+          {t("elite.staffed", { n: staffed, total: seats.length, m: nextRun })}
         </span>
       </h2>
 
       {staffed < seats.length && (
         <p className="hint">
-          Every empty seat is a free pass. A challenger who clears all five takes
-          your league.
+{t("elite.freePass")}
         </p>
       )}
       {state.leagueTaken > 0 && (
         <p className="absorbed">
-          Your league has been taken <strong>{state.leagueTaken}</strong>{" "}
-          {state.leagueTaken === 1 ? "time" : "times"}.
+{t("elite.taken", { n: state.leagueTaken })}
         </p>
       )}
 
@@ -84,6 +83,7 @@ export function EliteFour() {
 }
 
 function SeatRow({ seat }: { seat: EliteSeat }) {
+  const t = useT();
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
   const [hiring, setHiring] = useState(false);
@@ -98,7 +98,9 @@ function SeatRow({ seat }: { seat: EliteSeat }) {
     return (
       <li className={`seat is-empty ${isChampion(seat) ? "is-champion" : ""}`}>
         <div className="seat-head">
-          <span className="seat-title">{seatTitle(seat)}</span>
+          <span className="seat-title">
+            {t(seatTitle(seat).key as never, { n: seatTitle(seat).n })}
+          </span>
           <button
             type="button"
             className="btn sm"
@@ -141,7 +143,7 @@ function SeatRow({ seat }: { seat: EliteSeat }) {
       <div className="seat-head">
         <Portrait trainer={trainer} size={44} />
         <span className="seat-title">
-          {seatTitle(seat)}
+          {t(seatTitle(seat).key as never, { n: seatTitle(seat).n })}
           <span className="seat-trainer">
             {trainer.name} · {trainer.affinity}
             {trainer.origin === "usurper" && (

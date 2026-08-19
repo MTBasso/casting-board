@@ -1,4 +1,5 @@
 import { useGame } from "../../engine/store.js";
+import { useT } from "../i18n.js";
 import { acceptGymOffer, briefType, gymCost } from "../../sim/index.js";
 import { TypeBadge } from "./TypeBadge.js";
 
@@ -12,6 +13,7 @@ import { TypeBadge } from "./TypeBadge.js";
  * is a coin flip, not an identity.
  */
 export function GymOffer() {
+  const t = useT();
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
   const offer = state.gymOffer;
@@ -56,19 +58,18 @@ export function GymOffer() {
           )}
         </div>
         <h2>
-          {founding ? "Choose your first gym\u2019s type" : "Choose your next gym\u2019s type"}
+          {founding ? t("gymOffer.firstTitle") : t("gymOffer.nextTitle")}
         </h2>
         <p className="offer-sub">
           {founding ? (
-            <>
-              This is the type your league is built around, and the only one you
-              will be able to field at first. Free — everything starts here.
-            </>
+            t("gymOffer.founding")
           ) : (
             <>
-              Construction costs <strong>{cost.toLocaleString()}</strong>. You have{" "}
-              {Math.round(state.money).toLocaleString()}.
-              {!affordable && " Keep earning — the offer will wait."}
+              {t("gymOffer.costLine", {
+                cost: cost.toLocaleString(),
+                money: Math.round(state.money).toLocaleString(),
+              })}
+              {!affordable && t("gymOffer.keepEarning")}
             </>
           )}
         </p>

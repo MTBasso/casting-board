@@ -1,4 +1,5 @@
 import { useGame } from "../../engine/store.js";
+import { useT } from "../i18n.js";
 import { Sprite } from "./Sprite.js";
 import { StaffStanding } from "./StaffStanding.js";
 import { Portrait } from "./Portrait.js";
@@ -30,11 +31,12 @@ import { BattleFeed } from "./BattleFeed.js";
  * *who matters*, by pinning, and *how deep the gym goes*, by hiring.
  */
 export function GymPanel({ gymId }: { gymId: string }) {
+  const t = useT();
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
 
   const gym = state.gyms[gymId];
-  if (!gym) return <p className="empty">Gym not found.</p>;
+  if (!gym) return <p className="empty">{t("gyms.notFound")}</p>;
 
   const leader = gym.leaderId ? state.trainers[gym.leaderId] : undefined;
   const juniors = gym.trainerIds
@@ -58,7 +60,7 @@ export function GymPanel({ gymId }: { gymId: string }) {
                 {leader.name} · {leader.doctrine}
               </>
             ) : (
-              "No Leader — this gym forfeits every challenge"
+              t("gyms.noLeader")
             )}
           </p>
         </div>
@@ -69,7 +71,7 @@ export function GymPanel({ gymId }: { gymId: string }) {
             disabled={state.money < leaderCost}
             onClick={() => act((s) => void hireTrainer(s, gym.type))}
           >
-            Hire Leader · {leaderCost.toLocaleString()}
+            {t("gyms.hireLeader", { n: leaderCost.toLocaleString() })}
           </button>
         )}
       </header>
@@ -82,7 +84,7 @@ export function GymPanel({ gymId }: { gymId: string }) {
 
       <section className="group">
         <h3>
-          Gym Trainers
+          {t("gyms.gymTrainers")}
           <span className="counter">
             {juniors.length}/{gym.trainerSlots}
             {slotCost !== null && (
@@ -92,7 +94,7 @@ export function GymPanel({ gymId }: { gymId: string }) {
                 disabled={state.money < slotCost}
                 onClick={() => act((s) => void expandGymTrainers(s, gym.id))}
               >
-                +1 slot · {slotCost}
+                {t("gyms.addSlot", { n: slotCost })}
               </button>
             )}
             <button
@@ -102,20 +104,18 @@ export function GymPanel({ gymId }: { gymId: string }) {
               title={juniorCheck.ok ? undefined : juniorCheck.reason}
               onClick={() => act((s) => void hireGymTrainer(s, gym.id))}
             >
-              Hire {gym.type} · &#8369;{gymTrainerCost(state, gym.id)}
+              {t("gyms.hireJunior", { type: gym.type, n: gymTrainerCost(state, gym.id) })}
             </button>
           </span>
         </h3>
 
         <p className="absorbed">
-          Your Leader&rsquo;s party fought{" "}
-          <strong>{gym.threat.absorbed.toLocaleString()}</strong> fewer battles
-          because of these {juniors.length}.
+{t("gyms.absorbed", { n: gym.threat.absorbed.toLocaleString(), c: juniors.length })}
         </p>
 
         {juniors.length === 0 ? (
           <p className="empty">
-            No junior trainers — every challenger goes straight at your Leader.
+{t("gyms.noJuniors")}
           </p>
         ) : (
           <ul className="trainer-list">
@@ -129,15 +129,13 @@ export function GymPanel({ gymId }: { gymId: string }) {
       {leader && (
         <section className="group">
           <h3>
-            {leader.name}&rsquo;s party
+            {t("gyms.partyOf", { name: leader.name })}
             <span className="counter">
               {leader.party.length}/{partyCapOf(leader, state)}
             </span>
           </h3>
           <p className="hint">
-            Position one leads; the rest follow as each faints. Drag to reorder.
-            Parties fill themselves from the box — pin the ones that matter and
-            they will never be swapped out.
+{t("gyms.partyHint")}
           </p>
           <PartyList
             trainerId={leader.id}
@@ -159,6 +157,7 @@ export function GymPanel({ gymId }: { gymId: string }) {
  * sprites are right there.
  */
 function TrainerRow({ trainer }: { trainer: Trainer }) {
+  const t = useT();
   const state = useGame((s) => s.state);
   const party = partyOf(state, trainer.id);
   const avgLevel =
@@ -180,7 +179,7 @@ function TrainerRow({ trainer }: { trainer: Trainer }) {
           </span>
         </span>
         <span className="dim">
-          {party.length}/{partyCapOf(trainer, state)} · avg Lv{avgLevel} · {rested}% rested
+          {party.length}/{partyCapOf(trainer, state)} · avg Lv{avgLevel} · {t("gyms.rested", { n: rested })}
         </span>
       </div>
 

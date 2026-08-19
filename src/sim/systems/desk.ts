@@ -36,34 +36,36 @@ export interface Decision {
   id: string;
   /** `urgent` is something losing you the league right now. */
   urgency: "urgent" | "waiting" | "idle";
+  /** Keys, not sentences — the sim has no language. */
   title: string;
   detail: string;
+  params?: Record<string, string | number>;
   where: DeskTarget;
 }
 
 export function pendingDecisions(state: LeagueState): Decision[] {
   const out: Decision[] = [];
+  const say = (
+    id: string,
+    urgency: Decision["urgency"],
+    stem: string,
+    where: DeskTarget,
+    params?: Record<string, string | number>,
+  ) => {
+    out.push(
+      params
+        ? { id, urgency, title: `${stem}.title`, detail: `${stem}.detail`, params, where }
+        : { id, urgency, title: `${stem}.title`, detail: `${stem}.detail`, where },
+    );
+  };
 
   // --- The board ----------------------------------------------------------
 
   if (state.gymOffer && state.gymOffer.length > 0) {
-    out.push({
-      id: "gym-offer",
-      urgency: "waiting",
-      title: "A new gym is open to you",
-      detail: "Choose the type it will defend. You cannot change it afterwards.",
-      where: "gyms",
-    });
+    say("gym-offer", "waiting", "decision.gymOffer", "gyms");
   }
-
   if (state.leaderOffer && state.leaderOffer.trainerIds.length > 0) {
-    out.push({
-      id: "leader-offer",
-      urgency: "waiting",
-      title: "Leader candidates are waiting",
-      detail: "Three trainers have applied. Each brings their own partner.",
-      where: "gyms",
-    });
+    say("leader-offer", "waiting", "decision.leaderOffer", "gyms");
   }
 
   for (const gymId of state.gymOrder) {
@@ -71,24 +73,13 @@ export function pendingDecisions(state: LeagueState): Decision[] {
     if (!gym) continue;
 
     if (!gym.leaderId) {
-      out.push({
-        id: `no-leader-${gymId}`,
-        urgency: "urgent",
-        title: `${gym.name} has no Leader`,
-        detail: "It forfeits every challenge until somebody stands there.",
-        where: "gyms",
-      });
+      say(`no-leader-${gymId}`, "urgent", "decision.noLeader", "gyms", { gym: gym.name });
       continue;
     }
-
-    const party = state.trainers[gym.leaderId]?.party.length ?? 0;
-    if (party === 0) {
-      out.push({
-        id: `empty-${gymId}`,
-        urgency: "urgent",
-        title: `${gym.name} is fielding nobody`,
-        detail: `No ${gym.type} creatures to cast. Trade for one, or work a route that supplies them.`,
-        where: "pc",
+    if ((state.trainers[gym.leaderId]?.party.length ?? 0) === 0) {
+      say(`empty-${gymId}`, "urgent", "decision.emptyGym", "pc", {
+        gym: gym.name,
+        type: gym.type,
       });
     }
   }
@@ -97,22 +88,16 @@ export function pendingDecisions(state: LeagueState): Decision[] {
 
   for (const trainer of Object.values(state.trainers)) {
     if (trainer.kind === "candidate") continue;
+    const where: DeskTarget =
+      trainer.kind === "elite" || trainer.kind === "champion" ? "elite" : "gyms";
 
     if (isSuspended(state, trainer)) {
-      out.push({
-        id: `suspended-${trainer.id}`,
-        urgency: "urgent",
-        title: `${trainer.name} is suspended`,
-        detail: "Their post stands empty, and a challenger walks straight through it.",
-        where: trainer.kind === "elite" || trainer.kind === "champion" ? "elite" : "gyms",
+      say(`suspended-${trainer.id}`, "urgent", "decision.suspended", where, {
+        name: trainer.name,
       });
     } else if (trainer.strain > MORALE.strainToSuspend * 0.5) {
-      out.push({
-        id: `strain-${trainer.id}`,
-        urgency: "waiting",
-        title: `${trainer.name} is close to walking`,
-        detail: "Pay them properly, or step them down to something they can carry.",
-        where: trainer.kind === "elite" || trainer.kind === "champion" ? "elite" : "gyms",
+      say(`strain-${trainer.id}`, "waiting", "decision.strain", where, {
+        name: trainer.name,
       });
     }
   }
@@ -122,8 +107,9 @@ export function pendingDecisions(state: LeagueState): Decision[] {
     out.push({
       id: "idle-crews",
       urgency: "idle",
-      title: `${idle.length} crew${idle.length === 1 ? "" : "s"} in from the field`,
-      detail: "They draw wages between trips. Outfit them and send them somewhere.",
+      title: idle.length === 1 ? "decision.idleCrews.title" : "decision.idleCrews.titlePlural",
+      detail: "decision.idleCrews.detail",
+      params: { n: idle.length },
       where: "field",
     });
   }
@@ -133,8 +119,9 @@ export function pendingDecisions(state: LeagueState): Decision[] {
     out.push({
       id: `choice-${trip.crewId}`,
       urgency: "urgent",
-      title: "A crew is waiting on you",
+      title: "decision.choice.title",
       detail: trip.pending.prompt,
+      ...(trip.pending.promptParams ? { params: trip.pending.promptParams } : {}),
       where: "field",
     });
   }
@@ -147,8 +134,9 @@ export function pendingDecisions(state: LeagueState): Decision[] {
       out.push({
         id: "elite-empty",
         urgency: "urgent",
-        title: `${empty} Elite seat${empty === 1 ? "" : "s"} unstaffed`,
-        detail: "An empty seat is a free pass on the way to taking your league.",
+        title: empty === 1 ? "decision.eliteEmpty.title" : "decision.eliteEmpty.titlePlural",
+        detail: "decision.eliteEmpty.detail",
+        params: { n: empty },
         where: "elite",
       });
     }
@@ -158,51 +146,28 @@ export function pendingDecisions(state: LeagueState): Decision[] {
 
   const retirees = Object.values(state.creatures).filter((c) => c.role === "retired");
   if (retirees.length > 0 && dayCareBuilt(state) && freeSlots(state) > 0) {
-    out.push({
-      id: "daycare-free",
-      urgency: "waiting",
-      title: `${retirees.length} retired, and the Day-Care has room`,
-      detail:
-        "A long career makes better offspring. This is what retirement was for.",
-      where: "daycare",
+    say("daycare-free", "waiting", "decision.daycareFree", "daycare", {
+      n: retirees.length,
     });
   } else if (retirees.length >= DESK.retireesBeforeNudge && !dayCareBuilt(state)) {
-    out.push({
-      id: "daycare-unbuilt",
-      urgency: "idle",
-      title: "Careers are ending with nowhere to go",
-      detail: "The Day-Care turns a finished career into the next generation.",
-      where: "facilities",
-    });
+    say("daycare-unbuilt", "idle", "decision.daycareUnbuilt", "facilities");
   }
 
   const check = readiness(state);
   if (check.ok) {
-    out.push({
-      id: "promotion",
-      urgency: "waiting",
-      title:
-        check.path === "forced"
-          ? "You can leave for the next tier"
-          : "The league is ready to promote",
-      detail:
-        check.path === "forced"
-          ? "Take the tier now with the Champion who beat you, or stay and win the title back."
-          : `Induct up to ${PROMOTION.inductCount} from the Hall. They become Mentors, and they are all that survives.`,
-      where: "elite",
-    });
+    say(
+      "promotion",
+      "waiting",
+      check.path === "forced" ? "decision.promotionForced" : "decision.promotionEarned",
+      "elite",
+      { n: PROMOTION.inductCount },
+    );
   }
 
   // --- Supply -------------------------------------------------------------
 
   if (usableReserve(state) >= reserveCeiling(state)) {
-    out.push({
-      id: "box-full",
-      urgency: "waiting",
-      title: "The box is full and catching has stopped",
-      detail: "Cast what you have, or trade the types nobody can field.",
-      where: "pc",
-    });
+    say("box-full", "waiting", "decision.boxFull", "pc");
   }
 
   const short = state.gymOrder.flatMap((id) => {
@@ -210,14 +175,18 @@ export function pendingDecisions(state: LeagueState): Decision[] {
     if (!gym) return [];
     return [...gym.trainerIds, ...(gym.leaderId ? [gym.leaderId] : [])]
       .map((tid) => state.trainers[tid])
-      .filter((t) => t !== undefined && t.party.length > 0 && t.party.length < partyCapOf(t, state));
+      .filter(
+        (t) => t !== undefined && t.party.length > 0 && t.party.length < partyCapOf(t, state),
+      );
   });
   if (short.length > 0) {
     out.push({
       id: "short-handed",
       urgency: "idle",
-      title: `${short.length} trainer${short.length === 1 ? "" : "s"} fielding less than they could`,
-      detail: "Empty slots fill themselves when the box holds the right type.",
+      title:
+        short.length === 1 ? "decision.shortHanded.title" : "decision.shortHanded.titlePlural",
+      detail: "decision.shortHanded.detail",
+      params: { n: short.length },
       where: "pc",
     });
   }
@@ -227,12 +196,11 @@ export function pendingDecisions(state: LeagueState): Decision[] {
   const rival = nextRival(state);
   if (rival) {
     const mins = Math.ceil(timeUntil(state, rival) / 60);
-    out.push({
-      id: `rival-${rival.id}`,
-      urgency: mins <= 10 ? "urgent" : "waiting",
-      title: `${rival.name} arrives in ${mins}m`,
-      detail: `${rival.type} type, coming for ${state.gyms[rival.gymId]?.name ?? "a gym"}.`,
-      where: "gyms",
+    say(`rival-${rival.id}`, mins <= 10 ? "urgent" : "waiting", "decision.rival", "gyms", {
+      name: rival.name,
+      mins,
+      type: rival.type,
+      gym: state.gyms[rival.gymId]?.name ?? "",
     });
   }
 

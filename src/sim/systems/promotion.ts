@@ -333,5 +333,5 @@ function reinstateUsurper(state: LeagueState, carried: CarriedChampion): void {
   }
 
   state.usurperId = trainer.id;
-  log(state, "promote", `${trainer.name} came with you.`);
+  log(state, "promote", "log.cameWithYou", { name: trainer.name });
 }

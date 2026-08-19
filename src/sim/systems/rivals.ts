@@ -157,7 +157,7 @@ function resolve(state: LeagueState, rival: Rival, report: TickReport): void {
   // — so the refusal that created them is priced in hard fights, not forever.
   const settled = !rival.held && beatGrudge(state, rival.name);
   if (settled) {
-    log(state, "hire", `${rival.name} has finally agreed to work for you.`);
+    log(state, "hire", "log.rivalAgreed", { name: rival.name });
   }
 
   if (rival.held) {

@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { useGame } from "../../engine/store.js";
+import { useT } from "../i18n.js";
 import { STEP_MS, isDone, timelineOf, useReplay } from "../replay.js";
 import type { BattleEvent, BattleFighter, BattleRecord } from "../../sim/index.js";
 import { Sprite } from "./Sprite.js";
@@ -33,6 +34,7 @@ export function ReplayDriver() {
  * The Leader's stand is the climax, so it plays slower and is marked as such.
  */
 export function BattleFeed({ gymId }: { gymId: string }) {
+  const t = useT();
   const state = useGame((s) => s.state);
   const record = state.battles[gymId];
   const sync = useReplay((s) => s.sync);
@@ -51,10 +53,10 @@ export function BattleFeed({ gymId }: { gymId: string }) {
     return (
       <div className="battle">
         <div className="section-head">
-          <span>Battle</span>
-          <span className="section-tag">waiting</span>
+          <span>{t("battle.title")}</span>
+          <span className="section-tag">{t("battle.waiting")}</span>
         </div>
-        <p className="empty">No challenger yet. The next one is on their way.</p>
+        <p className="empty">{t("battle.noChallenger")}</p>
       </div>
     );
   }
@@ -65,16 +67,18 @@ export function BattleFeed({ gymId }: { gymId: string }) {
   return (
     <div className={`battle ${stage.isLeader ? "is-leader" : ""}`}>
       <div className="section-head">
-        <span>{stage.isLeader ? `${stage.trainer} — Leader` : stage.trainer}</span>
+        <span>
+          {stage.isLeader ? t("battle.leaderSuffix", { name: stage.trainer }) : stage.trainer}
+        </span>
         <span className="section-tag">
-          {done ? (record.tookBadge ? "badge lost" : "held") : "live"}
+          {done ? (record.tookBadge ? t("battle.badgeLost") : t("battle.held")) : t("battle.live")}
         </span>
       </div>
 
       <div className="arena">
         <Bench
           side="them"
-          label="Challenger"
+          label={t("battle.challenger")}
           fighters={record.challenger}
           hp={hp.theirs}
           active={hp.theirActive}
@@ -213,29 +217,30 @@ function Bench({
 }
 
 function Blow({ event }: { event: BattleEvent }) {
+  const t = useT();
   if (event.kind === "revive") {
     return (
-      <>
-        <b>{event.defender}</b> is revived.
-      </>
+      <>{t("battle.revived", { name: event.defender })}</>
     );
   }
   if (event.kind === "faint") {
     return (
-      <>
-        <b>{event.defender}</b> faints.
-      </>
+      <>{t("battle.faints", { name: event.defender })}</>
     );
   }
   const eff =
     event.effectiveness > 1
-      ? " — super effective"
+      ? t("battle.superEffective")
       : event.effectiveness < 1
-        ? " — not very effective"
+        ? t("battle.notVery")
         : "";
   return (
     <>
-      <b>{event.attacker}</b> hits <b>{event.defender}</b> for {event.damage}
+      {t("battle.hits", {
+        a: event.attacker,
+        b: event.defender,
+        n: event.damage,
+      })}
       {eff}.
     </>
   );

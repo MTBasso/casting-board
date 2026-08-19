@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useGame } from "../../engine/store.js";
+import { useT } from "../i18n.js";
 
 function clock(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -12,6 +13,7 @@ function clock(seconds: number): string {
  * flavor — the player should be able to ignore it entirely and still play well.
  */
 export function EventLog() {
+  const t = useT();
   const state = useGame((s) => s.state);
   const session = useGame((s) => s.session);
   const [open, setOpen] = useState(false);
@@ -33,10 +35,10 @@ export function EventLog() {
           {latest ? (
             <>
               <time>{clock(latest.at)}</time>
-              <span className={`log-${latest.kind}`}>{latest.text}</span>
+              <span className={`log-${latest.kind}`}>{t(latest.key as never, latest.params)}</span>
             </>
           ) : (
-            <span className="dim">Challengers are on their way.</span>
+            <span className="dim">{t("log.incoming")}</span>
           )}
         </span>
         <span className="feed-session">
@@ -50,7 +52,7 @@ export function EventLog() {
           {state.log.map((entry, i) => (
             <li key={`${entry.at}-${i}`} className={`log-${entry.kind}`}>
               <time>{clock(entry.at)}</time>
-              <span>{entry.text}</span>
+              <span>{t(entry.key as never, entry.params)}</span>
             </li>
           ))}
         </ul>

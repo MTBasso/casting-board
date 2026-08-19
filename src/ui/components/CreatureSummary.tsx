@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useGame } from "../../engine/store.js";
+import { useT, type Key } from "../i18n.js";
 import { Sprite } from "./Sprite.js";
 import { catalog } from "../../data/catalog.js";
 import {
@@ -22,31 +23,27 @@ import { StatRadar, StatRows } from "./StatRadar.js";
  * description, a row of pips, and, crucially, a plain statement of what it
  * actually does.
  */
-function bondReading(bond: number): { label: string; effect: string; pips: number } {
+function bondReading(bond: number): { label: Key; effect: Key; swing: number; pips: number } {
   const spread =
     constants.BOND.varianceAtZero +
     (constants.BOND.varianceAtFull - constants.BOND.varianceAtZero) * bond;
   const swing = Math.round(spread * 100);
 
-  const label =
+  const label: Key =
     bond >= 0.85
-      ? "Inseparable"
+      ? "bond.inseparable"
       : bond >= 0.6
-        ? "Very attached"
+        ? "bond.veryAttached"
         : bond >= 0.35
-          ? "Warming to you"
+          ? "bond.warming"
           : bond >= 0.15
-            ? "Getting used to you"
-            : "Wary of you";
+            ? "bond.gettingUsed"
+            : "bond.wary";
 
-  const effect =
-    bond >= 0.85
-      ? `Fights exactly as its stats promise — swings only ±${swing}%.`
-      : bond >= 0.5
-        ? `Mostly dependable, swinging ±${swing}% either way.`
-        : `Unpredictable — swings ±${swing}%, and will throw battles it should win.`;
+  const effect: Key =
+    bond >= 0.85 ? "bond.exact" : bond >= 0.5 ? "bond.dependable" : "bond.unpredictable";
 
-  return { label, effect, pips: Math.max(1, Math.round(bond * 5)) };
+  return { label, effect, swing, pips: Math.max(1, Math.round(bond * 5)) };
 }
 
 /**
@@ -59,16 +56,16 @@ function bondReading(bond: number): { label: string; effect: string; pips: numbe
 function careerReading(creature: Creature) {
   const left = Math.max(0, Math.round(creature.careerTotal - creature.careerSpent));
   const ratio = creature.careerTotal > 0 ? left / creature.careerTotal : 0;
-  const label =
+  const label: Key =
     ratio > 0.75
-      ? "Fresh"
+      ? "career.fresh"
       : ratio > 0.5
-        ? "Seasoned"
+        ? "career.seasoned"
         : ratio > 0.25
-          ? "Veteran"
+          ? "career.veteran"
           : ratio > 0.08
-            ? "Fading"
-            : "Final days";
+            ? "career.fading"
+            : "career.final";
   return { left, ratio, label };
 }
 
@@ -79,6 +76,7 @@ export function CreatureSummary({
   creature: Creature;
   onClose: () => void;
 }) {
+  const t = useT();
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
 
@@ -107,8 +105,8 @@ export function CreatureSummary({
         aria-label={`${creatureName(creature)} summary`}
       >
         <div className="summary-bar">
-          <span>Pokémon Info</span>
-          <span className="summary-tag">Summary</span>
+          <span>{t("creature.info")}</span>
+          <span className="summary-tag">{t("creature.summary")}</span>
           <button type="button" className="summary-close" onClick={onClose} aria-label="Close">
             ✕
           </button>
@@ -132,31 +130,31 @@ export function CreatureSummary({
             </h3>
             <dl className="summary-facts">
               <div>
-                <dt>Dex No.</dt>
+                <dt>{t("creature.dexNo")}</dt>
                 <dd>{String(species?.id ?? 0).padStart(3, "0")}</dd>
               </div>
               <div>
-                <dt>Species</dt>
+                <dt>{t("creature.species")}</dt>
                 <dd>{speciesName(creature.speciesId)}</dd>
               </div>
               <div>
-                <dt>Level</dt>
+                <dt>{t("common.level")}</dt>
                 <dd>{creature.level}</dd>
               </div>
               <div>
-                <dt>Type</dt>
+                <dt>{t("common.type")}</dt>
                 <dd>
                   <TypeBadges types={creature.types} size="sm" />
                 </dd>
               </div>
               <div>
-                <dt>Record</dt>
+                <dt>{t("creature.record")}</dt>
                 <dd>
                   {creature.wins}W / {creature.losses}L
                 </dd>
               </div>
               <div>
-                <dt>Trainer</dt>
+                <dt>{t("creature.trainer")}</dt>
                 <dd>{trainer?.name ?? "In the box"}</dd>
               </div>
             </dl>
@@ -164,7 +162,7 @@ export function CreatureSummary({
         </div>
 
         <div className="summary-bar">
-          <span>Skills</span>
+          <span>{t("creature.skills")}</span>
           <span className="summary-tag">Stats</span>
         </div>
 
@@ -174,7 +172,7 @@ export function CreatureSummary({
         </div>
 
         <div className="summary-bar">
-          <span>Trainer Memo</span>
+          <span>{t("creature.memo")}</span>
           <span className="summary-tag">Condition</span>
         </div>
 
@@ -187,14 +185,15 @@ export function CreatureSummary({
                 <span className="pips-empty">{"○".repeat(5 - bond.pips)}</span>
               </span>
             </h4>
-            <p className="memo-label">{bond.label}</p>
-            <p className="memo-effect">{bond.effect}</p>
+            <p className="memo-label">{t(bond.label)}</p>
+            <p className="memo-effect">{t(bond.effect, { n: bond.swing })}</p>
           </section>
 
           <section>
             <h4>Career</h4>
             <p className="memo-label">
-              {career.label} — <b>{career.left.toLocaleString()}</b> battles left
+              {t(career.label)} — <b>{career.left.toLocaleString()}</b>{" "}
+              {t("creature.battlesLeft", { n: "" }).trim()}
             </p>
             <span className="career-track">
               <span
@@ -203,8 +202,7 @@ export function CreatureSummary({
               />
             </span>
             <p className="memo-effect">
-              Every battle spends a little of this. When it runs out they retire to
-              the Day-Care, where their line continues.
+              {t("memo.career")}
             </p>
           </section>
 

@@ -1,4 +1,5 @@
 import { useGame } from "../../engine/store.js";
+import { useT } from "../i18n.js";
 import {
   allFacilities,
   canUpgrade,
@@ -15,12 +16,13 @@ import {
  * Together with the board growing, this is the progression the mid-game runs on.
  */
 export function Facilities() {
+  const t = useT();
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
 
   return (
     <div className="facilities">
-      <h2 className="col-title">Facilities</h2>
+      <h2 className="col-title">{t("facilities.title")}</h2>
       <ul className="facility-list">
         {allFacilities().map((def) => {
           const lvl = facilityLevel(state, def.id);

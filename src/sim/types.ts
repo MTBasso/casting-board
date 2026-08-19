@@ -582,7 +582,9 @@ export interface Kit {
 
 export interface FieldEvent {
   kind: "encounter" | "hazard" | "trouble" | "windfall" | "discovery";
-  text: string;
+  /** A key and its parameters, like the log — the sim holds no sentences. */
+  key: string;
+  params?: Record<string, string | number>;
   at: number;
 }
 
@@ -597,7 +599,8 @@ export interface FieldEvent {
 export interface PendingChoice {
   id: string;
   prompt: string;
-  options: { id: string; label: string }[];
+  promptParams?: Record<string, string | number>;
+  options: { id: string; label: string; labelParams?: Record<string, string | number> }[];
   /** Sim-time the crew stops waiting and acts in character. */
   decidesAt: number;
 }
@@ -905,10 +908,18 @@ export type LogKind =
   | "promote"
   | "drift";
 
+/**
+ * One line of the league's history.
+ *
+ * A **key and its parameters**, never a sentence. The sim has no language: a
+ * league saved in Portuguese and reopened in English reads correctly, which
+ * would be impossible if the log held finished text.
+ */
 export interface LogEntry {
   at: number;
   kind: LogKind;
-  text: string;
+  key: string;
+  params?: Record<string, string | number>;
 }
 
 // ---------------------------------------------------------------------------

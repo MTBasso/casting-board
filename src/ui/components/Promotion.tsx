@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useGame } from "../../engine/store.js";
+import { useT } from "../i18n.js";
 import { Sprite } from "./Sprite.js";
 import {
   constants,
@@ -21,6 +22,7 @@ import {
  * can afford the time.
  */
 export function Promotion() {
+  const t = useT();
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
   const [picked, setPicked] = useState<string[]>([]);
@@ -45,11 +47,11 @@ export function Promotion() {
     <section className={`panel promotion ${forced ? "is-forced" : ""}`}>
       <header className="panel-head">
         <div>
-          <h2>{forced ? "The league is not yours" : "Promotion"}</h2>
+          <h2>{forced ? t("promo.lostTitle") : t("promo.title")}</h2>
           <p className="panel-sub">
-            {forced
-              ? `${usurper?.name ?? "A challenger"} holds the title. You can take the tier now, or stay and win it back.`
-              : `Climb from ${state.tier} to the next tier. Everything resets but the Hall.`}
+{forced
+              ? t("promo.forcedSub", { name: usurper?.name ?? "" })
+              : t("promo.sub", { tier: state.tier })}
           </p>
         </div>
       </header>
@@ -58,18 +60,15 @@ export function Promotion() {
         <>
           <div className="path-compare">
             <div className="path is-open">
-              <h3>Go now</h3>
+              <h3>{t("promo.goNow")}</h3>
               <p>
-                You arrive at the next tier with <strong>{usurper?.name ?? "the usurper"}</strong>{" "}
-                and the team that beat you. Nothing else — no inductees, no Mentors.
+{t("promo.goNowDetail", { name: usurper?.name ?? "" })}
               </p>
             </div>
             <div className="path">
-              <h3>Win it back first</h3>
+              <h3>{t("promo.winBack")}</h3>
               <p>
-                Out-develop them, retake the title, then promote the earned way —
-                with {max} of your own and the Mentors that actually bend the
-                curve. Slower, and worth it.
+{t("promo.winBackDetail", { n: max })}
               </p>
             </div>
           </div>
@@ -78,15 +77,13 @@ export function Promotion() {
             className="btn danger"
             onClick={() => act((s) => void promote(s, []))}
           >
-            Take the tier now
+            {t("promo.takeNow")}
           </button>
         </>
       ) : check.ok ? (
         <>
           <p className="hint">
-            Choose up to {max} from the Hall to induct. Each becomes a Mentor:
-            they train every creature of their type in every league that follows.
-            This is the only thing that survives.
+{t("promo.inductHint", { n: max })}
           </p>
           <ul className="induct-grid">
             {candidates.map((c) => {
@@ -117,7 +114,7 @@ export function Promotion() {
               setPicked([]);
             }}
           >
-            Induct {picked.length}/{max} and promote
+            {t("promo.induct", { n: picked.length, max })}
           </button>
         </>
       ) : (

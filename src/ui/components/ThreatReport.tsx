@@ -1,13 +1,8 @@
+import { useT } from "../i18n.js";
 import { TYPES, type Gym, type TypeId } from "../../sim/index.js";
 import { effectiveness } from "../../data/typechart.js";
 import { TypeBadge } from "./TypeBadge.js";
 import { TYPE_COLORS } from "../typeColors.js";
-
-const STATUS_LABEL = {
-  stable: "Stable",
-  watch: "Watch",
-  critical: "Critical",
-} as const;
 
 /**
  * The mechanic that teaches the type chart to a player who never watches a
@@ -15,6 +10,7 @@ const STATUS_LABEL = {
  * gym are marked, so the read is "who is hurting me" rather than "recall 18x18".
  */
 export function ThreatReport({ gym }: { gym: Gym }) {
+  const t = useT();
   const rows = TYPES.map((t) => ({
     type: t,
     share: gym.threat.distribution[t],
@@ -29,18 +25,20 @@ export function ThreatReport({ gym }: { gym: Gym }) {
   return (
     <div className={`threat status-${gym.threat.status}`}>
       <div className="threat-head">
-        <h3>Threat Report</h3>
+        <h3>{t("threat.title")}</h3>
         <span className={`status-pill status-${gym.threat.status}`}>
-          {STATUS_LABEL[gym.threat.status]}
+          {t(`threat.${gym.threat.status}` as never)}
         </span>
       </div>
       <p className="threat-sub">
-        Incoming challenger types · {gym.threat.samples.toLocaleString()} waves observed ·{" "}
-        {Math.round(gym.threat.lossRate * 100)}% lost
+{t("threat.sub", {
+          n: gym.threat.samples.toLocaleString(),
+          pct: Math.round(gym.threat.lossRate * 100),
+        })}
       </p>
 
       {gym.threat.samples < 10 ? (
-        <p className="empty">Not enough waves yet to read a pattern.</p>
+        <p className="empty">{t("threat.tooEarly")}</p>
       ) : (
         <div className="bars">
           {rows.map((r) => (

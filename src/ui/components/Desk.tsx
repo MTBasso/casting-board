@@ -9,6 +9,7 @@ import {
   type Reward,
 } from "../../sim/index.js";
 import type { TabId } from "./Tabs.js";
+import { useT } from "../i18n.js";
 
 /**
  * The Desk: what happened, and what needs you.
@@ -35,6 +36,7 @@ const WHERE: Record<DeskTarget, TabId> = {
 };
 
 export function Desk({ onGo }: { onGo: (tab: TabId) => void }) {
+  const t = useT();
   const state = useGame((s) => s.state);
   const clearDigest = useGame((s) => s.clearDigest);
 
@@ -48,11 +50,13 @@ export function Desk({ onGo }: { onGo: (tab: TabId) => void }) {
   return (
     <div className="desk">
       <h2 className="col-title">
-        Desk
+        {t("desk.title")}
         <span className="counter">
           {decisions.length === 0
-            ? "nothing outstanding"
-            : `${decisions.length} open${urgent > 0 ? ` · ${urgent} urgent` : ""}`}
+            ? t("desk.nothingOpen")
+            : urgent > 0
+              ? t("desk.openUrgent", { n: decisions.length, u: urgent })
+              : t("desk.open", { n: decisions.length })}
         </span>
       </h2>
 
@@ -62,16 +66,15 @@ export function Desk({ onGo }: { onGo: (tab: TabId) => void }) {
 
       {decisions.length === 0 ? (
         <p className="empty">
-          Nothing is waiting on you. The league is holding, everyone is working,
-          and the box has room. Go and watch a gym.
+{t("desk.allClear")}
         </p>
       ) : (
         <ul className="decisions">
           {decisions.map((d) => (
             <li key={d.id} className={`decision is-${d.urgency}`}>
               <button type="button" onClick={() => onGo(WHERE[d.where])}>
-                <span className="decision-title">{d.title}</span>
-                <span className="decision-detail">{d.detail}</span>
+<span className="decision-title">{t(d.title as never, d.params)}</span>
+                <span className="decision-detail">{t(d.detail as never, d.params)}</span>
                 <span className="decision-go" aria-hidden="true">
                   →
                 </span>
@@ -93,6 +96,7 @@ export function Desk({ onGo }: { onGo: (tab: TabId) => void }) {
  * cannot hurry.
  */
 function Objectives() {
+  const t = useT();
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
   const list = objectives(state).slice(0, 5);
@@ -100,24 +104,24 @@ function Objectives() {
 
   return (
     <section className="objectives">
-      <h3>Working toward</h3>
+      <h3>{t("desk.workingToward")}</h3>
       <ul>
         {list.map((o) => (
           <li key={o.id} className={o.done ? "is-done" : ""}>
             <span className="obj-id">
-              <span className="obj-title">{o.title}</span>
-              <span className="obj-detail">{o.detail}</span>
+<span className="obj-title">{t(o.title as never, o.titleParams)}</span>
+              <span className="obj-detail">{t(o.detail as never)}</span>
             </span>
 
             <span className="obj-right">
-              <span className="obj-reward">{rewardOf(o.reward)}</span>
+              <span className="obj-reward">{rewardOf(t, o.reward)}</span>
               {o.done ? (
                 <button
                   type="button"
                   className="btn sm"
                   onClick={() => act((s) => void claim(s, o.id))}
                 >
-                  Collect
+                  {t("desk.collect")}
                 </button>
               ) : (
                 <span className="obj-count">
@@ -137,21 +141,22 @@ function Objectives() {
 }
 
 /** What an objective pays, said plainly. */
-function rewardOf(reward: Reward): string {
+function rewardOf(t: ReturnType<typeof useT>, reward: Reward): string {
   switch (reward.kind) {
     case "crew":
-      return "a crew slot";
+      return t("reward.crew");
     case "facility":
-      return `a level of ${facilityDef(reward.id)?.name ?? "a facility"}`;
+      return t("reward.facility", { name: facilityDef(reward.id)?.name ?? "" });
     case "kit":
-      return `${reward.balls} balls, ${reward.potions} potions`;
+      return t("reward.kit", { balls: reward.balls, potions: reward.potions });
     case "money":
-      return `\u20b1${reward.amount.toLocaleString()}`;
+      return t("reward.money", { n: reward.amount.toLocaleString() });
   }
 }
 
 /** What the league did while you were not reading. */
 function Digest() {
+  const t = useT();
   const digest = useGame((s) => s.digest);
   const nothing =
     digest.held === 0 &&
@@ -163,33 +168,33 @@ function Digest() {
   if (nothing) {
     return (
       <section className="digest is-quiet">
-        <p className="dim">Quiet since you last looked.</p>
+        <p className="dim">{t("desk.quiet")}</p>
       </section>
     );
   }
 
   return (
     <section className="digest">
-      <h3>Since you last looked</h3>
+      <h3>{t("desk.since")}</h3>
       <dl className="digest-facts">
         <div>
-          <dt>Held</dt>
+          <dt>{t("desk.held")}</dt>
           <dd>{digest.held.toLocaleString()}</dd>
         </div>
         <div>
-          <dt>Badges lost</dt>
+          <dt>{t("desk.badgesLost")}</dt>
           <dd className={digest.lost > 0 ? "is-bad" : ""}>{digest.lost}</dd>
         </div>
         <div>
-          <dt>Taken</dt>
+          <dt>{t("desk.taken")}</dt>
           <dd>&#8369;{Math.round(digest.earned).toLocaleString()}</dd>
         </div>
         <div>
-          <dt>Caught</dt>
+          <dt>{t("desk.caught")}</dt>
           <dd>{digest.caught}</dd>
         </div>
         <div>
-          <dt>Retired</dt>
+          <dt>{t("desk.retired")}</dt>
           <dd>{digest.retired}</dd>
         </div>
       </dl>
@@ -197,17 +202,17 @@ function Digest() {
       <ul className="digest-notes">
         {digest.usurped && (
           <li className="is-bad">
-            <b>{digest.usurped}</b> took the league, and is your Champion now.
+{t("desk.usurped", { name: digest.usurped })}
           </li>
         )}
         {digest.suspended.map((name, i) => (
           <li key={`s${i}`}>
-            <b>{name}</b> was suspended.
+{t("desk.suspended", { name })}
           </li>
         ))}
         {digest.rivals.map((name, i) => (
           <li key={`r${i}`}>
-            <b>{name}</b> came for a badge.
+{t("desk.rival", { name })}
           </li>
         ))}
         {digest.evolved.map((text, i) => (

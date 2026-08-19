@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useGame } from "../../engine/store.js";
+import { useT, type Key } from "../i18n.js";
 import { Sprite } from "./Sprite.js";
 import { TYPES, type HallEntry, type TypeId } from "../../sim/index.js";
 import { TypeBadge } from "./TypeBadge.js";
@@ -21,6 +22,7 @@ import { TypeBadge } from "./TypeBadge.js";
 type SortKey = "recent" | "wins" | "bond" | "served";
 
 export function HallOfFame() {
+  const t = useT();
   const state = useGame((s) => s.state);
   const [sort, setSort] = useState<SortKey>("recent");
   const [filter, setFilter] = useState<TypeId | "all">("all");
@@ -43,10 +45,9 @@ export function HallOfFame() {
   if (state.legends.length === 0) {
     return (
       <div className="hall">
-        <h2 className="col-title">Hall of Fame</h2>
+        <h2 className="col-title">{t("hall.title")}</h2>
         <p className="empty">
-          Nobody yet. A creature enters the Hall when its career ends after
-          serving most of a life — which takes a long service, not a good one.
+{t("hall.empty")}
         </p>
       </div>
     );
@@ -55,37 +56,35 @@ export function HallOfFame() {
   return (
     <div className="hall">
       <h2 className="col-title">
-        Hall of Fame
+        {t("hall.title")}
         <span className="counter">
-          {state.legends.length} remembered · {inducted} carried forward
+          {t("hall.count", { n: state.legends.length, i: inducted })}
         </span>
       </h2>
 
       <p className="hint">
-        Careers that ran their course in your service. At promotion you induct
-        from here, and the ones you choose become Mentors — the only thing that
-        survives a league.
+{t("hall.hint")}
       </p>
 
       <div className="toolbar">
         <label className="field">
-          <span>Sort</span>
+          <span>{t("common.sort")}</span>
           <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
-            <option value="recent">Most recent</option>
-            <option value="wins">Battles won</option>
-            <option value="bond">Bond at the end</option>
-            <option value="served">Career served</option>
+            <option value="recent">{t("hall.mostRecent")}</option>
+            <option value="wins">{t("hall.battlesWon")}</option>
+            <option value="bond">{t("hall.bondEnd")}</option>
+            <option value="served">{t("hall.careerServed")}</option>
           </select>
         </label>
 
         {present.length > 1 && (
           <label className="field">
-            <span>Type</span>
+            <span>{t("common.type")}</span>
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value as TypeId | "all")}
             >
-              <option value="all">All ({state.legends.length})</option>
+              <option value="all">{t("common.all")} ({state.legends.length})</option>
               {present.map((t) => (
                 <option key={t} value={t}>
                   {t}
@@ -106,6 +105,7 @@ export function HallOfFame() {
 }
 
 function Plaque({ entry }: { entry: HallEntry }) {
+  const t = useT();
   const served = entry.careerTotal > 0 ? entry.served / entry.careerTotal : 0;
   const record = entry.wins + entry.losses;
   const rate = record > 0 ? Math.round((entry.wins / record) * 100) : 0;
@@ -113,8 +113,8 @@ function Plaque({ entry }: { entry: HallEntry }) {
   return (
     <li className={`plaque ${entry.inducted ? "is-mentor" : ""}`}>
       {entry.inducted && (
-        <span className="mentor-mark" title="Carried forward as a Mentor">
-          Mentor
+        <span className="mentor-mark" title={t("hall.mentorTitle")}>
+          {t("hall.mentor")}
         </span>
       )}
 
@@ -125,39 +125,39 @@ function Plaque({ entry }: { entry: HallEntry }) {
 
       <dl className="plaque-facts">
         <div>
-          <dt>Record</dt>
+          <dt>{t("creature.record")}</dt>
           <dd>
             {entry.wins}–{entry.losses}
             <span className="dim"> {rate}%</span>
           </dd>
         </div>
         <div>
-          <dt>Level</dt>
+          <dt>{t("common.level")}</dt>
           <dd>{entry.level}</dd>
         </div>
         <div>
-          <dt>Served</dt>
+          <dt>{t("hall.served")}</dt>
           <dd>{Math.round(served * 100)}%</dd>
         </div>
         <div>
-          <dt>Bond</dt>
+          <dt>{t("hall.bond")}</dt>
           <dd>{Math.round(entry.bond * 100)}%</dd>
         </div>
       </dl>
 
       {/* Said in words, because a percentage is not what you remember about
           someone. */}
-      <span className="plaque-note">{epitaph(entry, served)}</span>
+      <span className="plaque-note">{t(epitaph(entry, served))}</span>
     </li>
   );
 }
 
 /** What this career was, in a line. */
-function epitaph(entry: HallEntry, served: number): string {
-  if (entry.bond >= 0.95 && entry.wins >= 200) return "Knew you completely, and never let the gym fall.";
-  if (entry.bond >= 0.95) return "Knew you completely.";
-  if (entry.wins >= 200) return "Turned away more challengers than you can name.";
-  if (served >= 0.98) return "Gave every battle it had.";
-  if (entry.losses > entry.wins) return "Stood up more often than it won, every time.";
-  return "Served out its career on the board.";
+function epitaph(entry: HallEntry, served: number): Key {
+  if (entry.bond >= 0.95 && entry.wins >= 200) return "epitaph.complete";
+  if (entry.bond >= 0.95) return "epitaph.knew";
+  if (entry.wins >= 200) return "epitaph.turned";
+  if (served >= 0.98) return "epitaph.gave";
+  if (entry.losses > entry.wins) return "epitaph.stood";
+  return "epitaph.served";
 }

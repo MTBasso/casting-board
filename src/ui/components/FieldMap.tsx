@@ -17,6 +17,7 @@ import {
 import { TypeBadge } from "./TypeBadge.js";
 import { Sprite } from "./Sprite.js";
 import { speciesName } from "../sprites.js";
+import { useT } from "../i18n.js";
 
 /**
  * The map.
@@ -92,6 +93,7 @@ function Node({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const t = useT();
   const state = useGame((s) => s.state);
   const open = isOpen(state, route.id);
   const trip = expeditionOn(state, route.id);
@@ -111,13 +113,15 @@ function Node({
       }`}
       style={{ left: `${route.at.x}%`, top: `${route.at.y}%` }}
       onClick={onSelect}
-      title={open ? route.name : "Somewhere out that way"}
+      title={open ? t(`route.${route.id}` as never) : t("field.somewhereOut")}
     >
       <span className="node-dot">
         {open && lead && <TypeBadge type={lead} size="sm" />}
         {frontier && <span aria-hidden="true">?</span>}
       </span>
-      <span className="node-name">{open ? route.name : "Unexplored"}</span>
+      <span className="node-name">
+        {open ? t(`route.${route.id}` as never) : t("field.unexplored")}
+      </span>
       {open && (
         <span className="node-known" title={`${Math.round(known * 100)}% known`}>
           <span style={{ width: `${known * 100}%` }} />
@@ -138,6 +142,7 @@ function Node({
  * where, rather than a catalogue handed to you.
  */
 function WhatLivesHere({ route }: { route: Route }) {
+  const t = useT();
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
   const [open, setOpen] = useState(false);
@@ -147,7 +152,7 @@ function WhatLivesHere({ route }: { route: Route }) {
   if (seen.length === 0) {
     return (
       <p className="dim">
-        Nothing met here yet. Send a crew and this fills in.
+{t("field.nothingMet")}
       </p>
     );
   }
@@ -155,7 +160,11 @@ function WhatLivesHere({ route }: { route: Route }) {
   return (
     <div className="seen-here">
       <button type="button" className="linky" onClick={() => setOpen((v) => !v)}>
-        {open ? "hide" : `${seen.length} met here${banned.length > 0 ? `, ${banned.length} refused` : ""}`}
+{open
+          ? t("field.hide")
+          : banned.length > 0
+            ? t("field.metHereRefused", { n: seen.length, r: banned.length })
+            : t("field.metHere", { n: seen.length })}
       </button>
 
       {open && (
@@ -168,7 +177,7 @@ function WhatLivesHere({ route }: { route: Route }) {
                   <button
                     type="button"
                     className={`seen ${off ? "is-banned" : ""}`}
-                    title={off ? "Crews leave these alone" : "Tell crews to leave these alone"}
+                    title={off ? t("field.banOff") : t("field.banOn")}
                     onClick={() => act((s) => toggleBan(s, route.id, slug))}
                   >
                     <Sprite speciesId={slug} kind="icon" size={34} />
@@ -179,8 +188,7 @@ function WhatLivesHere({ route }: { route: Route }) {
             })}
           </ul>
           <p className="dim">
-            Refused species are left where they are. Crews still spend the trip
-            looking, so refusing everything common is how you go hunting.
+{t("field.refusedNote")}
           </p>
         </>
       )}
@@ -190,6 +198,7 @@ function WhatLivesHere({ route }: { route: Route }) {
 
 /** Everything about one place, once you have been there. */
 export function RouteDetail({ routeId }: { routeId: string }) {
+  const t = useT();
   const state = useGame((s) => s.state);
   const route = routeById(routeId);
   if (!route) return null;
@@ -202,10 +211,14 @@ export function RouteDetail({ routeId }: { routeId: string }) {
     const from = route.neighbours.filter((n) => isOpen(state, n)).map((n) => routeById(n));
     return (
       <section className="route-detail is-rumour">
-        <h3>Unexplored</h3>
+        <h3>{t("field.unexplored")}</h3>
         <p className="hint">
-          Reachable from {from.map((r) => r?.name).filter(Boolean).join(" or ")}. Send a
-          crew that way once the league knows the ground well enough.
+          {t("field.rumourFrom", {
+            from: from
+              .map((r) => (r ? t(`route.${r.id}` as never) : ""))
+              .filter(Boolean)
+              .join(" / "),
+          })}
         </p>
       </section>
     );
@@ -219,9 +232,10 @@ export function RouteDetail({ routeId }: { routeId: string }) {
   return (
     <section className="route-detail">
       <header>
-        <h3>{route.name}</h3>
+        <h3>{t(`route.${route.id}` as never)}</h3>
         <span className="dim">
-          Lv{route.levelMin}&ndash;{route.levelMax} · peril {Math.round(route.peril * 100)}%
+          Lv{route.levelMin}&ndash;{route.levelMax} ·{" "}
+          {t("field.peril", { n: Math.round(route.peril * 100) })}
         </span>
       </header>
 
@@ -237,10 +251,10 @@ export function RouteDetail({ routeId }: { routeId: string }) {
       <div className="landmark">
         <Sprite speciesId={route.resident} size={44} />
         <div>
-          <strong>{route.landmark.name}</strong>
-          <p>{route.landmark.blurb}</p>
+          <strong>{t(`mark.${route.id}` as never)}</strong>
+          <p>{t(`blurb.${route.id}` as never)}</p>
           <span className="dim">
-            {speciesName(route.resident)} lives here and nowhere else.
+            {t("field.livesHere", { name: speciesName(route.resident) })}
           </span>
         </div>
       </div>
@@ -248,15 +262,15 @@ export function RouteDetail({ routeId }: { routeId: string }) {
       <div className="route-known">
         <span className="dim">
           {known >= 1
-            ? "Well enough known to push on from."
-            : `Known ${Math.round(known * 100)}% — walk it again to learn what lies beyond.`}
+            ? t("field.knownEnough")
+            : t("field.knownPartly", { n: Math.round(known * 100) })}
         </span>
         <span className="track">
           <span className="fill" style={{ width: `${known * 100}%` }} />
         </span>
       </div>
 
-      {trip && <p className="hint">A crew is out here now.</p>}
+      {trip && <p className="hint">{t("field.crewHereNow")}</p>}
 
       <WhatLivesHere route={route} />
     </section>

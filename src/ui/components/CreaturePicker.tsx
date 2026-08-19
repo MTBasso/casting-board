@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useGame } from "../../engine/store.js";
+import { useT } from "../i18n.js";
 import { Sprite } from "./Sprite.js";
 import {
   candidatesFor,
@@ -32,6 +33,7 @@ export function CreaturePicker({
   onPick?: (creatureId: string) => void;
   title?: string;
 }) {
+  const t = useT();
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
   const [filter, setFilter] = useState<TypeId | "all">("all");
@@ -70,7 +72,7 @@ export function CreaturePicker({
         onClick={(e) => e.stopPropagation()}
       >
         <header className="summary-bar">
-          <span>{title ?? `${trainer.name}\u2019s party`}</span>
+          <span>{title ?? t("party.pickerTitle", { name: trainer.name })}</span>
           <span className="section-tag">
             {trainer.party.length}/{partyCapOf(trainer, state)}
           </span>
@@ -82,12 +84,12 @@ export function CreaturePicker({
         {present.length > 1 && (
           <div className="toolbar">
             <label className="field">
-              <span>Type</span>
+              <span>{t("common.type")}</span>
               <select
                 value={filter}
                 onChange={(e) => setFilter(e.target.value as TypeId | "all")}
               >
-                <option value="all">All ({all.length})</option>
+                <option value="all">{t("common.all")} ({all.length})</option>
                 {present.map((t) => (
                   <option key={t} value={t}>
                     {t}
@@ -100,8 +102,7 @@ export function CreaturePicker({
 
         {shown.length === 0 ? (
           <p className="empty">
-            Nothing in the box {trainer.name} could field. Work a route that
-            supplies {trainer.affinity} types, or trade for one in the PC.
+{t("party.pickerEmpty", { name: trainer.name, type: trainer.affinity })}
           </p>
         ) : (
           <ul className="picker-grid">

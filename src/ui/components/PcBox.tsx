@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useGame } from "../../engine/store.js";
+import { useT } from "../i18n.js";
 import { Sprite } from "./Sprite.js";
 import {
   bench,
@@ -32,6 +33,7 @@ type SortKey = "power" | "level" | "name" | "type";
  * Junior Gym Trainers' creatures are not here. They were never yours.
  */
 export function PcBox() {
+  const t = useT();
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
 
@@ -86,23 +88,23 @@ export function PcBox() {
   return (
     <div className="pc">
       <h2 className="col-title">
-        PC Box
-        <span className="counter">{mine.length} creatures</span>
+        {t("pc.title")}
+        <span className="counter">{t("pc.creatures", { n: mine.length })}</span>
       </h2>
 
       <div className="toolbar">
         <label className="field">
-          <span>Show</span>
+          <span>{t("common.show")}</span>
           <select value={scope} onChange={(e) => setScope(e.target.value as typeof scope)}>
-            <option value="all">Everything</option>
-            <option value="box">In the box</option>
-            <option value="parties">In parties</option>
-            <option value="rosters">By trainer</option>
+            <option value="all">{t("pc.everything")}</option>
+            <option value="box">{t("pc.inBox")}</option>
+            <option value="parties">{t("pc.inParties")}</option>
+            <option value="rosters">{t("pc.byTrainer")}</option>
           </select>
         </label>
 
         <label className="field">
-          <span>Type</span>
+          <span>{t("common.type")}</span>
           <select
             value={typeFilter}
             onChange={(e) => {
@@ -110,7 +112,7 @@ export function PcBox() {
               setBox(0);
             }}
           >
-            <option value="all">All</option>
+            <option value="all">{t("common.all")}</option>
             {TYPES.map((t) => (
               <option key={t} value={t}>
                 {t}
@@ -120,7 +122,7 @@ export function PcBox() {
         </label>
 
         <label className="field">
-          <span>Trade for</span>
+          <span>{t("pc.tradeFor")}</span>
           <select
             value={tradeFor ?? ""}
             onChange={(e) => {
@@ -130,7 +132,7 @@ export function PcBox() {
               setBox(0);
             }}
           >
-            <option value="">Not trading</option>
+            <option value="">{t("pc.notTrading")}</option>
             {gymTypes.map((t) => (
               <option key={t} value={t}>
                 {t}
@@ -140,7 +142,7 @@ export function PcBox() {
         </label>
 
         <label className="field">
-          <span>Sort</span>
+          <span>{t("common.sort")}</span>
           <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
             <option value="power">Power</option>
             <option value="level">Level</option>
@@ -164,7 +166,7 @@ export function PcBox() {
               ←
             </button>
             <span className="box-label">
-              Box {page + 1} of {boxes}
+              {t("pc.box", { n: page + 1, total: boxes })}
             </span>
             <button
               type="button"
@@ -179,8 +181,8 @@ export function PcBox() {
           {slice.length === 0 ? (
             <p className="empty">
               {tradeFor
-                ? "Nothing here the desk will take. Creatures in a Leader's party are not on the table."
-                : "Nothing here."}
+                ? t("pc.nothingTradeable")
+                : t("common.nothing")}
             </p>
           ) : (
             <ul className={`box-grid ${tradeFor ? "is-trading" : ""}`}>

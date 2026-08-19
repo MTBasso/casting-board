@@ -23,8 +23,10 @@ import type { LeagueState } from "../types.js";
 
 export interface Objective {
   id: string;
+  /** Keys, not sentences — the sim has no language. */
   title: string;
   detail: string;
+  titleParams?: Record<string, string | number>;
   have: number;
   goal: number;
   reward: Reward;
@@ -71,8 +73,8 @@ function shape(state: LeagueState, def: ObjectiveDef): Objective {
   const have = measure(state, def.measure);
   return {
     id: def.id,
-    title: def.title,
-    detail: def.detail,
+    title: `obj.${def.id}.title`,
+    detail: `obj.${def.id}.detail`,
     have: Math.min(have, def.goal),
     goal: def.goal,
     reward: def.reward,
@@ -104,8 +106,9 @@ export function objectives(state: LeagueState): Objective[] {
     const have = measure(state, rep.measure);
     out.push({
       id: `${rep.id}-${tier}`,
-      title: rep.title(goal),
-      detail: rep.detail,
+      title: `obj.${rep.id}.title`,
+      detail: `obj.${rep.id}.detail`,
+      titleParams: { n: goal.toLocaleString() },
       have: Math.min(have, goal),
       goal,
       reward: rep.reward(tier),
@@ -127,7 +130,7 @@ export function claim(
 
   state.objectives.claimed.push(id);
   grant(state, objective.reward);
-  log(state, "promote", `${objective.title} — done.`);
+  log(state, "promote", "log.objectiveDone", { title: objective.title });
   return { ok: true };
 }
 

@@ -1,4 +1,5 @@
 import { useGame } from "../../engine/store.js";
+import { useT } from "../i18n.js";
 import { chooseLeader, partyOf, type Trainer } from "../../sim/index.js";
 import { spriteUrl } from "../sprites.js";
 import { creatureName } from "../names.js";
@@ -33,6 +34,7 @@ const ARCHETYPES: Record<string, { name: string; blurb: string }> = {
 };
 
 export function LeaderOffer() {
+  const t = useT();
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
   const offer = state.leaderOffer;
@@ -49,10 +51,9 @@ export function LeaderOffer() {
     <div className="offer">
       <div className="offer-body wide">
         <p className="offer-eyebrow">{gym?.name ?? "New gym"} needs a Leader</p>
-        <h2>Choose who runs it</h2>
+        <h2>{t("leaderOffer.title")}</h2>
         <p className="offer-sub">
-          Free — you have already paid for the building. Each brings their own
-          partner, and their own way of running a gym.
+          {t("leaderOffer.detail")}
         </p>
 
         <div className="leader-choices">

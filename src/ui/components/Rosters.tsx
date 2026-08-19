@@ -1,4 +1,5 @@
 import { useGame } from "../../engine/store.js";
+import { useT } from "../i18n.js";
 import { bench, partyCapOf, partyOf, type Trainer } from "../../sim/index.js";
 import { PartyList } from "./PartyList.js";
 import { TypeBadge } from "./TypeBadge.js";
@@ -16,6 +17,7 @@ import { Portrait } from "./Portrait.js";
  * Junior Gym Trainers are deliberately absent. Their creatures were never yours.
  */
 export function Rosters() {
+  const t = useT();
   const state = useGame((s) => s.state);
 
   const leaders = state.gymOrder
@@ -40,7 +42,7 @@ export function Rosters() {
     );
 
   if (leaders.length === 0 && seats.length === 0) {
-    return <p className="empty">No parties to manage yet.</p>;
+    return <p className="empty">{t("pc.noRosters")}</p>;
   }
 
   return (
@@ -57,7 +59,11 @@ export function Rosters() {
         <Roster
           key={trainer.id}
           trainer={trainer}
-          title={seat.rank === state.elite.length - 1 ? "Champion" : `Elite ${seat.rank + 1}`}
+          title={
+            seat.rank === state.elite.length - 1
+              ? t("elite.champion")
+              : t("elite.seat", { n: seat.rank + 1 })
+          }
           subtitle={trainer.name}
         />
       ))}

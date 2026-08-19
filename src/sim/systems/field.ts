@@ -260,7 +260,7 @@ export function dismissCrew(state: LeagueState, crewId: string): void {
     delete state.trainers[id];
   }
   state.crews = state.crews.filter((c) => c.id !== crewId);
-  log(state, "quit", `${crewName(state, crew)} have been let go.`);
+  log(state, "quit", "log.crewLetGo", { name: crewName(state, crew) });
 }
 
 // ---------------------------------------------------------------------------
@@ -624,7 +624,7 @@ function workRound(
     const became = gainXp(state, c, FIELD.xpPerRound);
     if (became) {
       report.evolutions.push(became);
-      log(state, "evolve", `${became} evolved out on ${route.name}.`);
+      log(state, "evolve", "log.evolvedOnRoute", { name: became, route: route.id });
     }
   }
 
@@ -707,8 +707,14 @@ function fireEvent(
   return encounter(state, trip, crew, route);
 }
 
-function note(trip: Expedition, kind: FieldEventKind, text: string, at: number): void {
-  trip.log.push({ kind, text, at });
+function note(
+  trip: Expedition,
+  kind: FieldEventKind,
+  key: string,
+  params: Record<string, string | number>,
+  at: number,
+): void {
+  trip.log.push({ kind, key, params, at });
   if (trip.log.length > 24) trip.log.shift();
 }
 
@@ -719,11 +725,11 @@ function hazard(state: LeagueState, trip: Expedition, route: Route): void {
   if (trip.kit.potions > 0) {
     trip.kit.potions -= 1;
     trip.hurt = clamp01(trip.hurt + FIELD.hazardHurtSalved);
-    note(trip, "hazard", `Rough going on ${route.name}. A Potion covered it.`, state.time);
+    note(trip, "hazard", "ev.hazardSalved", { route: route.id }, state.time);
     return;
   }
   trip.hurt = clamp01(trip.hurt + FIELD.hazardHurt);
-  note(trip, "hazard", `Rough going on ${route.name}, and nothing left to treat it.`, state.time);
+  note(trip, "hazard", "ev.hazardRaw", { route: route.id }, state.time);
 }
 
 /** Something fights back. A Revive is the difference between a scare and a trip ended. */
@@ -737,11 +743,11 @@ function trouble(
   if (trip.kit.revives > 0) {
     trip.kit.revives -= 1;
     trip.hurt = clamp01(trip.hurt + 0.1);
-    note(trip, "trouble", `Something came at them on ${route.name}. A Revive saved it.`, state.time);
+    note(trip, "trouble", "ev.troubleSaved", { route: route.id }, state.time);
     return;
   }
   trip.hurt = clamp01(trip.hurt + FIELD.troubleHurt);
-  note(trip, "trouble", `Badly handled on ${route.name}, and no Revives left.`, state.time);
+  note(trip, "trouble", "ev.troubleRaw", { route: route.id }, state.time);
   report.beaten.push(crewName(state, crew));
 }
 
@@ -750,7 +756,7 @@ function windfall(state: LeagueState, trip: Expedition, route: Route): void {
   const purse = Math.round(range(state.rng, 400, 1400) * (1 + route.levelMax / 20));
   state.money += purse;
   trip.earned += purse;
-  note(trip, "windfall", `Found something worth ₱${purse.toLocaleString()} on ${route.name}.`, state.time);
+  note(trip, "windfall", "ev.windfall", { route: route.id, n: purse }, state.time);
 }
 
 /**
@@ -775,28 +781,29 @@ function encounter(
 
   const cost = Math.min(trip.kit.balls, int(state.rng, 2, 5));
   if (cost <= 0) {
-    note(trip, "encounter", `A ${displayName(found)} on ${route.name}, and nothing to catch it with.`, state.time);
+    note(trip, "encounter", "ev.encounterNoBalls", { name: displayName(found), route: route.id }, state.time);
     delete state.creatures[found.id];
     return;
   }
 
   trip.pending = {
     id: `enc_${found.id}`,
-    prompt: `A ${displayName(found)} on ${route.name}. Taking it will cost ${cost} Poké Balls.`,
+    prompt: "ev.choicePrompt",
+    promptParams: { name: displayName(found), route: route.id, n: cost },
     options: [
-      { id: `take:${found.id}:${cost}`, label: `Spend ${cost} and take it` },
-      { id: "leave", label: "Leave it" },
+      { id: `take:${found.id}:${cost}`, label: "ev.choiceTake", labelParams: { n: cost } },
+      { id: "leave", label: "ev.choiceLeave" },
     ],
     decidesAt: state.time + FIELD.choiceWindow,
   };
-  note(trip, "encounter", `A ${displayName(found)} on ${route.name}.`, state.time);
+  note(trip, "encounter", "ev.encounter", { name: displayName(found), route: route.id }, state.time);
 }
 
 /** Progress toward the ground beyond. */
 function discovery(state: LeagueState, trip: Expedition): void {
   const toward = trip.towardId ? routeById(trip.towardId) : undefined;
   if (!toward) return;
-  note(trip, "discovery", `A way through toward ${toward.name}.`, state.time);
+  note(trip, "discovery", "ev.wayThrough", { route: toward.id }, state.time);
   trip.progress += roundSeconds(state, trip) * 2;
 }
 
@@ -835,12 +842,12 @@ function apply(state: LeagueState, trip: Expedition, optionId: string): void {
 
   if (trip.kit.balls < cost) {
     delete state.creatures[creatureId];
-    note(trip, "encounter", "Not enough left to take it.", state.time);
+    note(trip, "encounter", "ev.notEnough", {}, state.time);
     return;
   }
   trip.kit.balls -= cost;
   trip.caught += 1;
-  note(trip, "encounter", `Took it. ${cost} Poké Balls gone.`, state.time);
+  note(trip, "encounter", "ev.tookIt", { n: cost }, state.time);
 }
 
 // ---------------------------------------------------------------------------
@@ -904,9 +911,8 @@ function finish(
   log(
     state,
     "catch",
-    how === "beaten"
-      ? `${crewName(state, crew)} came back beaten from ${route.name}.`
-      : `${crewName(state, crew)} are back from ${route.name} with ${trip.caught}.`,
+    how === "beaten" ? "log.crewBeaten" : "log.crewHome",
+    { name: crewName(state, crew), route: route.id, n: trip.caught },
   );
 }
 
@@ -921,8 +927,8 @@ export function open(state: LeagueState, routeId: string): void {
   log(
     state,
     "scout",
-    `${route.name} is on the map. ${route.landmark.name}: ${route.landmark.blurb}` +
-      (species ? ` And ${species.name} lives here.` : ""),
+    "log.reached",
+    { route: route.id, resident: species?.name ?? "" },
   );
 }
 

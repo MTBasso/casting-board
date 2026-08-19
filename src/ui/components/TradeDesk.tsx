@@ -1,4 +1,5 @@
 import { useGame } from "../../engine/store.js";
+import { useT } from "../i18n.js";
 import { Sprite } from "./Sprite.js";
 import {
   canTrade,
@@ -32,6 +33,7 @@ export function TradeBar({
   onClear: () => void;
   onDone: () => void;
 }) {
+  const t = useT();
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
 
@@ -42,12 +44,10 @@ export function TradeBar({
   return (
     <div className="trade-bar">
       <div className="trade-offer">
-        <span className="trade-label">Offering for a {wanted}</span>
+        <span className="trade-label">{t("pc.offering", { type: wanted })}</span>
         {live.length === 0 ? (
           <p className="hint">
-            Pick creatures from the box above. Offers are priced off{" "}
-            <em>average</em> power with only a small bonus for volume, so quality
-            moves the needle and quantity barely does.
+{t("pc.tradeHint")}
           </p>
         ) : (
           <>
@@ -63,9 +63,8 @@ export function TradeBar({
               })}
             </ul>
             <p className="absorbed">
-              The desk will aim for around{" "}
-              <strong>{Math.round(preview.target)}</strong> power
-              {preview.example && <>, something like a {preview.example}</>}.
+{t("pc.tradeAim", { n: Math.round(preview.target) })}
+              {preview.example && t("pc.tradeAimExample", { name: preview.example })}.
             </p>
           </>
         )}
@@ -74,7 +73,7 @@ export function TradeBar({
       <div className="trade-actions">
         {live.length > 0 && (
           <button type="button" className="btn sm ghost" onClick={onClear}>
-            Clear {live.length}
+            {t("pc.clear", { n: live.length })}
           </button>
         )}
         <button
@@ -87,7 +86,7 @@ export function TradeBar({
             onDone();
           }}
         >
-          Trade {live.length > 0 ? live.length : ""} · &#8369;{constants.TRADE.fee}
+          {t("pc.trade", { n: live.length > 0 ? live.length : "", fee: constants.TRADE.fee })}
         </button>
       </div>
     </div>

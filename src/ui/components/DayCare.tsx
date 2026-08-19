@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useGame } from "../../engine/store.js";
+import { useT } from "../i18n.js";
 import {
   canDropOff,
   collect,
@@ -26,6 +27,7 @@ import { TypeBadges } from "./TypeBadge.js";
  * gained, so a creature left a long while is a bill as well as a windfall.
  */
 export function DayCare() {
+  const t = useT();
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
   const [picking, setPicking] = useState(false);
@@ -33,10 +35,9 @@ export function DayCare() {
   if (!dayCareBuilt(state)) {
     return (
       <div className="daycare">
-        <h2 className="col-title">Day-Care</h2>
+        <h2 className="col-title">{t("daycare.title")}</h2>
         <p className="empty">
-          Build the Day-Care to leave creatures in training — and to hatch eggs
-          from a pair that share a type.
+          {t("daycare.unbuilt")}
         </p>
       </div>
     );
@@ -67,7 +68,7 @@ export function DayCare() {
       </h2>
 
       {inCare.length === 0 ? (
-        <p className="empty">Nobody in care. Leaving a creature here levels it over time.</p>
+        <p className="empty">{t("daycare.empty")}</p>
       ) : (
         <ul className="thin-list">
           {inCare.map((c) => (
@@ -87,7 +88,7 @@ export function DayCare() {
             </>
           ) : (
             <span className="egg-label dim">
-              These two share no type — no egg will come of it.
+              {t("daycare.noEgg")}
             </span>
           )}
         </div>
@@ -105,7 +106,7 @@ export function DayCare() {
           {picking && (
             <ul className="thin-list">
               {candidates.length === 0 ? (
-                <li className="dim">Nothing available to leave.</li>
+                <li className="dim">{t("daycare.nothingToLeave")}</li>
               ) : (
                 candidates.map((c) => (
                   <li key={c.id}>

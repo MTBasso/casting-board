@@ -30,6 +30,7 @@ import { Portrait } from "./Portrait.js";
 import { Sprite } from "./Sprite.js";
 import { TypeBadge } from "./TypeBadge.js";
 import { creatureName } from "../names.js";
+import { useT } from "../i18n.js";
 
 /**
  * The crews, and sending them out.
@@ -39,15 +40,20 @@ import { creatureName } from "../names.js";
  * send them somewhere.
  */
 export function Crews() {
+  const t = useT();
   const state = useGame((s) => s.state);
   const [outfitting, setOutfitting] = useState<string | null>(null);
 
   return (
     <div className="crews">
       <h2 className="col-title">
-        Crews
+        {t("crews.title")}
         <span className="counter">
-          {state.crews.length}/{crewSlots(state)} employed · {state.expeditions.length} out
+          {t("crews.count", {
+            n: state.crews.length,
+            max: crewSlots(state),
+            out: state.expeditions.length,
+          })}
         </span>
       </h2>
 
@@ -55,8 +61,7 @@ export function Crews() {
 
       {state.crews.length === 0 ? (
         <p className="empty">
-          Nobody on the books. A crew is two people who already work together —
-          the Ranger brings creatures back, the Handler raises the ones they took.
+{t("crews.none")}
         </p>
       ) : (
         <ul className="crew-list">
@@ -77,6 +82,7 @@ export function Crews() {
 
 /** Three crews, drawn. Take one, or pass and see three more. */
 function HireOffer() {
+  const t = useT();
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
   const check = canHireCrew(state);
@@ -85,7 +91,7 @@ function HireOffer() {
   if (state.crews.length >= crewSlots(state)) {
     return (
       <p className="hint">
-        Every crew slot is filled. Upgrade the Scouting Office to employ another.
+{t("crews.slotsFull")}
       </p>
     );
   }
@@ -93,12 +99,11 @@ function HireOffer() {
   return (
     <section className="group">
       <h3>
-        Looking for work
+        {t("crews.looking")}
         <span className="counter">&#8369;{crewHireCost(state).toLocaleString()}</span>
       </h3>
       <p className="hint">
-        Two people who already work together. What they are like is fixed, and it
-        decides what they do when nobody answers them.
+{t("crews.offerNote")}
       </p>
 
       <ul className="offer-crews">
@@ -133,7 +138,7 @@ function HireOffer() {
       </ul>
 
       <button type="button" className="linky" onClick={() => act((s) => passOnCrewOffer(s))}>
-        pass, and see three more
+        {t("crews.pass")}
       </button>
     </section>
   );
@@ -150,6 +155,7 @@ function CrewRow({
   onOutfit: () => void;
   onDone: () => void;
 }) {
+  const t = useT();
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
 
@@ -177,7 +183,7 @@ function CrewRow({
         </span>
         {!trip && (
           <button type="button" className="linky danger" onClick={() => act((s) => dismissCrew(s, crew.id))}>
-            let go
+            {t("crews.letGo")}
           </button>
         )}
       </div>
@@ -197,7 +203,7 @@ function CrewRow({
         <Outfit crew={crew} onDone={onDone} />
       ) : (
         <button type="button" className="btn sm" onClick={onOutfit}>
-          Send them out…
+          {t("crews.sendOut")}
         </button>
       )}
     </li>
@@ -206,6 +212,7 @@ function CrewRow({
 
 /** A crew out, what they have left, and anything waiting on you. */
 function OnTheGround({ crew }: { crew: Crew }) {
+  const t = useT();
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
   const trip = expeditionOf(state, crew.id);
@@ -216,31 +223,32 @@ function OnTheGround({ crew }: { crew: Crew }) {
     <div className="on-ground">
       <div className="on-ground-head">
         <strong>
-          {trip.objective === "explore" ? "Pushing on from " : "Working "}
-          {route.name}
+{trip.objective === "explore"
+            ? t("crews.pushingOn", { route: t(`route.${route.id}` as never) })
+            : t("crews.working", { route: t(`route.${route.id}` as never) })}
         </strong>
         <button type="button" className="linky" onClick={() => act((s) => recall(s, crew.id))}>
-          call them back
+          {t("crews.callBack")}
         </button>
       </div>
 
       <div className="kit-left">
         {(["balls", "potions", "revives", "lures"] as const).map((k) => (
           <span key={k} className={trip.kit[k] === 0 ? "is-out" : ""}>
-            {k} <b>{trip.kit[k]}</b>
+            {t(`kit.${k}` as never)} <b>{trip.kit[k]}</b>
           </span>
         ))}
         <span>
-          caught <b>{trip.caught}</b>
+          {t("crews.caught")} <b>{trip.caught}</b>
         </span>
         <span className={trip.hurt > 0.6 ? "is-out" : ""}>
-          worn <b>{Math.round(trip.hurt * 100)}%</b>
+          {t("crews.worn")} <b>{Math.round(trip.hurt * 100)}%</b>
         </span>
       </div>
 
       {trip.pending && (
         <div className="choice">
-          <p>{trip.pending.prompt}</p>
+          <p>{t(trip.pending.prompt as never, trip.pending.promptParams)}</p>
           <div className="choice-options">
             {trip.pending.options.map((o) => (
               <button
@@ -249,12 +257,12 @@ function OnTheGround({ crew }: { crew: Crew }) {
                 className="btn sm"
                 onClick={() => act((s) => void decide(s, crew.id, o.id))}
               >
-                {o.label}
+                {t(o.label as never, o.labelParams)}
               </button>
             ))}
           </div>
           <span className="dim">
-            Leave it and they will decide themselves — {crew.trait} crews usually do.
+{t("crews.willDecide", { trait: t(`trait.${crew.trait}` as never) })}
           </span>
         </div>
       )}
@@ -262,7 +270,7 @@ function OnTheGround({ crew }: { crew: Crew }) {
       <ol className="trip-log">
         {[...trip.log].reverse().slice(0, 5).map((e, i) => (
           <li key={i} className={`ev-${e.kind}`}>
-            {e.text}
+            {t(e.key as never, e.params)}
           </li>
         ))}
       </ol>
@@ -272,6 +280,7 @@ function OnTheGround({ crew }: { crew: Crew }) {
 
 /** Choose ground, choose a party, buy the kit. Money changes hands on setting off. */
 function Outfit({ crew, onDone }: { crew: Crew; onDone: () => void }) {
+  const t = useT();
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
 
@@ -295,13 +304,13 @@ function Outfit({ crew, onDone }: { crew: Crew; onDone: () => void }) {
   const candidates = route ? trainableFor(state, crew, route).slice(0, 12) : [];
 
   if (free.length === 0) {
-    return <p className="empty">Every route you know has a crew on it.</p>;
+    return <p className="empty">{t("crews.allGroundBusy")}</p>;
   }
 
   return (
     <div className="outfit">
       <label className="field">
-        <span>Ground</span>
+        <span>{t("crews.ground")}</span>
         <select
           value={routeId}
           onChange={(e) => {
@@ -312,7 +321,7 @@ function Outfit({ crew, onDone }: { crew: Crew; onDone: () => void }) {
         >
           {free.map((r) => (
             <option key={r.id} value={r.id}>
-              {r.name} · Lv{r.levelMin}–{r.levelMax}
+{t(`route.${r.id}` as never)} · Lv{r.levelMin}–{r.levelMax}
             </option>
           ))}
         </select>
@@ -320,23 +329,25 @@ function Outfit({ crew, onDone }: { crew: Crew; onDone: () => void }) {
 
       {route && (
         <p className="dim">
-          {crew.trait} crew, {Math.round(competence(crew, route.id) * 100)}% at home
-          here.
+{t("crews.atHome", {
+            trait: t(`trait.${crew.trait}` as never),
+            n: Math.round(competence(crew, route.id) * 100),
+          })}
         </p>
       )}
 
       {onward.length > 0 && (
         <label className="field">
-          <span>Objective</span>
+          <span>{t("crews.objective")}</span>
           <select
             value={toward ?? ""}
             onChange={(e) => setToward(e.target.value || null)}
             disabled={!canExplore}
           >
-            <option value="">Work this ground</option>
+            <option value="">{t("crews.workHere")}</option>
             {onward.map((id) => (
               <option key={id} value={id}>
-                Push on to what lies {routeById(id) ? "beyond" : "beyond"}
+{t("crews.pushTo")} — {t(`route.${id}` as never)}
               </option>
             ))}
           </select>
@@ -344,14 +355,14 @@ function Outfit({ crew, onDone }: { crew: Crew; onDone: () => void }) {
       )}
       {onward.length > 0 && !canExplore && (
         <p className="dim">
-          The league does not know this ground well enough to push on from it yet.
+{t("crews.cannotPush")}
         </p>
       )}
 
       <div className="kit-buy">
         {(["balls", "potions", "revives", "lures"] as const).map((k) => (
           <label key={k} className="kit-line">
-            <span>{k}</span>
+            <span>{t(`kit.${k}` as never)}</span>
             <input
               type="range"
               min={0}
@@ -368,8 +379,7 @@ function Outfit({ crew, onDone }: { crew: Crew; onDone: () => void }) {
       {candidates.length > 0 && (
         <div className="take-party">
           <span className="dim">
-            Take up to {constants.FIELD.partyMax} for the Handler to raise. They come
-            home when the crew does.
+{t("crews.takeParty", { n: constants.FIELD.partyMax })}
           </span>
           <ul>
             {candidates.map((c) => {
@@ -402,8 +412,8 @@ function Outfit({ crew, onDone }: { crew: Crew; onDone: () => void }) {
 
       <div className="outfit-foot">
         <span>
-          Kit &#8369;{kitCost(kit).toLocaleString()}
-          <span className="dim"> · unspent comes back</span>
+{t("crews.kitCost", { n: kitCost(kit).toLocaleString() })}
+          <span className="dim">{t("crews.unspentBack")}</span>
         </span>
         <button
           type="button"
@@ -415,7 +425,7 @@ function Outfit({ crew, onDone }: { crew: Crew; onDone: () => void }) {
             onDone();
           }}
         >
-          Set off
+          {t("crews.setOff")}
         </button>
       </div>
     </div>

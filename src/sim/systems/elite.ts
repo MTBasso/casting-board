@@ -37,8 +37,11 @@ export function isChampion(seat: EliteSeat): boolean {
   return seat.rank === ELITE.championRank;
 }
 
-export function seatTitle(seat: EliteSeat): string {
-  return isChampion(seat) ? "Champion" : `Elite ${seat.rank + 1}`;
+/** A key and its parameter, like everything else the sim names. */
+export function seatTitle(seat: EliteSeat): { key: string; n: number } {
+  return isChampion(seat)
+    ? { key: "elite.champion", n: 0 }
+    : { key: "elite.seat", n: seat.rank + 1 };
 }
 
 /** Create the empty seats the moment the board is complete. */

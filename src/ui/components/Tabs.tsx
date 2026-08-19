@@ -1,14 +1,16 @@
+import { useT, type Key } from "../i18n.js";
 export type TabId = "desk" | "gyms" | "pc" | "field" | "staff" | "hall" | "daycare" | "facilities";
 
-export const TABS: { id: TabId; label: string }[] = [
-  { id: "desk", label: "Desk" },
-  { id: "gyms", label: "Gyms" },
-  { id: "pc", label: "PC Box" },
-  { id: "field", label: "Map" },
-  { id: "staff", label: "Elite" },
-  { id: "hall", label: "Hall" },
-  { id: "daycare", label: "Day-Care" },
-  { id: "facilities", label: "Facilities" },
+/** Tab order, with the key each label reads from. */
+export const TABS: { id: TabId; key: Key }[] = [
+  { id: "desk", key: "tab.desk" },
+  { id: "gyms", key: "tab.gyms" },
+  { id: "pc", key: "tab.pc" },
+  { id: "field", key: "tab.field" },
+  { id: "staff", key: "tab.elite" },
+  { id: "hall", key: "tab.hall" },
+  { id: "daycare", key: "tab.daycare" },
+  { id: "facilities", key: "tab.facilities" },
 ];
 
 /**
@@ -27,6 +29,7 @@ export function Tabs({
   onChange: (id: TabId) => void;
   badges?: Partial<Record<TabId, string>>;
 }) {
+  const t = useT();
   return (
     <nav className="tabs" aria-label="Sections">
       {TABS.map((tab) => (
@@ -37,7 +40,7 @@ export function Tabs({
           onClick={() => onChange(tab.id)}
           aria-current={active === tab.id ? "page" : undefined}
         >
-          {tab.label}
+          {t(tab.key)}
           {badges?.[tab.id] && <span className="tab-badge">{badges[tab.id]}</span>}
         </button>
       ))}

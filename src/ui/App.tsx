@@ -12,6 +12,7 @@ import { Crews } from "./components/Crews.js";
 import { ReplayDriver } from "./components/BattleFeed.js";
 import { HallOfFame } from "./components/HallOfFame.js";
 import { Desk } from "./components/Desk.js";
+import { useLang, useT } from "./i18n.js";
 import { Facilities } from "./components/Facilities.js";
 import { EliteFour } from "./components/EliteFour.js";
 import { DayCare } from "./components/DayCare.js";
@@ -26,6 +27,7 @@ import { PcBox } from "./components/PcBox.js";
  * ground you want worked — and the two used to sit on separate lists.
  */
 function FieldScreen() {
+  const t = useT();
   const state = useGame((s) => s.state);
   const [route, setRoute] = useState<string | null>(null);
   const selected = route ?? state.explored[0] ?? null;
@@ -34,9 +36,9 @@ function FieldScreen() {
     <div className="field-screen">
       <section className="map-pane">
         <h2 className="col-title">
-          The map
+          {t("field.map")}
           <span className="counter">
-            {state.explored.length}/{ROUTES.length} reached
+            {t("field.reached", { n: state.explored.length, total: ROUTES.length })}
           </span>
         </h2>
         <FieldMap selected={selected} onSelect={setRoute} />
@@ -51,6 +53,9 @@ function FieldScreen() {
 }
 
 export function App() {
+  const t = useT();
+  const lang = useLang((s) => s.lang);
+  const setLang = useLang((s) => s.setLang);
   // Subscribing to `revision` is what re-renders the tree; the sim mutates its
   // state in place, so nothing else here would ever change identity.
   const revision = useGame((s) => s.revision);
@@ -81,30 +86,40 @@ export function App() {
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">◈</span>
-          <span>The Casting Board</span>
+          <span>{t("app.title")}</span>
         </div>
         <dl className="stats">
           <div>
-            <dt>Pokéyen</dt>
+            <dt>{t("app.money")}</dt>
             <dd>&#8367;{Math.round(state.money).toLocaleString()}</dd>
           </div>
           <div>
-            <dt>Renown</dt>
+            <dt>{t("app.renown")}</dt>
             <dd>{Math.round(state.renown).toLocaleString()}</dd>
           </div>
           <div>
-            <dt>In parties</dt>
+            <dt>{t("app.inParties")}</dt>
             <dd>{inParty}</dd>
           </div>
           <div>
-            <dt>Owned</dt>
+            <dt>{t("app.owned")}</dt>
             <dd>{owned}</dd>
           </div>
           <div>
-            <dt>Season</dt>
+            <dt>{t("app.season")}</dt>
             <dd>{state.meta.season}</dd>
           </div>
         </dl>
+
+        {/* A playtester should be able to change this without hunting for it. */}
+        <button
+          type="button"
+          className="lang"
+          onClick={() => setLang(lang === "pt" ? "en" : "pt")}
+          title={lang === "pt" ? "Switch to English" : "Mudar para português"}
+        >
+          {lang === "pt" ? "EN" : "PT"}
+        </button>
       </header>
 
       <Tabs active={tab} onChange={setTab} badges={badges} />

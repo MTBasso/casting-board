@@ -267,7 +267,12 @@ function stepAnalytic(state: LeagueState, elapsed: number): TickReport {
   log(
     state,
     "wave",
-    `While you were away: ${report.wavesResolved} challenges, \u20b1${Math.round(report.earned)} taken, ${report.caught.length} caught.`,
+    "log.whileAway",
+    {
+      waves: report.wavesResolved,
+      money: Math.round(report.earned),
+      caught: report.caught.length,
+    },
   );
 
   return report;

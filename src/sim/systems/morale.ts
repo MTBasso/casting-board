@@ -82,7 +82,7 @@ export function tickMorale(state: LeagueState, dt: number, report: TickReport): 
       trainer.suspendedUntil = null;
       trainer.strain = 0;
       report.reinstated.push(trainer.name);
-      log(state, "staff", `${trainer.name} is back on duty.`);
+      log(state, "staff", "log.backOnDuty", { name: trainer.name });
       continue;
     }
 
@@ -102,7 +102,7 @@ function suspend(state: LeagueState, trainer: Trainer, report: TickReport): void
   // The last step of the staircase. It takes three of these to get here, and
   // every one of them was avoidable.
   if (trainer.suspensions > MORALE.suspensionsBeforeDeparture) {
-    log(state, "staff", `${trainer.name} has left the league for good.`);
+    log(state, "staff", "log.goneForGood", { name: trainer.name });
     resign(state, trainer.id, report);
     return;
   }
@@ -119,7 +119,12 @@ function suspend(state: LeagueState, trainer: Trainer, report: TickReport): void
   log(
     state,
     "staff",
-    `${trainer.name} is suspended (${trainer.suspensions} of ${MORALE.suspensionsBeforeDeparture}).`,
+    "log.suspended",
+    {
+      name: trainer.name,
+      n: trainer.suspensions,
+      max: MORALE.suspensionsBeforeDeparture,
+    },
   );
 }
 
@@ -246,7 +251,7 @@ export function demote(
   trainer.morale = Math.min(trainer.morale, trainer.standing);
   trainer.strain = 0;
 
-  log(state, "staff", `${trainer.name} steps down to ${target.label}.`);
+  log(state, "staff", "log.stepsDown", { name: trainer.name, post: target.label });
   return { ok: true };
 }
 

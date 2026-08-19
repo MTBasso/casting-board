@@ -73,7 +73,7 @@ export function forceRecruit(
     if (target) {
       demote(state, incumbent.id, target);
     } else {
-      log(state, "quit", `${incumbent.name} leaves rather than serve under a rival.`);
+      log(state, "quit", "log.refusedToServe", { name: incumbent.name });
       remember(state, incumbent.name, incumbent.affinity, 1);
       report.departures.push(incumbent.name);
       resign(state, incumbent.id, report);
@@ -118,7 +118,8 @@ export function forceRecruit(
   log(
     state,
     "gauntlet",
-    `${usurper.name} has taken the league. They are your Champion now.`,
+    "log.tookLeague",
+    { name: usurper.name },
   );
   return usurper;
 }
@@ -217,7 +218,7 @@ export function tickUsurper(state: LeagueState, dt: number, report: TickReport):
   if (usurper.suspensions > MORALE.suspensionsBeforeDeparture) {
     remember(state, usurper.name, usurper.affinity, 2);
     report.departures.push(usurper.name);
-    log(state, "quit", `${usurper.name} walks out — and they will be back.`);
+    log(state, "quit", "log.usurperWalks", { name: usurper.name });
     resign(state, usurper.id, report);
     state.usurperId = null;
   }

@@ -122,8 +122,13 @@ export function emptyReport(): TickReport {
   };
 }
 
-export function log(state: LeagueState, kind: LogKind, text: string): void {
-  state.log.unshift({ at: state.time, kind, text });
+export function log(
+  state: LeagueState,
+  kind: LogKind,
+  key: string,
+  params?: Record<string, string | number>,
+): void {
+  state.log.unshift(params ? { at: state.time, kind, key, params } : { at: state.time, kind, key });
   if (state.log.length > LOG_CAP) state.log.length = LOG_CAP;
 }
 
@@ -226,40 +231,29 @@ export function tick(state: LeagueState, dt: number = TICK_SECONDS): TickReport 
   state.time += dt;
 
   for (const name of report.retirements) {
-    log(state, "retire", `${name} retired to the Day-Care.`);
+    log(state, "retire", "log.retired", { name });
   }
   for (const name of report.hatched) {
-    log(state, "breed", `An egg hatched at the Day-Care: ${name}.`);
+    log(state, "breed", "log.hatched", { name });
   }
   for (const name of report.revives) {
-    log(state, "wave", `A challenger revived their ${name}.`);
+    log(state, "wave", "log.revived", { name });
   }
   if (report.badgesLost > 0) {
-    log(
-      state,
-      "wave",
-      `${report.badgesLost} ${report.badgesLost === 1 ? "badge" : "badges"} claimed by challengers.`,
-    );
+    log(state, "wave", "log.badgesClaimed", { n: report.badgesLost });
   }
   for (const r of report.rivals) {
-    log(
-      state,
-      "rival",
-      r.held
-        ? `${r.name} challenged and lost.`
-        : `${r.name} beat your gym and took a badge.`,
-    );
+    log(state, "rival", r.held ? "log.rivalHeld" : "log.rivalWon", { name: r.name });
   }
   for (const name of report.recruited) {
-    log(state, "hire", `${name} joined the league after losing.`);
+    log(state, "hire", "log.rivalJoined", { name });
   }
   for (const run of report.gauntlets) {
     log(
       state,
       "gauntlet",
-      run.tookLeague
-        ? `A challenger beat the Elite Four and took the league.`
-        : `A challenger cleared ${run.cleared} of the Elite tier before falling.`,
+      run.tookLeague ? "log.eliteLost" : "log.eliteHeld",
+      { n: run.cleared },
     );
   }
   // Only report upsets from creatures that are still settling in. A veteran
@@ -270,16 +264,15 @@ export function tick(state: LeagueState, dt: number = TICK_SECONDS): TickReport 
     log(
       state,
       "upset",
-      upset.won
-        ? `${upset.name} won one they had no business winning.`
-        : `${upset.name} lost one they should have won \u2014 still settling in.`,
+      upset.won ? "log.upsetWon" : "log.upsetLost",
+      { name: upset.name },
     );
   }
   for (const text of report.evolutions) {
-    log(state, "evolve", `${text}.`);
+    log(state, "evolve", "log.evolved", { text });
   }
   for (const name of report.resignations) {
-    log(state, "quit", `${name} resigned and took their partner with them.`);
+    log(state, "quit", "log.resigned", { name });
   }
 
   return report;

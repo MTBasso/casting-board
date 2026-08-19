@@ -49,11 +49,18 @@ honest dependency for anything derived from league state — `state`,
 keyed on them never recomputes. Three components shipped with stale lists this
 way.
 
+**The Field is four modules, not one.** `map` (where you can go), `crews` (who
+works for you), `expeditions` (what a trip does), `roster` (who you have, and how
+full the box is). They were one 1,110-line file with 42 exports. `roster` is
+also where to ask "what does the player own" — four screens used to answer it
+privately and three answered it wrongly at once.
+
 **The sim holds keys, not sentences.** Logs, events, decisions and objectives all
 carry `{ key, params }`, and translation happens at render, so a league saved in
 one language reads correctly in the other. `Dict` in `src/ui/i18n.ts` makes a
-missing Portuguese string a compile error — except where a call site casts
-`as never`, which several do. Plurals live inline in the string as
+missing Portuguese string a compile error for keys written by hand; keys the sim
+emits at runtime go through `useTk`, and `i18n.test.ts` reads every key literal
+the sim can emit and fails if either dictionary is missing it. Plurals live inline in the string as
 `{n:one|many}`, one group per word, because Portuguese needs the adjective to
 agree too.
 
@@ -67,9 +74,11 @@ progress at eighteen real minutes for a whole block.
 level-8 Charizard and you get a level-36 one. Filter species with
 `grantableAtLevel` wherever a level is chosen first.
 
-**`TickReport` fields can be dead.** `report.returned` and `report.upsets` were
-each declared, initialised, and never written to for months, so everything
-reading them measured zero. Grep for a `.push` before trusting a report field.
+**The tick report is write-only.** Systems call verbs on a `Report`
+(`src/sim/report.ts`) rather than mutating a struct, because three fields once
+shipped declared-but-never-written and two of those were *read* — so they
+measured zero for months. `report.test.ts` fails the build on a verb nobody
+calls. Add a field by adding its verb.
 
 **`normalize()` in `src/sim/migrate.ts` runs on every load**, not only on version
 change, and it deletes fields as well as backfilling them. It once backfilled a

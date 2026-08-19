@@ -33,9 +33,15 @@ export function TradeModal({ onClose }: { onClose: () => void }) {
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
 
+  // The sim mutates its state in place, so `state` and everything hanging off it
+  // keep their identity forever — a memo keyed on them never recomputes. The
+  // store bumps `revision` for exactly this reason, and it is the only honest
+  // dependency for anything derived from league state.
+  const revision = useGame((s) => s.revision);
   const idle = useMemo(
     () => tradeableStock(state).sort((a, b) => b.power - a.power),
-    [state],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [revision, state],
   );
   const types = wantedTypes(state);
 
@@ -43,8 +49,11 @@ export function TradeModal({ onClose }: { onClose: () => void }) {
   const [offered, setOffered] = useState<string[]>([]);
   const [got, setGot] = useState<Creature | null>(null);
 
-  const check = wanted ? canTrade(state, wanted, offered) : null;
-  const preview = wanted ? tradePreview(state, wanted, offered) : null;
+  // A trade deletes what it consumed, so drop anything that has stopped
+  // existing rather than leaving dead ids selected.
+  const live = offered.filter((id) => state.creatures[id] !== undefined);
+  const check = wanted ? canTrade(state, wanted, live) : null;
+  const preview = wanted ? tradePreview(state, wanted, live) : null;
 
   const toggle = (id: string) =>
     setOffered((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id]));
@@ -52,7 +61,7 @@ export function TradeModal({ onClose }: { onClose: () => void }) {
   const commit = () => {
     if (!wanted) return;
     act((s) => {
-      const result = trade(s, wanted, offered);
+      const result = trade(s, wanted, live);
       if (result.ok) setGot(s.creatures[result.creatureId] ?? null);
     });
     setOffered([]);
@@ -118,7 +127,7 @@ export function TradeModal({ onClose }: { onClose: () => void }) {
             </div>
 
             <div className="trade-verdict">
-              {offered.length === 0 || !preview ? (
+              {live.length === 0 || !preview ? (
                 <p className="dim">{t("trade.pickSome", { n: constants.TRADE.minOffered })}</p>
               ) : (
                 <p>
@@ -147,7 +156,7 @@ export function TradeModal({ onClose }: { onClose: () => void }) {
                 title={check && !check.ok ? check.reason : undefined}
                 onClick={commit}
               >
-                {t("pc.trade", { n: offered.length, fee: constants.TRADE.fee })}
+                {t("pc.trade", { n: live.length, fee: constants.TRADE.fee })}
               </button>
             </div>
           </>

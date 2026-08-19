@@ -44,9 +44,15 @@ export function PcBox() {
   const [open, setOpen] = useState<string | null>(null);
   const [trading, setTrading] = useState(false);
 
+  // The sim mutates its state in place, so `state` and everything hanging off it
+  // keep their identity forever — a memo keyed on them never recomputes. The
+  // store bumps `revision` for exactly this reason, and it is the only honest
+  // dependency for anything derived from league state.
+  const revision = useGame((s) => s.revision);
   const mine = useMemo(
     () => Object.values(state.creatures).filter((c) => c.owned && c.role !== "retired"),
-    [state.creatures],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [revision, state],
   );
 
   // In trade mode the grid narrows to what the desk will actually accept, so

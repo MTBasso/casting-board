@@ -1,5 +1,4 @@
-export type { ObjectiveTarget } from "../../data/objectives.js";
-import { REPEATABLE, SPINE, type MeasureId, type ObjectiveDef, type ObjectiveTarget, type Reward } from "../../data/objectives.js";
+import { REPEATABLE, SPINE, type MeasureId, type ObjectiveDef, type Reward } from "../../data/objectives.js";
 import { level as facilityLevel } from "./facilities.js";
 import { hasBondedCore } from "./promotion.js";
 import { partyOf } from "./party.js";
@@ -32,8 +31,6 @@ export interface Objective {
   goal: number;
   reward: Reward;
   done: boolean;
-  /** The screen it is done on, so the interface can point at it. */
-  where: ObjectiveTarget;
 }
 
 /** What each measure is counting, read live off the league. */
@@ -82,7 +79,6 @@ function shape(state: LeagueState, def: ObjectiveDef): Objective {
     goal: def.goal,
     reward: def.reward,
     done: have >= def.goal,
-    where: def.where,
   };
 }
 
@@ -117,7 +113,6 @@ export function objectives(state: LeagueState): Objective[] {
       goal,
       reward: rep.reward(tier),
       done: have >= goal,
-      where: rep.where,
     });
   }
 

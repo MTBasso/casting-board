@@ -188,12 +188,17 @@ are the trainer. The objective spine no longer dead-ends at its third step,
 which it had been doing since the Field rewrite. About sixty strings that had
 never been translated are, including the two screens a new player sees first.
 
-What Block 10 adds: the spine becomes *directive* rather than a list — a strip
-saying what to do next and a tab glow saying where — plus coach marks on each
-tab, replayable from a "?" in its header. And the opening meta softens until the
-spine's fourth step is claimed, so a stranger cannot lose a badge to a mistake
-they had no way to see coming. Invisible by construction: the challengers are
-weaker, rather than the loss being disallowed.
+What Block 10 added: coach marks on each tab, replayable from a "?" in its
+header. And the opening meta softens until the spine's fourth step is claimed,
+so a stranger cannot lose a badge to a mistake they had no way to see coming.
+Invisible by construction: the challengers are weaker, rather than the loss
+being disallowed.
+
+It also added a guided strip and a tab glow, and both are **removed**. Making
+the spine directive assumed its steps were short. They are not — "hold all
+eight" sits at 5/8 for hours, and a permanent undismissable banner reporting
+slow progress is not guidance, it is furniture. The objectives were always on
+the Desk, which is a place you choose to look.
 
 Still open after that: pacing. A first hour reaches eight gyms and the promotion
 offer, which is [#16](https://github.com/MTBasso/casting-board/issues/16).

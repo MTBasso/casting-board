@@ -32,27 +32,9 @@ export interface ObjectiveDef {
   /** What is being counted. Resolved in `systems/objectives.ts`. */
   measure: MeasureId;
   reward: Reward;
-  /**
-   * The screen this is done on.
-   *
-   * The spine is the onboarding sequence, and the single most common way a new
-   * player stalls is not knowing which of eight tabs an instruction refers to.
-   * A sentence cannot fix that; a highlight can. Named the same way decisions
-   * name their destination, so the sim still knows nothing about tabs.
-   */
-  where: ObjectiveTarget;
   /** Only offered once these are claimed. */
   after?: readonly string[];
 }
-
-export type ObjectiveTarget =
-  | "gyms"
-  | "pc"
-  | "field"
-  | "elite"
-  | "hall"
-  | "daycare"
-  | "facilities";
 
 export type MeasureId =
   | "gyms"
@@ -81,7 +63,6 @@ export const SPINE: readonly ObjectiveDef[] = [
     detail: "Choose its type and the Leader who will hold it. Neither can be undone.",
     goal: 1,
     measure: "gyms",
-    where: "gyms",
     reward: { kind: "kit", balls: 15, potions: 6, revives: 2, lures: 1 },
   },
   {
@@ -91,7 +72,6 @@ export const SPINE: readonly ObjectiveDef[] = [
       "Two people who work together. The Ranger brings creatures back; the Handler raises the ones they take.",
     goal: 1,
     measure: "crews",
-    where: "field",
     reward: { kind: "money", amount: 2500 },
     after: ["first-gym"],
   },
@@ -102,7 +82,6 @@ export const SPINE: readonly ObjectiveDef[] = [
       "Outfit a crew and work a route. What ends a trip is the kit you paid for, not a timer.",
     goal: 1,
     measure: "trips",
-    where: "field",
     reward: { kind: "kit", balls: 25, potions: 10, revives: 3, lures: 3 },
     after: ["first-crew"],
   },
@@ -113,7 +92,6 @@ export const SPINE: readonly ObjectiveDef[] = [
       "Juniors stand between a challenger and your Leader. They field lesser creatures, and they buy your Leader time.",
     goal: 2,
     measure: "gymTrainers",
-    where: "gyms",
     reward: { kind: "facility", id: "scouting_office" },
     after: ["first-trip"],
   },
@@ -124,7 +102,6 @@ export const SPINE: readonly ObjectiveDef[] = [
       "Walk a route until the league knows it, then send a crew past it. The map grows because you went there.",
     goal: 4,
     measure: "routes",
-    where: "field",
     reward: { kind: "crew" },
     after: ["first-trip"],
   },
@@ -135,7 +112,6 @@ export const SPINE: readonly ObjectiveDef[] = [
       "Two creatures in one gym who have served long enough to be reliable. Bond buys certainty, not power.",
     goal: 1,
     measure: "bonded",
-    where: "gyms",
     reward: { kind: "facility", id: "training_grounds" },
     after: ["staff-a-gym"],
   },
@@ -145,7 +121,6 @@ export const SPINE: readonly ObjectiveDef[] = [
     detail: "A board wide enough that the types coming at you start to matter.",
     goal: 4,
     measure: "gyms",
-    where: "gyms",
     reward: { kind: "crew" },
     after: ["a-bonded-gym"],
   },
@@ -155,7 +130,6 @@ export const SPINE: readonly ObjectiveDef[] = [
     detail: "Every badge in the region, defended by people you chose.",
     goal: 8,
     measure: "gyms",
-    where: "gyms",
     reward: { kind: "facility", id: "medical_center" },
     after: ["four-gyms"],
   },
@@ -166,7 +140,6 @@ export const SPINE: readonly ObjectiveDef[] = [
       "And the Champion above them. An empty seat is a free pass on the way to taking your league.",
     goal: 5,
     measure: "eliteSeats",
-    where: "elite",
     reward: { kind: "crew" },
     after: ["a-full-board"],
   },
@@ -177,7 +150,6 @@ export const SPINE: readonly ObjectiveDef[] = [
       "A creature that serves most of a life enters the Hall. That is what retirement is for.",
     goal: 1,
     measure: "legends",
-    where: "hall",
     reward: { kind: "facility", id: "day_care" },
     after: ["a-bonded-gym"],
   },
@@ -188,7 +160,6 @@ export const SPINE: readonly ObjectiveDef[] = [
       "Induct from the Hall and start again, harder. The Mentors you choose are all that survives.",
     goal: 1,
     measure: "promotions",
-    where: "elite",
     reward: { kind: "crew" },
     after: ["staff-the-elite", "first-legend"],
   },
@@ -205,7 +176,6 @@ export const REPEATABLE: readonly {
   title: (n: number) => string;
   detail: string;
   measure: MeasureId;
-  where: ObjectiveTarget;
   /** Goal for tier n, counting from 1. */
   goal: (n: number) => number;
   reward: (n: number) => Reward;
@@ -215,7 +185,6 @@ export const REPEATABLE: readonly {
     title: (n) => `Turn away ${n.toLocaleString()} challengers`,
     detail: "The board holding is the whole job.",
     measure: "challengesHeld",
-    where: "gyms",
     goal: (n) => 250 * 2 ** (n - 1),
     reward: (n) => ({ kind: "kit", balls: 20 * n, potions: 8 * n, revives: 2 * n, lures: 2 * n }),
   },
@@ -224,7 +193,6 @@ export const REPEATABLE: readonly {
     title: (n) => `Bring home ${n.toLocaleString()} creatures`,
     detail: "Every one of them arrived because somebody went and got it.",
     measure: "caught",
-    where: "field",
     goal: (n) => 100 * 2 ** (n - 1),
     reward: (n) => ({ kind: "money", amount: 5000 * n }),
   },
@@ -233,7 +201,6 @@ export const REPEATABLE: readonly {
     title: (n) => `Reach ${n} places`,
     detail: "The map grows because crews walked it.",
     measure: "routes",
-    where: "field",
     goal: (n) => Math.min(16, 6 + n * 2),
     reward: () => ({ kind: "crew" }),
   },

@@ -142,15 +142,23 @@ export const CAREER = {
    * The number is large because waves are frequent; the Card shows a career bar
    * and a condition label rather than the raw figure.
    *
-   * Re-derived after measuring a real league: at 6,500 a creature in daily gym
-   * duty had spent **5.4% of its career in forty hours**, putting a full career
-   * somewhere past seven hundred. Career is meant to be the finite life that
-   * gives a creature an arc and eventually sends it to the Day-Care; at that
-   * rate it was neither a constraint nor an arc, and retirement, breeding and
+   * Re-derived twice against real leagues. At 6,500 a creature in daily gym
+   * duty spent 5.4% of its career in forty hours — a career past seven hundred,
+   * which was neither a constraint nor an arc, and retirement, breeding and
    * pedigree never happened at all.
+   *
+   * At 1,400 the *juniors* churned properly and it looked fixed, but the
+   * creatures the player actually owns had used only **33.7% after a hundred
+   * and forty hours** — a career near four hundred, because a Leader's party is
+   * shielded by the undercard and fights a fraction of what a junior does. The
+   * Hall stayed empty and induction, the choice this game is built toward, was
+   * unreachable in any real play window.
+   *
+   * 520 puts an owned creature's career at roughly the stated target, measured
+   * on the creatures it is actually about rather than on the average.
    */
-  base: 1400,
-  variance: 350,
+  base: 520,
+  variance: 130,
   /** Career spent per wave fought in the bonded front line. */
   costBonded: 1,
   /** Career spent per exchange in a party battle. */
@@ -983,6 +991,15 @@ export const HALL = {
    * what makes it fair to a short-lived creature.
    */
   minCareerServed: 0.55,
+  /**
+   * Battles a creature must have *won* as well as served.
+   *
+   * Career served alone let a creature that lost its way through a short life
+   * into the Hall — measured, entries with three wins and a career spent almost
+   * entirely on faint penalties, which burn career faster than fighting does.
+   * A hall of fame that rewards attrition is a casualty list.
+   */
+  minWins: 20,
   /** However distinguished the league, the record has to stay readable. */
   cap: 300,
 } as const;

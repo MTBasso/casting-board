@@ -102,6 +102,7 @@ function remember(state: LeagueState, c: Creature): void {
 
   const served = c.careerTotal > 0 ? c.careerSpent / c.careerTotal : 0;
   if (served < HALL.minCareerServed) return;
+  if (c.wins < HALL.minWins) return;
 
   state.legends.push({
     id: c.id,

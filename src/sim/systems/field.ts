@@ -578,7 +578,7 @@ export function tickField(state: LeagueState, dt: number, report: TickReport): v
 
     const { ranger, handler } = crewMembers(state, crew);
     if (!ranger || !handler) {
-      finish(state, trip, "returned");
+      finish(state, trip, "returned", report);
       continue;
     }
     if (isSuspended(state, ranger) || isSuspended(state, handler)) continue;
@@ -665,7 +665,7 @@ function workRound(
 
   // They come home when the balls run out or they cannot carry on.
   if (trip.kit.balls <= 0 || trip.hurt >= 1) {
-    finish(state, trip, trip.hurt >= 1 ? "beaten" : "returned");
+    finish(state, trip, trip.hurt >= 1 ? "beaten" : "returned", report);
   }
 }
 
@@ -865,6 +865,7 @@ function finish(
   state: LeagueState,
   trip: Expedition,
   how: "returned" | "beaten" | "recalled",
+  report?: TickReport,
 ): void {
   const crew = crewById(state, trip.crewId);
   const route = routeById(trip.routeId);
@@ -914,6 +915,13 @@ function finish(
     how === "beaten" ? "log.crewBeaten" : "log.crewHome",
     { name: crewName(state, crew), route: route.id, n: trip.caught },
   );
+
+  // A trip that ran its course is one the league can count. A recall is the
+  // player pulling them back early, which is not the same thing and does not
+  // satisfy an objective that asked for a trip to be worked.
+  if (report && how !== "recalled") {
+    report.returned.push({ name: crewName(state, crew), caught: trip.caught });
+  }
 }
 
 /** Reach a new place. Its resident and its landmark come with it. */

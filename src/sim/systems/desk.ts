@@ -3,7 +3,7 @@ import { built as dayCareBuilt, freeSlots } from "./daycare.js";
 import { eliteUnlocked } from "./elite.js";
 import { expeditionOf, reserveCeiling, usableReserve } from "./field.js";
 import { isSuspended } from "./morale.js";
-import { partyCapOf } from "./party.js";
+import { couldFill, partyCapOf } from "./party.js";
 import { readiness } from "./promotion.js";
 import { nextRival, timeUntil } from "./rivals.js";
 import type { LeagueState } from "../types.js";
@@ -176,7 +176,13 @@ export function pendingDecisions(state: LeagueState): Decision[] {
     return [...gym.trainerIds, ...(gym.leaderId ? [gym.leaderId] : [])]
       .map((tid) => state.trainers[tid])
       .filter(
-        (t) => t !== undefined && t.party.length > 0 && t.party.length < partyCapOf(t, state),
+        (t) =>
+          t !== undefined &&
+          t.party.length > 0 &&
+          t.party.length < partyCapOf(t, state) &&
+          // Only when the box could actually fill it. Otherwise this is the
+          // supply situation rather than a decision, and it never clears.
+          couldFill(state, t),
       );
   });
   if (short.length > 0) {

@@ -97,6 +97,23 @@ screenshot. `.devbar-toggle` opens the dev strip, whose buttons fast-forward,
 fill the box and force events. **Look at the screenshot** — a blank frame is a
 failure to launch.
 
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues on `MTBasso/casting-board`, via the `gh` CLI. See
+[`docs/agents/issue-tracker.md`](docs/agents/issue-tracker.md).
+
+### Triage labels
+
+The five canonical roles, each label string equal to its name. See
+[`docs/agents/triage-labels.md`](docs/agents/triage-labels.md).
+
+### Domain docs
+
+Single-context — `CONTEXT.md` and `docs/adr/` at the repo root, both created
+lazily rather than upfront. See [`docs/agents/domain.md`](docs/agents/domain.md).
+
 ## Conventions
 
 Commit messages are prose that explains *why*, and say plainly when a measurement

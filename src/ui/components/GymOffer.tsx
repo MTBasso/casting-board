@@ -1,5 +1,5 @@
 import { useGame } from "../../engine/store.js";
-import { useT } from "../i18n.js";
+import { useT, type Key } from "../i18n.js";
 import { acceptGymOffer, briefType, gymCost } from "../../sim/index.js";
 import { TypeBadge } from "./TypeBadge.js";
 
@@ -101,8 +101,8 @@ export function GymOffer() {
                     <dt>{t("gymOffer.suppliedBy")}</dt>
                     <dd>
                       {brief.routes.length > 0
-                        ? brief.routes.join(", ")
-                        : "no surveyed route"}
+                        ? brief.routes.map((id) => t(`route.${id}` as Key)).join(", ")
+                        : t("gymOffer.noRoute")}
                     </dd>
                   </div>
                 </dl>

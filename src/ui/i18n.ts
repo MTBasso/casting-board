@@ -678,6 +678,7 @@ export const en = {
     "Careers run down, trainers lose patience, and a creature that served a long time is remembered. Nothing you build lasts forever.",
   "welcome.idle": "It keeps running while you are away. Come back and see what happened.",
   "welcome.begin": "Take the post",
+  "gymOffer.noRoute": "nowhere you have reached",
 } as const;
 
 export type Key = keyof typeof en;
@@ -1256,4 +1257,5 @@ export const pt: Dict = {
     "As carreiras acabam, os treinadores perdem a paciência, e um Pokémon que serviu por muito tempo é lembrado. Nada do que você constrói dura para sempre.",
   "welcome.idle": "Continua rodando enquanto você está fora. Volte e veja o que aconteceu.",
   "welcome.begin": "Assumir o cargo",
+  "gymOffer.noRoute": "nenhum lugar que você alcançou",
 };

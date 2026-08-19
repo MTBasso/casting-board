@@ -291,9 +291,12 @@ export function briefType(state: LeagueState, type: TypeId): TypeBriefing {
     (c) => c.role !== "retired" && c.types.includes(type),
   ).length;
 
+  // Ground the league has actually reached. This used to read `routeIntel`, a
+  // survey flag from the scouting system the Field rewrite replaced — nothing
+  // had written to it since, so this list was silently always empty.
   const routes = ROUTES.filter(
-    (r) => state.routeIntel[r.id] === true && r.supply[type] > 0,
-  ).map((r) => r.name);
+    (r) => state.explored.includes(r.id) && r.supply[type] > 0,
+  ).map((r) => r.id);
 
   return {
     type,

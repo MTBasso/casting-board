@@ -749,16 +749,6 @@ export interface LeagueState {
   meta: Meta;
 
   /**
-   * Routes the league has bought a survey of.
-   *
-   * Intel used to be a side effect of scouting; now it is a purchase made
-   * *before* committing a trainer and a partner to a route — which makes it a
-   * better buy than it ever was, because there is now something at stake in the
-   * commitment.
-   */
-  routeIntel: Record<string, boolean>;
-
-  /**
    * Candidate Leaders for a gym that has just opened. Choosing one is free.
    * Trainer ids; the unchosen are discarded.
    */

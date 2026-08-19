@@ -69,7 +69,6 @@ export function normalize(raw: unknown): LeagueState | null {
 
   // Scouting became staffed Rangers: no offers, no banked charges. Intel
   // survives as a purchase, so whatever the league already knew it keeps.
-  state.routeIntel ??= {};
   state.postings ??= [];
   delete loose.scoutOffer;
   delete loose.scoutCharges;
@@ -197,6 +196,7 @@ export function normalize(raw: unknown): LeagueState | null {
   delete (state as unknown as { postings?: unknown }).postings;
   delete (state as unknown as { fieldOffer?: unknown }).fieldOffer;
   delete (state as unknown as { crewReviewIn?: unknown }).crewReviewIn;
+  // Survey flags from the scouting system; the map replaced them.
   delete (state as unknown as { routeIntel?: unknown }).routeIntel;
   for (const trainer of Object.values(state.trainers)) {
     const kind = trainer.kind as unknown as string;

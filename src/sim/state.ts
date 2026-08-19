@@ -36,7 +36,6 @@ export function createInitialState(seed = 1): LeagueState {
       nextDriftIn: META.driftIntervalSeconds,
       season: 0,
     },
-    routeIntel: {},
     hall: [],
     legends: [],
     facilities: {},

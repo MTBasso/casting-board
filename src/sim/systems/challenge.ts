@@ -2,7 +2,7 @@ import { catalog, encounterWeight, familyOf, minLevelFor } from "../../data/cata
 import { effectivenessAgainst } from "../../data/typechart.js";
 import { BOND, CAREER, CHALLENGE, ELITE, FATIGUE, LEVELS } from "../constants.js";
 import { chance, int, next, pick, range, weighted } from "../rng.js";
-import { damage, statsFor, statsOf, type Stats } from "./stats.js";
+import { damage, powerOf, statsFor, statsOf, type Stats } from "./stats.js";
 import { gainXp } from "./growth.js";
 import { bondSpeed } from "./facilities.js";
 import { isSuspended, moraleFactor } from "./morale.js";
@@ -295,6 +295,24 @@ function snapshot(fighters: readonly Fighter[]): BattleFighter[] {
 }
 
 /**
+ * Who should have won, if nothing surprising happened.
+ *
+ * Null when it was close enough that either result is unremarkable — an upset
+ * only means something when the matchup was clear.
+ */
+function favoured(ours: Fighter, theirs: Fighter): boolean | null {
+  const oursVsThem = effectivenessAgainst(ours.types[0] ?? "normal", theirs.types);
+  const themVsOurs = effectivenessAgainst(theirs.types[0] ?? "normal", ours.types);
+  const typeEdge = oursVsThem / Math.max(0.25, themVsOurs);
+  const bulkEdge = (powerOf(ours.stats) * ours.level) / Math.max(1, powerOf(theirs.stats) * theirs.level);
+
+  const edge = typeEdge * bulkEdge;
+  if (edge > CHALLENGE.upsetMargin) return true;
+  if (edge < 1 / CHALLENGE.upsetMargin) return false;
+  return null;
+}
+
+/**
  * One creature against one, fought until somebody drops.
  *
  * Faster strikes first, which is the whole reason Speed exists. Every blow is
@@ -378,14 +396,47 @@ function battleParty(
         !state.dayCare.some((slot) => slot.creatureId === c.id),
     );
 
-  const roster = bench.map((c, i) => ourFighter(c, i));
   if (bench.length === 0) return { held: false, knockouts: 0, party: [] };
 
-  let ours = 0;
+  // Health is set once and carried across the whole stand, so a creature that
+  // took a beating and rotated out is still hurt when it comes back round.
+  // Fatigue and a dispirited trainer both show up here: starting worn down.
+  const roster = bench.map((c, i) => {
+    const f = ourFighter(c, i);
+    f.hp = Math.max(1, Math.round(f.maxHp * (1 - c.fatigue * 0.45) * moraleFactor(trainer)));
+    return f;
+  });
+
+  // **The party takes turns leading.** Position one leads a challenge, position
+  // two leads the next, and so on round the party.
+  //
+  // Order still matters — it is the sequence, and it decides who backs up whom
+  // once a stand runs long. What it is not any more is a permanent posting.
+  // Measured on a real league under the old rule, every gym looked like this:
+  //
+  //     ground   1.00 bond / 202 wins · 0.08 / 8 · 0.00 / 0 · 0.01 / 1 · 0.00 / 0
+  //
+  // One creature and five spectators, because a stand is usually a single bout
+  // and every stand began at position one. That is the genre failure this whole
+  // design exists to answer, arriving through the back door.
+  //
+  // Rotating on a knockout (see `nextDefender`) fixes long stands; taking turns
+  // fixes short ones. Both are needed.
+  let ours = trainer.leadIndex % bench.length;
+  // Skip anyone too worn to start, so the turn passes rather than stalls.
+  for (let step = 0; step < bench.length; step++) {
+    const i = (trainer.leadIndex + step) % bench.length;
+    if ((bench[i]?.fatigue ?? 1) < FATIGUE.exhausted) {
+      ours = i;
+      break;
+    }
+  }
+  trainer.leadIndex = (ours + 1) % bench.length;
+
   let knockouts = 0;
   let guard = 0;
 
-  while (ours < bench.length && guard < 40) {
+  while (guard < 60) {
     guard += 1;
 
     const nextTheirs = challenger.party.findIndex((m) => !m.fainted);
@@ -393,19 +444,23 @@ function battleParty(
 
     const defender = bench[ours];
     const attackerMon = challenger.party[nextTheirs];
-    if (!defender || !attackerMon) break;
+    const us = roster[ours];
+    if (!defender || !attackerMon || !us) break;
 
-    const us = roster[ours] ?? ourFighter(defender, ours);
-    // Fatigue and a dispirited trainer both show up the same way: starting the
-    // bout already worn down. A slump makes a gym wobble; it takes a suspension
-    // to make one fall.
-    us.hp = Math.max(
-      1,
-      Math.round(us.maxHp * (1 - defender.fatigue * 0.45) * moraleFactor(trainer)),
-    );
     const them = theirFighter(attackerMon, nextTheirs);
-
     const winner = bout(state, us, them, log);
+
+    // An upset is a bout whose result contradicted the matchup. This is the
+    // only place bond becomes *visible*: a creature that swings wildly is the
+    // one you have not got to know yet, and the feed says so by name.
+    //
+    // The report field for this existed from the first pass and was never once
+    // written to — bond has been buying reliability in silence for the whole
+    // project, which is as good as not buying anything.
+    const expected = favoured(us, them);
+    if (expected !== null && expected !== (winner === "ours")) {
+      report.upsets.push({ name: us.name, bond: defender.bond, won: winner === "ours" });
+    }
 
     spend(state, defender, CAREER.costPerExchange, trainer, report);
     defender.fatigue = clamp01(defender.fatigue + FATIGUE.perExchange);
@@ -434,10 +489,14 @@ function battleParty(
       defender.losses += 1;
       defender.fatigue = clamp01(defender.fatigue + FATIGUE.faintPenalty);
       spend(state, defender, CAREER.faintPenalty, trainer, report);
-      ours += 1;
+      us.hp = 0;
       // The challenger's creature carries its damage onward.
       attackerMon.hp = them.hp;
     }
+
+    const next = nextDefender(roster, ours, winner === "ours");
+    if (next === -1) break;
+    ours = next;
   }
 
   return {
@@ -445,6 +504,40 @@ function battleParty(
     knockouts,
     party: snapshot(roster),
   };
+}
+
+/**
+ * Who steps up next.
+ *
+ * **A creature rotates out after it scores a knockout.** This is the single
+ * most consequential rule in the battle system, and getting it wrong hid the
+ * game's oldest problem inside its newest feature.
+ *
+ * With the old rule — step aside only when you faint — position one won 88% of
+ * its bouts and therefore fought essentially every bout there was. Measured on a
+ * real league, every gym looked like this:
+ *
+ *     ground   1.00 bond / 202 wins · 0.08 / 8 · 0.00 / 0 · 0.01 / 1 · 0.00 / 0
+ *
+ * One creature and five spectators. Which is exactly the failure this whole
+ * design exists to answer — "you end up with one strong Pokémon and a bunch of
+ * weak ones" — reappearing through the back door.
+ *
+ * Rotating on a knockout means a six-strong challenger meets up to six of yours,
+ * so depth answers depth, bond spreads across a party instead of pooling in one
+ * creature, and career wears down a roster rather than a single life.
+ */
+function nextDefender(roster: readonly Fighter[], current: number, rotate: boolean): number {
+  const standing = (i: number) => roster[i] !== undefined && roster[i]!.hp > 0;
+
+  // Look forward from the current slot, wrapping, for the next one still up.
+  for (let step = 1; step <= roster.length; step++) {
+    const i = (current + step) % roster.length;
+    if (standing(i)) return i;
+  }
+  // Nobody else is left. The incumbent fights on if it can.
+  if (!rotate && standing(current)) return current;
+  return standing(current) ? current : -1;
 }
 
 function gainBondFor(state: LeagueState, c: Creature, trainer: Trainer): void {

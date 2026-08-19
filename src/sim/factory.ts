@@ -132,6 +132,7 @@ export function makeTrainer(
       (kind === "gym" ? GYM_TRAINERS.salaryFactor : 1),
     morale: 1,
     tenure: 0,
+    leadIndex: 0,
     standing: 1,
     strain: 0,
     suspensions: 0,

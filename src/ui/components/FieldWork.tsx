@@ -9,7 +9,6 @@ import {
   ceilingFor,
   crewLevel,
   crewOf,
-  candidatesFor,
   eligibleRoutes,
   fieldHireCost,
   fieldOffer,
@@ -20,364 +19,178 @@ import {
   passOnOffer,
   post,
   postingFor,
-  postingsOnRoute,
+  postingOnRoute,
   recall,
   removeFromCrew,
   reserveCeiling,
   roundSeconds,
-  stretchOf,
   slotsAvailable,
+  stretchOf,
+  unbench,
   usableReserve,
   constants,
   TYPES,
   type FieldRole,
+  type Posting,
   type Route,
   type Trainer,
 } from "../../sim/index.js";
 import { TypeBadge } from "./TypeBadge.js";
-import { StaffStanding } from "./StaffStanding.js";
+import { CreaturePicker } from "./CreaturePicker.js";
 import { creatureName } from "../names.js";
 
 /**
- * Routes, and the two kinds of people who work them.
+ * The Field: routes, and the people working them.
  *
- * `Ground` is the map: what lives where, and who is standing on it. `Rangers`
- * and `Handlers` are the two payrolls — collecting and training, kept apart
- * because they are different jobs done at different times, and stacking them on
- * one screen left neither any room.
+ * Built around the **route**, because the route is the unit of work. The screen
+ * used to be three separate lists — one of routes, one of Rangers, one of
+ * Handlers — which meant posting somebody required holding all three in your
+ * head at once: is this route free, is that Ranger idle, does she have a crew.
+ * Three views of the same decision, none of them able to make it.
+ *
+ * Now every route carries its two slots, a Ranger's and a Handler's, and each
+ * slot is either the work happening in it or a way to start some.
  */
-type View = "routes" | "ranger" | "handler";
-
 export function FieldWork() {
   const state = useGame((s) => s.state);
-  const [view, setView] = useState<View>("routes");
 
   const idle = usableReserve(state);
   const cap = reserveCeiling(state);
-  const boxFull = idle >= cap;
-
   const routes = [...eligibleRoutes(state)].sort((a, b) => a.levelMin - b.levelMin);
-  const unposted = (role: FieldRole) =>
-    fieldStaff(state, role).filter((t) => !postingFor(state, t.id)).length;
+
+  const unposted = [...fieldStaff(state, "ranger"), ...fieldStaff(state, "handler")].filter(
+    (t) => !postingFor(state, t.id),
+  );
 
   return (
-    <div className="rangers">
+    <div className="field">
       <h2 className="col-title">
         Field
         <span className="counter">
-          {state.postings.length} posted · {idle}/{cap} usable in the box
+          {state.postings.length} at work · {idle}/{cap} usable in the box
         </span>
       </h2>
 
-      <div className="subtabs" role="tablist">
-        {(
-          [
-            ["routes", "Routes", 0],
-            ["ranger", "Rangers", unposted("ranger")],
-            ["handler", "Handlers", unposted("handler")],
-          ] as const
-        ).map(([id, label, badge]) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={view === id}
-            className={`subtab ${view === id ? "is-active" : ""}`}
-            onClick={() => setView(id)}
-          >
-            {label}
-            {badge > 0 && <span className="tab-badge">{badge}</span>}
-          </button>
-        ))}
+      <div className="hire-row">
+        <HireCard role="ranger" />
+        <HireCard role="handler" />
       </div>
 
-      {boxFull && view !== "handler" && (
+      {unposted.length > 0 && (
         <p className="warn-banner">
-          {cap} creatures your trainers could field are sitting idle. Catching has
-          stopped until you put some of them to work.
+          {unposted.length} on the payroll and not on a route:{" "}
+          {unposted.map((t) => t.name).join(", ")}.
         </p>
       )}
 
-      {view === "routes" ? (
-        <>
-          <p className="hint">
-            Rangers bring creatures in; Handlers take a party out and bring it
-            back stronger. Route work costs fatigue and never career — this is the
-            safe posting, and the only one your spare creatures can hold.
-          </p>
-          <ul className="route-list">
-            {routes.map((r) => (
-              <RouteCard key={r.id} route={r} />
-            ))}
-          </ul>
-        </>
-      ) : (
-        <Payroll role={view} />
-      )}
+      <ul className="route-list">
+        {routes.map((r) => (
+          <RouteRow key={r.id} route={r} />
+        ))}
+      </ul>
     </div>
   );
 }
 
 /**
- * One role's staff, and the hiring offer above them.
+ * Hiring, as an offer.
  *
- * The offer is drawn, not chosen: three types turn up, you take one or you pass
- * and see three more. That is what makes a Water Ranger a piece of luck you
- * build around rather than a component you buy.
+ * Three types turn up; take one or pass and see three more. Free choice made a
+ * Ranger a component you bought — you already knew the type you wanted, so the
+ * only question was affordability.
  */
-function Payroll({ role }: { role: FieldRole }) {
+function HireCard({ role }: { role: FieldRole }) {
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
 
   const staff = fieldStaff(state, role);
   const slots = slotsAvailable(state, role);
   const check = canHire(state, role);
-  const offer = fieldOffer(state, role);
   const cost = fieldHireCost(state, role);
-
-  const blurb =
-    role === "ranger"
-      ? "A Ranger works a route with one partner of their own type, and brings back what lives there. They will not take ground their partner cannot handle."
-      : `An Handler takes up to ${constants.HANDLER.partyMax} of their own type onto a route, earns Pokéyen, and brings them back levelled. They *may* be posted over their heads — it pays better and teaches faster, and one day they come back beaten.`;
+  const full = staff.length >= slots;
 
   return (
-    <>
-      <p className="hint">{blurb}</p>
+    <section className={`hire-card ${full ? "is-full" : ""}`}>
+      <div className="hire-head">
+        <strong>{role === "ranger" ? "Rangers" : "Handlers"}</strong>
+        <span className="dim">
+          {staff.length}/{slots}
+        </span>
+      </div>
+      <p className="hint">
+        {role === "ranger"
+          ? "Bring creatures back. One partner of their own type, a shift at a time."
+          : `Take up to ${constants.HANDLER.partyMax} of their own type out and bring them back levelled.`}
+      </p>
 
-      <section className="group">
-        <h3>
-          Hiring
-          <span className="counter">
-            {staff.length}/{slots} employed
-          </span>
-        </h3>
-
-        {staff.length >= slots ? (
-          <p className="empty">
-            Every slot is filled. Upgrade the{" "}
-            {role === "ranger" ? "Scouting Office" : "Training Grounds"} for
-            another.
-          </p>
-        ) : (
-          <>
-            <div className="offer-choices compact">
-              {offer.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  className="offer-choice"
-                  disabled={!check.ok}
-                  title={check.ok ? `Hire a ${t} ${role}` : check.reason}
-                  onClick={() => act((s) => void hire(s, role, t))}
-                >
-                  <TypeBadge type={t} size="sm" />
-                </button>
-              ))}
-            </div>
-            <p className="hint">
-              &#8369;{cost.toLocaleString()} to hire. Pass and three more turn up —
-              but you lose the three in front of you.
-            </p>
-            <button
-              type="button"
-              className="btn sm ghost"
-              onClick={() => act((s) => passOnOffer(s, role))}
-            >
-              Pass
-            </button>
-          </>
-        )}
-      </section>
-
-      {staff.length === 0 ? (
-        <p className="empty">
-          Nobody employed.{" "}
-          {role === "ranger"
-            ? "This is where every creature on the roster comes from."
-            : "This is the only way your creatures gain levels outside a gym."}
+      {full ? (
+        <p className="dim">
+          Every slot filled. Upgrade the{" "}
+          {role === "ranger" ? "Scouting Office" : "Training Grounds"} for another.
         </p>
       ) : (
-        <ul className="trainer-list">
-          {staff.map((t) => (
-            <FieldRow key={t.id} trainer={t} />
-          ))}
-        </ul>
-      )}
-    </>
-  );
-}
-
-function FieldRow({ trainer }: { trainer: Trainer }) {
-  const state = useGame((s) => s.state);
-  const act = useGame((s) => s.act);
-  const [adding, setAdding] = useState(false);
-
-  const posting = postingFor(state, trainer.id);
-  const crew = crewOf(state, trainer.id);
-  const route = posting
-    ? eligibleRoutes(state).find((r) => r.id === posting.routeId)
-    : undefined;
-
-  const secs = posting ? roundSeconds(state, posting) : 0;
-  const pct = posting && secs > 0 ? Math.min(1, posting.progress / secs) : 0;
-  const stretch = posting ? stretchOf(state, posting) : 0;
-  const capped =
-    posting !== undefined && crewLevel(state, trainer.id) >= ceilingFor(posting.routeId);
-
-  const options = adding ? candidatesFor(state, trainer.id).filter((o) => o.ok) : [];
-
-  return (
-    <li className="trainer-row">
-      <div className="trainer-head">
-        <span className="trainer-id">
-          <TypeBadge type={trainer.affinity} size="sm" />
-          <span>{trainer.name}</span>
-          <span className="dim">{trainer.kind === "handler" ? "Handler" : "Ranger"}</span>
-        </span>
-        {posting ? (
-          <button
-            type="button"
-            className="btn sm ghost"
-            onClick={() => act((s) => recall(s, trainer.id))}
-          >
-            Recall
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="btn sm ghost"
-            onClick={() => setAdding((v) => !v)}
-          >
-            {adding ? "Done" : "Crew…"}
-          </button>
-        )}
-      </div>
-
-      <StaffStanding trainer={trainer} />
-
-      <ul className="crew">
-        {crew.map((c) => (
-          <li key={c.id} title={`${creatureName(c)} Lv${c.level}`}>
-            <Sprite speciesId={c.speciesId} kind="icon" size={34} />
-            <span className="crew-lv">Lv{c.level}</span>
-            {!posting && (
+        <>
+          <div className="offer-choices compact">
+            {fieldOffer(state, role).map((t) => (
               <button
+                key={t}
                 type="button"
-                className="crew-drop"
-                title="Take them out of the crew"
-                onClick={() => act((s) => removeFromCrew(s, c.id))}
+                className="offer-choice"
+                disabled={!check.ok}
+                title={check.ok ? `Hire a ${t} ${role}` : check.reason}
+                onClick={() => act((s) => void hire(s, role, t))}
               >
-                ×
+                <TypeBadge type={t} size="sm" />
               </button>
-            )}
-          </li>
-        ))}
-        {crew.length === 0 && <li className="empty">No crew</li>}
-      </ul>
-
-      {adding && !posting && (
-        <div className="post-options">
-          {options.length === 0 ? (
-            <p className="empty">
-              Nothing in the box of their type. Work a route that supplies{" "}
-              {trainer.affinity}, or trade for one.
-            </p>
-          ) : (
-            <ul className="thin-list">
-              {options.slice(0, 8).map(({ creature }) => (
-                <li key={creature.id}>
-                  <span className="row-id">
-                    <Sprite speciesId={creature.speciesId} kind="icon" size={30} />
-                    <span>
-                      {creatureName(creature)}
-                      <span className="dim"> Lv{creature.level}</span>
-                    </span>
-                  </span>
-                  <button
-                    type="button"
-                    className="btn sm"
-                    onClick={() => act((s) => void addToCrew(s, creature.id, trainer.id))}
-                  >
-                    Add
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
-      {posting && route && (
-        <div className="posting">
-          <div className="posting-who">
-            <span>
-              <strong>{route.name}</strong>
-              <span className="dim">
-                {" "}
-                Lv{route.levelMin}–{route.levelMax}
-              </span>
-            </span>
-            <span className="dim">
-              {posting.role === "ranger"
-                ? `${posting.caught} caught`
-                : `₱${Math.round(posting.earned).toLocaleString()} earned`}
-            </span>
+            ))}
           </div>
-
-          <span className="track" title={`${Math.round(secs)}s per round`}>
-            <span className="fill" style={{ width: `${pct * 100}%` }} />
-          </span>
-
-          {stretch > 0 && (
-            <p className="warn">
-              {stretch} levels over their heads — better pay and faster growth,
-              and {posting.beaten > 0 ? `beaten ${posting.beaten} times so far` : "a real chance of coming back beaten"}.
-            </p>
-          )}
-          {capped && (
-            <p className="warn">
-              This route has taught them all it can. Move them to harder ground.
-            </p>
-          )}
-          {posting.resting && <p className="warn">Resting between shifts.</p>}
-        </div>
+          <div className="hire-foot">
+            <span className="dim">&#8369;{cost.toLocaleString()}</span>
+            <button
+              type="button"
+              className="linky"
+              onClick={() => act((s) => passOnOffer(s, role))}
+            >
+              pass, redraw
+            </button>
+          </div>
+        </>
       )}
-    </li>
+    </section>
   );
 }
 
-function RouteCard({ route }: { route: Route }) {
+/** One route, and the two jobs that can be done on it. */
+function RouteRow({ route }: { route: Route }) {
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
-  const [open, setOpen] = useState(false);
 
   const known = hasIntel(state, route.id);
-  const here = postingsOnRoute(state, route.id);
-
   const rows = TYPES.map((t) => ({ type: t, share: route.supply[t] }))
     .filter((r) => r.share > 0)
     .sort((a, b) => b.share - a.share);
   const total = rows.reduce((a, r) => a + r.share, 0) || 1;
 
-  const ready = open
-    ? [...fieldStaff(state, "ranger"), ...fieldStaff(state, "handler")].filter(
-        (t) => canPost(state, route.id, t.id).ok,
-      )
-    : [];
-
   return (
-    <li className={`route-card ${here.length > 0 ? "is-worked" : ""}`}>
+    <li className="route-row">
       <div className="route-head">
         <span>
           <strong>{route.name}</strong>
           <span className="dim">
             {" "}
-            Lv{route.levelMin}–{route.levelMax}
+            Lv{route.levelMin}&ndash;{route.levelMax}
           </span>
         </span>
-        <button type="button" className="btn sm" onClick={() => setOpen((v) => !v)}>
-          {open ? "Cancel" : "Post…"}
-        </button>
+        {!known && (
+          <button
+            type="button"
+            className="btn sm ghost"
+            disabled={state.money < intelCost(route.id)}
+            onClick={() => act((s) => void buyIntel(s, route.id))}
+          >
+            Survey · &#8369;{intelCost(route.id)}
+          </button>
+        )}
       </div>
 
       <div className="supply">
@@ -389,81 +202,218 @@ function RouteCard({ route }: { route: Route }) {
         ))}
       </div>
 
-      {!known && (
-        <button
-          type="button"
-          className="btn sm ghost"
-          disabled={state.money < intelCost(route.id)}
-          onClick={() => act((s) => void buyIntel(s, route.id))}
-        >
-          Survey · &#8369;{intelCost(route.id)}
+      <div className="route-slots">
+        <Slot route={route} role="ranger" />
+        <Slot route={route} role="handler" />
+      </div>
+    </li>
+  );
+}
+
+/**
+ * A route's slot for one role: the work in it, or the way to start some.
+ *
+ * Both states live here on purpose. An empty slot that only says "empty" makes
+ * the player go and find the screen where staffing happens; an empty slot that
+ * offers you the eligible staff *is* that screen.
+ */
+function Slot({ route, role }: { route: Route; role: FieldRole }) {
+  const state = useGame((s) => s.state);
+  const act = useGame((s) => s.act);
+  const [choosing, setChoosing] = useState(false);
+
+  const posting = postingOnRoute(state, route.id, role);
+  const label = role === "ranger" ? "Ranger" : "Handler";
+
+  if (posting) {
+    return <AtWork posting={posting} route={route} label={label} />;
+  }
+
+  const staff = fieldStaff(state, role);
+  const ready = staff.filter((t) => canPost(state, route.id, t.id).ok);
+  const blocked = staff
+    .filter((t) => !canPost(state, route.id, t.id).ok && !postingFor(state, t.id))
+    .map((t) => ({ trainer: t, why: (canPost(state, route.id, t.id) as { reason: string }).reason }));
+
+  return (
+    <div className={`slot slot-${role}`}>
+      <span className="slot-role">{label}</span>
+
+      {staff.length === 0 ? (
+        <p className="dim">None employed.</p>
+      ) : ready.length === 0 && !choosing ? (
+        <p className="dim">
+          {blocked[0]?.why ?? "Everyone is posted elsewhere."}
+        </p>
+      ) : null}
+
+      {!choosing && ready.length > 0 && (
+        <button type="button" className="btn sm" onClick={() => setChoosing(true)}>
+          Post a {label}
         </button>
       )}
 
-      {here.length > 0 && (
-        <ul className="on-route">
-          {here.map((p) => {
-            const who = state.trainers[p.trainerId];
-            return (
-              <li key={p.trainerId}>
-                <span className="worked-by">
-                  {p.role === "ranger" ? "Ranger" : "Handler"}
-                </span>
-                <span className="dim">{who?.name}</span>
+      {choosing && (
+        <ul className="slot-picks">
+          {ready.map((t) => (
+            <li key={t.id}>
+              <button
+                type="button"
+                className="slot-pick"
+                onClick={() => {
+                  act((s) => void post(s, route.id, t.id));
+                  setChoosing(false);
+                }}
+              >
+                <TypeBadge type={t.affinity} size="sm" />
+                <span>{t.name}</span>
                 <span className="dim">
-                  {p.role === "ranger"
-                    ? `${p.caught} caught`
-                    : `\u20b1${Math.round(p.earned).toLocaleString()}`}
+                  crew Lv{crewLevel(state, t.id)}
+                  {route.levelMin - crewLevel(state, t.id) > 0 &&
+                    ` · ${route.levelMin - crewLevel(state, t.id)} under`}
                 </span>
-              </li>
-            );
-          })}
+              </button>
+            </li>
+          ))}
+          {blocked.map(({ trainer, why }) => (
+            <li key={trainer.id} className="is-blocked">
+              <span className="slot-pick">
+                <TypeBadge type={trainer.affinity} size="sm" />
+                <span>{trainer.name}</span>
+                <span className="dim">{why}</span>
+              </span>
+              <Crew trainer={trainer} />
+            </li>
+          ))}
+          <li>
+            <button type="button" className="linky" onClick={() => setChoosing(false)}>
+              cancel
+            </button>
+          </li>
         </ul>
       )}
+    </div>
+  );
+}
 
-      {open && (
-        <div className="post-options">
-          {ready.length === 0 ? (
-            <p className="empty">
-              Nobody crewed who could work this ground. Rangers need Lv
-              {route.levelMin}; Handlers can be pushed{" "}
-              {constants.HANDLER.maxStretch} levels under it.
-            </p>
-          ) : (
-            <ul className="thin-list">
-              {ready.map((t) => {
-                const under = Math.max(0, route.levelMin - crewLevel(state, t.id));
-                return (
-                  <li key={t.id}>
-                    <span className="row-id">
-                      <TypeBadge type={t.affinity} size="sm" />
-                      <span>
-                        {t.name}
-                        <span className="dim">
-                          {" "}
-                          {t.kind === "handler" ? "Handler" : "Ranger"} · crew Lv
-                          {crewLevel(state, t.id)}
-                          {under > 0 && ` · ${under} under`}
-                        </span>
-                      </span>
-                    </span>
-                    <button
-                      type="button"
-                      className="btn sm"
-                      onClick={() => {
-                        act((s) => void post(s, route.id, t.id));
-                        setOpen(false);
-                      }}
-                    >
-                      Post
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+/** A posting in progress. */
+function AtWork({
+  posting,
+  route,
+  label,
+}: {
+  posting: Posting;
+  route: Route;
+  label: string;
+}) {
+  const state = useGame((s) => s.state);
+  const act = useGame((s) => s.act);
+
+  const trainer = state.trainers[posting.trainerId];
+  if (!trainer) return null;
+
+  const secs = roundSeconds(state, posting);
+  const pct = secs > 0 ? Math.min(1, posting.progress / secs) : 0;
+  const stretch = stretchOf(state, posting);
+  const capped = crewLevel(state, trainer.id) >= ceilingFor(posting.routeId);
+  const left = posting.endsAt === null ? null : Math.max(0, posting.endsAt - state.time);
+
+  return (
+    <div className={`slot slot-${posting.role} is-working`}>
+      <span className="slot-role">{label}</span>
+
+      <div className="slot-who">
+        <TypeBadge type={trainer.affinity} size="sm" />
+        <strong>{trainer.name}</strong>
+        <button
+          type="button"
+          className="linky"
+          onClick={() => act((s) => recall(s, trainer.id))}
+        >
+          recall
+        </button>
+      </div>
+
+      <Crew trainer={trainer} />
+
+      <span className="track" title={`${Math.round(secs)}s per round`}>
+        <span className="fill" style={{ width: `${pct * 100}%` }} />
+      </span>
+
+      <span className="slot-stat">
+        {posting.role === "ranger"
+          ? `${posting.caught} caught${left !== null ? ` · ${Math.ceil(left / 60)}m of shift left` : ""}`
+          : `₱${Math.round(posting.earned).toLocaleString()} earned`}
+      </span>
+
+      {posting.resting && <p className="warn">Resting between shifts.</p>}
+      {stretch > 0 && (
+        <p className="warn">
+          {stretch} levels over their heads
+          {posting.beaten > 0 ? ` · beaten ${posting.beaten}×` : ""}
+        </p>
       )}
-    </li>
+      {capped && <p className="warn">Learned all {route.name} can teach.</p>}
+    </div>
+  );
+}
+
+/** Who a field trainer has with them, and how to change it. */
+function Crew({ trainer }: { trainer: Trainer }) {
+  const state = useGame((s) => s.state);
+  const act = useGame((s) => s.act);
+  const [adding, setAdding] = useState(false);
+
+  const crew = crewOf(state, trainer.id);
+  const posted = postingFor(state, trainer.id) !== undefined;
+  const room = crew.length < trainer.partyCap;
+
+  return (
+    <>
+      <ul className="crew">
+        {crew.map((c) => (
+          <li key={c.id} title={`${creatureName(c)} Lv${c.level}`}>
+            <Sprite speciesId={c.speciesId} kind="icon" size={32} />
+            <span className="crew-lv">Lv{c.level}</span>
+            {!posted && (
+              <button
+                type="button"
+                className="crew-drop"
+                title="Take them out of the crew"
+                onClick={() => act((s) => removeFromCrew(s, c.id))}
+              >
+                ×
+              </button>
+            )}
+          </li>
+        ))}
+        {!posted && room && (
+          <li>
+            <button
+              type="button"
+              className="crew-add"
+              onClick={() => setAdding(true)}
+              title={`Add a ${trainer.affinity} creature to the crew`}
+            >
+              +
+            </button>
+          </li>
+        )}
+      </ul>
+
+      {adding && (
+        <CreaturePicker
+          trainerId={trainer.id}
+          title={`${trainer.name}’s crew`}
+          onClose={() => setAdding(false)}
+          onPick={(id) =>
+            act((s) => {
+              if (s.creatures[id]?.benched) unbench(s, id);
+              void addToCrew(s, id, trainer.id);
+            })
+          }
+        />
+      )}
+    </>
   );
 }

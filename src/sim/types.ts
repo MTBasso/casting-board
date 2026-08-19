@@ -169,6 +169,14 @@ export interface Trainer {
   morale: number;
   /** Sim-seconds employed. Salary escalates with this. */
   tenure: number;
+  /**
+   * Which slot leads the next challenge.
+   *
+   * The party takes turns. Without this, one creature fought essentially every
+   * bout in the league — see `nextDefender` — because every stand began at
+   * position one and most stands are a single bout.
+   */
+  leadIndex: number;
 
   // -- The morale staircase -------------------------------------------------
 

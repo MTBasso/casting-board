@@ -197,39 +197,19 @@ export function autoFill(state: LeagueState, trainerId: string): void {
     join(state, candidate.id, trainer.id);
   }
 
-  // 2. Upgrade the weakest replaceable member, if the box clearly beats it.
-  // A creature is replaceable only while it is pinned by nobody *and* has not
-  // yet bonded — once it has served, swapping it out would throw away the
-  // reliability it earned, which is the one thing the game is about.
-  const members = partyOf(state, trainer.id).filter(
-    (c) =>
-      !c.pinned &&
-      c.id !== trainer.signatureId &&
-      c.bond < PARTY.bondProtection,
-  );
-  if (members.length === 0) return;
-
-  const weakest = members.reduce((lo, c) => (c.power < lo.power ? c : lo), members[0]!);
-
-  // Find a replacement that could *actually* take the slot. Removing first and
-  // asking later left the party a creature short whenever the candidate clashed
-  // on evolution line with someone already there.
-  const candidate = boxFor(state, trainer).find(
-    (c) =>
-      c.power > weakest.power * PARTY.upgradeThreshold &&
-      familyOf(c.speciesId) !== familyOf(weakest.speciesId) &&
-      !trainer.party.some((id) => {
-        const member = state.creatures[id];
-        return member !== undefined && familyOf(member.speciesId) === familyOf(c.speciesId);
-      }),
-  );
-  if (!candidate) return;
-
-  leaveParty(state, weakest.id);
-  if (!join(state, candidate.id, trainer.id).ok) {
-    // Should not happen, but never leave the party smaller than we found it.
-    join(state, weakest.id, trainer.id);
-  }
+  // And that is all it does. It used to also *upgrade*: replace the weakest
+  // unbonded member whenever the box held something 1.25x better.
+  //
+  // That step was quietly destroying the mechanic the game is built on. By the
+  // mid-game the box holds three hundred creatures, so something better is
+  // always available, and every slot below the bond-protection threshold churned
+  // continuously — a creature took its turn, earned 0.004 bond, and was replaced
+  // before it could earn another. Measured across a whole league, only position
+  // one ever accumulated anything, and no gym could reach the bond bar that
+  // promotion asks for.
+  //
+  // Filling a hole so a gym is never short-handed is a convenience. Deciding who
+  // to drop is the game, and it belongs to the player.
 }
 
 /**

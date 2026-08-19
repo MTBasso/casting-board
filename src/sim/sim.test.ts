@@ -1137,48 +1137,26 @@ describe("parties", () => {
     expect(trainer.party).toContain(server.id);
   });
 
-  it("does swap out an unbonded, unpinned member for something clearly better", () => {
+  it("never swaps out a party member on its own", () => {
     const state = newLeague(705);
     const leaderId = state.gyms[state.gymOrder[0] ?? ""]?.leaderId ?? "";
     const trainer = state.trainers[leaderId];
     if (!trainer) return;
 
-    // Set aside the ringer's line *first*. Starters are no longer grantable, so
-    // some type pools hold barely more than a party's worth of families — fill
-    // greedily and there is nothing distinct left to swap in.
-    const lines = new Set(partyOf(state, leaderId).map((c) => familyOf(c.speciesId)));
-    const pool = catalog
-      .staffableByType(trainer.affinity)
-      .filter((sp) => !lines.has(familyOf(sp.slug)));
-    const reserved = pool[0];
-    expect(reserved).toBeDefined();
-    if (!reserved) return;
-    lines.add(familyOf(reserved.slug));
+    for (let i = 0; i < 8; i++) scoutCatch(state, trainer.affinity);
+    autoFill(state, leaderId);
+    const before = [...trainer.party];
+    expect(before.length).toBeGreaterThan(0);
 
-    for (const sp of pool.slice(1)) {
-      if (trainer.party.length >= partyCapOf(trainer)) break;
-      if (lines.has(familyOf(sp.slug))) continue;
-      lines.add(familyOf(sp.slug));
-      const c = makeCreature(state, sp, "reserve");
-      join(state, c.id, leaderId);
-    }
-    // Full by definition rather than by luck: some type pools hold fewer than
-    // six distinct evolution lines, and with a spare slot auto-fill would place
-    // the ringer without ever having to displace anyone.
-    trainer.partyCap = trainer.party.length;
-
-    const weakling = partyOf(state, leaderId).find((c) => c.id !== trainer.signatureId);
-    if (!weakling) return;
-    weakling.power = 1;
-    weakling.pinned = false;
-    weakling.bond = 0;
-
-    const ringer = makeCreature(state, reserved, "reserve");
-    ringer.power = 999;
+    // Something far better arrives in the box. Auto-fill leaves the party alone:
+    // by the mid-game something better is *always* available, and upgrading on
+    // sight churned every unbonded slot faster than it could earn any bond.
+    // Casting is the player's decision, not a background process.
+    const ringer = scoutCatch(state, trainer.affinity);
+    ringer.power = 9999;
 
     autoFill(state, leaderId);
-    expect(trainer.party).toContain(ringer.id);
-    expect(trainer.party).not.toContain(weakling.id);
+    expect(trainer.party).toEqual(before);
   });
 });
 

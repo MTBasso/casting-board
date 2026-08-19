@@ -5,7 +5,7 @@ import { log } from "../tick.js";
 import { partyOf } from "./party.js";
 import { foundLeague } from "../state.js";
 import { displayName } from "./wave.js";
-import type { LeagueState, Mentor, Tier, TypeId } from "../types.js";
+import type { Creature, LeagueState, Mentor, Tier, TypeId } from "../types.js";
 
 /**
  * Promotion and the Hall of Fame.
@@ -34,6 +34,26 @@ export function tierIndex(tier: Tier): number {
 /** Receipts multiplier the current tier confers. */
 export function tierMultiplier(tier: Tier): number {
   return PROMOTION.receiptsPerTier ** tierIndex(tier);
+}
+
+/**
+ * Whether this gym has people who know each other, as opposed to a crowd.
+ *
+ * Measured on the gym's **most bonded few**, not the party average — because an
+ * average punishes exactly what the rest of the game rewards. Auto-fill keeps
+ * topping parties up from the box, every new arrival lands at zero bond, and so
+ * deepening a gym *lowers* its average. Measured on a real league at 120 hours:
+ * the one-deep Dragon gym sat at 1.00 and the five-deep Ground gym at 0.22, and
+ * the well-built gym was the one blocking promotion.
+ *
+ * The question promotion should ask is "does this gym have a core?", which is
+ * also the question the design has always been about.
+ */
+export function hasBondedCore(party: readonly Creature[]): boolean {
+  if (party.length === 0) return false;
+  const needed = Math.min(PROMOTION.coreSize, party.length);
+  const best = [...party].sort((a, b) => b.bond - a.bond).slice(0, needed);
+  return best.every((c) => c.bond >= PROMOTION.bondBar);
 }
 
 export interface Readiness {
@@ -101,9 +121,8 @@ export function readiness(state: LeagueState): Readiness {
       blockers.push(`${gym.name} has an empty party`);
       continue;
     }
-    const avgBond = party.reduce((sum, c) => sum + c.bond, 0) / party.length;
-    if (avgBond < PROMOTION.bondBar) {
-      blockers.push(`${gym.name} is not bonded enough`);
+    if (!hasBondedCore(party)) {
+      blockers.push(`${gym.name} has no bonded core`);
     }
   }
 

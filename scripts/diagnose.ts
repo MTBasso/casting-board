@@ -199,7 +199,22 @@ row("Released", tally.released);
 console.log("\n  ── The creatures ──────────────────────────────────────────");
 row("Average bond", avgBond.toFixed(2));
 row("Bonded past 0.5", `${wellBonded}/${bonded.length}`);
-row("Average career used", `${(careerUsed * 100).toFixed(1)}%`);
+{
+  const fighting = bonded.filter((c) => c.role === "party");
+  const avg = fighting.reduce((a, c) => a + c.bond, 0) / Math.max(1, fighting.length);
+  row("Bond (fighting)", avg.toFixed(2), `${fighting.filter((c) => c.bond >= 0.5).length}/${fighting.length} past the bar`);
+}
+row("Career used (all)", `${(careerUsed * 100).toFixed(1)}%`);
+{
+  const fighting = bonded.filter((c) => c.role === "party");
+  const used =
+    fighting.reduce((a, c) => a + c.careerSpent / Math.max(1, c.careerTotal), 0) /
+    Math.max(1, fighting.length);
+  const worst = Math.max(0, ...fighting.map((c) => c.careerSpent / Math.max(1, c.careerTotal)));
+  row("Career used (fighting)", `${(used * 100).toFixed(1)}%`, `worst ${(worst * 100).toFixed(0)}%`);
+  const battles = fighting.reduce((a, c) => a + c.wins + c.losses, 0) / Math.max(1, fighting.length);
+  row("Battles each", Math.round(battles));
+}
 row("Day-Care slots", `${state.dayCare.length}/${constants.DAYCARE.slots}`);
 
 console.log("\n  ── Why promotion has not happened ─────────────────────────");
@@ -213,9 +228,10 @@ for (const id of state.gymOrder) {
   if (!gym?.leaderId) continue;
   const party = partyOf(state, gym.leaderId);
   const avg = party.reduce((a, c) => a + c.bond, 0) / Math.max(1, party.length);
-  console.log(
-    `  ${gym.type.padEnd(9)} ${party.length} strong, bond ${avg.toFixed(2)} (bar ${constants.PROMOTION.bondBar})`,
-  );
+  const each = party
+    .map((c) => `${c.bond.toFixed(2)}/${c.wins}w`)
+    .join(" ");
+  console.log(`  ${gym.type.padEnd(9)} mean ${avg.toFixed(2)}  ${each}`);
 }
 
 console.log("\n  ── Short-handed ───────────────────────────────────────────");

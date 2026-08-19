@@ -1,6 +1,8 @@
 import { catalog } from "../../data/catalog.js";
+import { GYM_TRAINERS } from "../constants.js";
+import { grantParty } from "./party.js";
 import { nickname } from "../../data/names.js";
-import type { Creature, LeagueState } from "../types.js";
+import type { Creature, LeagueState, Trainer } from "../types.js";
 
 /**
  * Creature identity and retirement.
@@ -39,6 +41,8 @@ export function nameOnBond(state: LeagueState, c: Creature): void {
  * offspring.
  */
 export function retire(state: LeagueState, c: Creature): void {
+  const employer = c.trainerId ? state.trainers[c.trainerId] : undefined;
+
   for (const trainer of Object.values(state.trainers)) {
     trainer.party = trainer.party.filter((id) => id !== c.id);
   }
@@ -46,5 +50,31 @@ export function retire(state: LeagueState, c: Creature): void {
   c.gymId = null;
   c.trainerId = null;
   c.pinned = false;
+
+  // A junior Gym Trainer's creatures are their own, not yours, so the box can
+  // never restock them — and once careers ran at a realistic rate they simply
+  // emptied out and became free passes standing in a gym. They bring a
+  // replacement, the way anyone whose partner retires would.
+  if (employer && (employer.kind === "gym" || employer.kind === "elite" || employer.kind === "champion")) {
+    replaceRetired(state, employer);
+  }
+}
+
+/** Hand a trainer a fresh creature after one of theirs retires. */
+function replaceRetired(state: LeagueState, trainer: Trainer): void {
+  const owned = trainer.kind !== "gym";
+  const pool = catalog.staffableByType(trainer.affinity);
+  if (pool.length === 0) return;
+
+  const level =
+    GYM_TRAINERS.levelBase +
+    Math.round((state.peakRenown / 1000) * GYM_TRAINERS.levelPerThousandRenown);
+
+  grantParty(state, trainer, pool, trainer.party.length + 1, {
+    level,
+    bond: owned ? 0.4 : 0.5,
+    jitter: 2,
+    owned,
+  });
 }
 

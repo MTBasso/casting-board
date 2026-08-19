@@ -2397,3 +2397,106 @@ body { padding-bottom: 3rem; }
   gap: 0.4rem;
 }
 .on-route .worked-by { flex: none; }
+
+/* -- The Field: routes, and the people working them ------------------------ */
+
+.field { display: flex; flex-direction: column; gap: 0.7rem; }
+
+.hire-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.6rem;
+}
+.hire-card {
+  display: grid;
+  gap: 0.35rem;
+  align-content: start;
+  padding: 0.6rem 0.7rem;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+.hire-card.is-full { opacity: 0.7; }
+.hire-head { display: flex; justify-content: space-between; align-items: baseline; }
+.hire-card .hint { margin: 0; font-size: 0.72rem; }
+.hire-foot { display: flex; justify-content: space-between; align-items: baseline; }
+
+.route-row {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.65rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+.route-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.5rem;
+}
+
+/* A slot is either the work happening in it, or the way to start some. */
+.slot {
+  display: grid;
+  gap: 0.3rem;
+  align-content: start;
+  padding: 0.5rem 0.55rem;
+  background: var(--sunken);
+  border: 1px dashed var(--rule);
+  border-radius: var(--radius);
+  min-width: 0;
+}
+.slot.is-working { border-style: solid; border-left: 3px solid var(--accent); }
+.slot-handler.is-working { border-left-color: var(--warn); }
+.slot-role {
+  font-family: var(--mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.slot-who { display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; }
+.slot-who strong { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.slot-stat {
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.slot .warn { margin: 0; font-size: 0.68rem; color: var(--warn); }
+.slot .dim { font-size: 0.72rem; }
+
+.slot-picks { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.2rem; }
+.slot-picks li.is-blocked { opacity: 0.5; }
+.slot-pick {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.3rem;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  color: inherit;
+  font: inherit;
+  font-size: 0.75rem;
+  text-align: left;
+  cursor: pointer;
+}
+button.slot-pick:hover { border-color: var(--accent); }
+.slot-pick .dim { margin-left: auto; font-size: 0.65rem; white-space: nowrap; }
+
+.crew-add {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: none;
+  border: 1px dashed var(--rule);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.crew-add:hover { border-color: var(--accent); color: var(--ink); }

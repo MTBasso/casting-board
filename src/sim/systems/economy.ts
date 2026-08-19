@@ -2,13 +2,32 @@ import { RANGER, FATIGUE, STAFF } from "../constants.js";
 import { isSuspended } from "./morale.js";
 
 import { recoverySpeed } from "./facilities.js";
-import type { LeagueState, TickReport } from "../types.js";
+import type { LeagueState, TickReport, Trainer } from "../types.js";
 
 /**
  * Recurring salary is what separates a tycoon from a shop: every hire is a
  * permanent commitment against future income. Underpay to expand and leaders
  * start quitting — taking their signature creature with them.
  */
+/**
+ * What a trainer costs per sim-hour.
+ *
+ * A retainer, grown by tenure, plus upkeep for every level of creature they
+ * field. Boarding and feeding a team is most of the bill, which is what ties
+ * payroll to the size of the league rather than to a headcount — and what makes
+ * a deep party a decision rather than a free upgrade.
+ */
+export function wageOf(state: LeagueState, trainer: Trainer): number {
+  const tenureHours = trainer.tenure / 3600;
+  const retainer = trainer.salary * (1 + tenureHours * STAFF.salaryPerTenureHour);
+
+  let levels = 0;
+  for (const id of trainer.party) {
+    levels += state.creatures[id]?.level ?? 0;
+  }
+  return retainer * (1 + levels * STAFF.upkeepPerLevel);
+}
+
 export function payroll(state: LeagueState, dt: number, report: TickReport): void {
   const hours = dt / 3600;
 
@@ -19,9 +38,7 @@ export function payroll(state: LeagueState, dt: number, report: TickReport): voi
     // reprieve for the payroll as well as a hole in the board.
     if (isSuspended(state, trainer)) continue;
     trainer.tenure += dt;
-    const tenureHours = trainer.tenure / 3600;
-    const owed =
-      trainer.salary * (1 + tenureHours * STAFF.salaryPerTenureHour) * hours;
+    const owed = wageOf(state, trainer) * hours;
 
     if (state.money >= owed) {
       state.money -= owed;

@@ -123,6 +123,7 @@ export function normalize(raw: unknown): LeagueState | null {
     trainer.suspendedUntil ??= null;
     trainer.demotionLockedUntil ??= null;
     trainer.origin ??= "hired";
+    trainer.leadIndex ??= 0;
   }
 
   for (const gym of Object.values(state.gyms)) {
@@ -258,6 +259,8 @@ const STEPS: Record<number, (state: LeagueState) => LeagueState> = {
   18: (state) => state,
   // v19 → v20: Catchers became Rangers, Evolvers became Handlers.
   19: (state) => state,
+  // v20 → v21: parties take turns leading; career, bond and wages re-derived.
+  20: (state) => state,
 };
 
 export function migrateState(

@@ -925,6 +925,98 @@ to 2.1 to pay for the penalty, and the win rate landed back at 88.4%.
 and renown now equilibrates around 26,000 with receipts to match. The economy
 wants its own pass rather than another round of income tuning.
 
+## Block 9 — The scarcity pass
+
+Sourced from `scripts/diagnose.ts`, added to answer a blunter question than the
+balance runner asks: over a full playthrough, how often does each mechanic fire
+*at all*? A system that never triggers is not balanced or unbalanced, it is
+absent — and absent systems are invisible in every other measurement, because
+they contribute nothing to any of them.
+
+**The 120-hour reading was that six built systems never ran.** No promotion, no
+Hall of Fame, no Mentors. No eggs, no pedigree. No suspensions. 288 rivals and
+zero hired. Career at 7.4%. And zero upsets — because `report.upsets` was read
+in `tick.ts` and **never written to anywhere**: bond had been buying reliability
+in total silence for the whole project.
+
+### The root cause was one battle rule
+
+Every gym looked like this:
+
+```
+ground   1.00 bond / 202 wins · 0.08 / 8 · 0.00 / 0 · 0.01 / 1 · 0.00 / 0
+```
+
+**One creature and five spectators.** Sequential knockout meant position two
+stepped up only when position one fainted, and position one won 88% of its
+bouts — so it fought essentially every bout in the league. Which is the genre
+failure this entire design exists to answer, *"you end up with one strong Pokémon
+and a bunch of weak ones"*, arriving through the back door of its own battle
+system.
+
+Nothing downstream could work. Bond pooled in one creature, so no gym could meet
+the promotion bar, so the prestige layer never ran. Career wore down one life
+instead of a roster, so nothing retired, so the Day-Care never opened.
+
+Fixed in three places, because a stand has two shapes and both were broken:
+
+- **Parties take turns leading.** Position one leads a challenge, position two
+  the next. Order still decides the sequence and who backs up whom; it is no
+  longer a permanent posting.
+- **A creature rotates out after it scores a knockout**, so a six-strong
+  challenger meets up to six defenders and depth answers depth.
+- **Auto-fill stopped upgrading.** It replaced the weakest unbonded member
+  whenever the box held something 1.25× better — and by the mid-game the box
+  holds three hundred creatures, so something better is *always* available.
+  Every slot below the protection threshold churned faster than it could earn
+  any bond. Auto-fill now only fills empty slots; deciding who to drop is the
+  game, and it belongs to the player.
+
+### The four fixes
+
+**Upsets exist.** A bout whose result contradicts the matchup now reports itself,
+so bond is visible: 3,258 in a 90-hour league. That the number is *high* is
+itself the mechanic explaining itself — an unbonded roster is that unreliable.
+
+**The promotion gate stopped punishing depth.** It read *average* bond per gym,
+and since every new arrival lands at zero, deepening a gym lowered its average.
+Measured: the one-deep Dragon gym at 1.00, the five-deep Ground gym at 0.22, and
+the well-built gym was the one blocking promotion. It now asks whether a gym has
+a **bonded core** — its best two, whatever else is standing there.
+
+**Career means something.** At 6,500 battles a creature in daily gym duty had
+spent 5.4% of its life in forty hours, putting a full career past seven hundred.
+Now 1,400, which lands near the stated one-to-two-weeks target. Retirements went
+from 3 to 23 in ninety hours.
+
+That exposed a second bug immediately: a junior Gym Trainer's creatures are
+theirs, not yours, so the box can never restock them — and once careers ran at a
+realistic rate juniors emptied out and became free passes standing in a gym. They
+now bring a replacement.
+
+**Wages bite.** Payroll was **0.5% of income** — ₽266,000 against ₽54,000,000.
+Salary now carries upkeep for every level of creature a trainer fields, so
+payroll grows with the league rather than with headcount, and *depth costs
+money* where it used to be free. Wages are now ~30% of income and the bank sits
+in the low millions rather than at fifty.
+
+**Bond gain tripled**, because sharing duty divided it. At 0.004 a creature
+needed 125 wins to reach the bar — fine when one creature took every bout,
+hopeless once each slot saw a quarter of the traffic.
+
+**Catching no longer stalls while gyms stand short.** The box ceiling exists to
+stop hoarding, not to stop the league being staffed, and it was doing the second.
+
+### The Field, rebuilt around the route
+
+Three lists — routes, Rangers, Handlers — meant posting somebody required
+holding all three in your head: is this route free, is that Ranger idle, does she
+have a crew. Three views of one decision, none able to make it.
+
+Every route now carries **two slots**, a Ranger's and a Handler's, and each slot
+is either the work happening in it or the way to start some — eligible staff,
+their crew, and why anyone ineligible is. Crews are edited in place.
+
 ### Build order
 
 Morale staircase ✅ → title loss, forced recruitment, prestige fork ✅ →

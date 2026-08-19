@@ -41,6 +41,14 @@ export const CHALLENGE = {
    */
   freeDepth: 2,
   levelPerExtraMon: 0.09,
+  /**
+   * How lopsided a bout has to look before its result counts as an upset.
+   *
+   * Type advantage times bulk advantage; above this the favourite is clear, and
+   * a loss is worth telling the player about. Set loose enough that ordinary
+   * close fights never generate noise.
+   */
+  upsetMargin: 1.6,
   /** However deep they come, never greener than this fraction of their level. */
   minDepthScale: 0.6,
   /** One Revive per this many badges. */
@@ -133,9 +141,16 @@ export const CAREER = {
    *
    * The number is large because waves are frequent; the Card shows a career bar
    * and a condition label rather than the raw figure.
+   *
+   * Re-derived after measuring a real league: at 6,500 a creature in daily gym
+   * duty had spent **5.4% of its career in forty hours**, putting a full career
+   * somewhere past seven hundred. Career is meant to be the finite life that
+   * gives a creature an arc and eventually sends it to the Day-Care; at that
+   * rate it was neither a constraint nor an arc, and retirement, breeding and
+   * pedigree never happened at all.
    */
-  base: 6500,
-  variance: 1500,
+  base: 1400,
+  variance: 350,
   /** Career spent per wave fought in the bonded front line. */
   costBonded: 1,
   /** Career spent per exchange in a party battle. */
@@ -149,8 +164,19 @@ export const CAREER = {
 } as const;
 
 export const BOND = {
-  /** Bond gained per wave fought alongside a trainer. */
-  perWave: 0.004,
+  /**
+   * Bond gained per bout won alongside a trainer.
+   *
+   * Tripled once duty was actually shared. At 0.004 a creature needed 125 wins
+   * to reach the promotion bar — fine when position one fought every bout and
+   * racked them up alone, hopeless once the party started taking turns and each
+   * slot saw a quarter of the traffic. Measured on a real league, second-string
+   * creatures sat at 0.05 bond after forty hours and no gym could ever qualify.
+   *
+   * Bond has to arrive within a creature's career, or the arc the whole design
+   * is about never completes.
+   */
+  perWave: 0.012,
   /** Mentor doctrine multiplier on bond gain. */
   mentorMultiplier: 1.6,
   /**
@@ -267,8 +293,14 @@ export const PARTY = {
    * and the league could not meet the bond requirement for promotion at all.
    *
    * A creature that has served earns its place. Bond is its own protection.
+   *
+   * Lowered from 0.35 once the trap was measured: the threshold sat *above*
+   * where most creatures ever reached, so the churn it was meant to stop simply
+   * happened below it. Fighting creatures averaged 0.33 bond with only 28 of 106
+   * past the promotion bar, and every gym deeper than two was blocked. The
+   * protection has to begin where bonding begins, not where it ends.
    */
-  bondProtection: 0.35,
+  bondProtection: 0.12,
   /** Sim-seconds between auto-fill passes. */
   refreshSeconds: 30,
 } as const;
@@ -611,9 +643,29 @@ export const MORALE = {
 
 export const STAFF = {
   startingBondSlots: 2,
-  baseSalaryPerHour: 40,
+  /**
+   * Retainer a trainer draws per sim-hour before what they field is counted.
+   *
+   * Deliberately small: most of a wage is `upkeepPerLevel` below, because a flat
+   * retainer is a fixed cost and the league is not a fixed size. Measured before
+   * this pass, payroll was **0.5% of income** over a hundred and twenty hours —
+   * ₽266,000 against ₽54,000,000 — which made every system built on the tension
+   * between money and staffing purely decorative: no suspensions, no
+   * resignations, no reason to weigh a hire against anything.
+   */
+  baseSalaryPerHour: 150,
   /** Salary grows with tenure: base * (1 + tenureHours * this). */
   salaryPerTenureHour: 0.02,
+  /**
+   * Wage added per level of creature a trainer fields, as a multiple of the
+   * retainer.
+   *
+   * This is what makes payroll grow with the league instead of with headcount
+   * alone — and it prices *depth*, which until now was free. A gym running six
+   * veterans costs many times one running two rookies, so casting a deep party
+   * is a decision with a bill attached rather than a strict upgrade.
+   */
+  upkeepPerLevel: 1 / 5,
   /** Morale lost per sim-second while payroll cannot be met. */
   moraleLossUnpaid: 1 / (30 * 60),
   /** Morale lost per sim-second while a leader's gym is losing badly. */
@@ -815,8 +867,16 @@ export const DAYCARE = {
 export const PROMOTION = {
   /** Creatures carried into the Hall of Fame per promotion. */
   inductCount: 3,
-  /** Minimum average bond per gym before the league counts as ready. */
+  /**
+   * Bond each of a gym's core creatures must reach before the league is ready.
+   *
+   * Read against the most bonded `coreSize`, never the party average — see
+   * `hasBondedCore`. An average made depth a liability, and the league that had
+   * built the most was the one that could never promote.
+   */
   bondBar: 0.5,
+  /** How many bonded creatures make a core. */
+  coreSize: 2,
   /**
    * Peak renown needed to leave each tier.
    *

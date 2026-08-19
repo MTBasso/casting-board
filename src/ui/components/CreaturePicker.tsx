@@ -23,9 +23,14 @@ import { TypeBadges } from "./TypeBadge.js";
 export function CreaturePicker({
   trainerId,
   onClose,
+  onPick,
+  title,
 }: {
   trainerId: string;
   onClose: () => void;
+  /** What taking one means. Defaults to joining the trainer's party. */
+  onPick?: (creatureId: string) => void;
+  title?: string;
 }) {
   const state = useGame((s) => s.state);
   const act = useGame((s) => s.act);
@@ -65,7 +70,7 @@ export function CreaturePicker({
         onClick={(e) => e.stopPropagation()}
       >
         <header className="summary-bar">
-          <span>{trainer.name}&rsquo;s party</span>
+          <span>{title ?? `${trainer.name}\u2019s party`}</span>
           <span className="section-tag">
             {trainer.party.length}/{partyCapOf(trainer, state)}
           </span>
@@ -108,10 +113,14 @@ export function CreaturePicker({
                   disabled={!ok}
                   title={ok ? undefined : reason}
                   onClick={() => {
-                    act((s) => {
-                      if (creature.benched) unbench(s, creature.id);
-                      join(s, creature.id, trainerId);
-                    });
+                    if (onPick) {
+                      onPick(creature.id);
+                    } else {
+                      act((s) => {
+                        if (creature.benched) unbench(s, creature.id);
+                        join(s, creature.id, trainerId);
+                      });
+                    }
                     onClose();
                   }}
                 >

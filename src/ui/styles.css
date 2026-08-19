@@ -2945,3 +2945,51 @@ body { padding-bottom: 3rem; }
   cursor: pointer;
 }
 .lang:hover { color: var(--ink); border-color: var(--muted); }
+
+/* ---------- the introduction ---------- */
+
+/* Above the founding gym offer, which is the only other thing on screen. */
+.welcome { z-index: 60; }
+.welcome .offer-body { max-width: 32rem; }
+
+.welcome-beats {
+  list-style: none;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  display: grid;
+  gap: 0.9rem;
+  counter-reset: beat;
+}
+
+.welcome-beats li {
+  display: grid;
+  gap: 0.15rem;
+  padding-left: 1.6rem;
+  position: relative;
+  counter-increment: beat;
+}
+
+/* Numbered because these are three steps of one argument, in order — not a
+   list of features that could be shuffled. */
+.welcome-beats li::before {
+  content: counter(beat);
+  position: absolute;
+  left: 0;
+  top: 0.05rem;
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  color: var(--accent);
+}
+
+.welcome-beats b { font-size: 0.9375rem; letter-spacing: -0.01em; }
+.welcome-beats span { font-size: 0.8125rem; color: var(--muted); line-height: 1.45; }
+
+.welcome-idle {
+  margin: 0 0 1.25rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--rule);
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.welcome-go { width: 100%; justify-content: center; }

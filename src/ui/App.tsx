@@ -19,6 +19,7 @@ import { DayCare } from "./components/DayCare.js";
 import { RivalWatch } from "./components/RivalWatch.js";
 import { Tabs, type TabId } from "./components/Tabs.js";
 import { PcBox } from "./components/PcBox.js";
+import { Welcome } from "./components/Welcome.js";
 
 /**
  * The Field: the map on one side, the crews on the other.
@@ -186,6 +187,7 @@ export function App() {
       </main>
 
       <EventLog />
+      <Welcome />
       <GymOffer />
       <LeaderOffer />
       <DevBar />

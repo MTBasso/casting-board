@@ -663,6 +663,21 @@ export const en = {
   "facility.day_care.effect": "Retirees have somewhere to go",
   "facilities.build": "Build · {cost}",
   "facilities.upgradeCost": "Upgrade · {cost}",
+
+  // -- The first screen a stranger sees ------------------------------------
+  "welcome.eyebrow": "A post has opened",
+  "welcome.title": "You run the league. You never battle.",
+  "welcome.beat1": "You are not the challenger.",
+  "welcome.beat1detail":
+    "Trainers arrive to take your badges. Your job is to make sure they leave without one.",
+  "welcome.beat2": "You hire people, and you cast creatures to them.",
+  "welcome.beat2detail":
+    "A Leader holds a gym. A crew works a route and brings creatures home. Who stands where is the whole game.",
+  "welcome.beat3": "Everyone here wears out.",
+  "welcome.beat3detail":
+    "Careers run down, trainers lose patience, and a creature that served a long time is remembered. Nothing you build lasts forever.",
+  "welcome.idle": "It keeps running while you are away. Come back and see what happened.",
+  "welcome.begin": "Take the post",
 } as const;
 
 export type Key = keyof typeof en;
@@ -1226,4 +1241,19 @@ export const pt: Dict = {
   "facility.day_care.effect": "Os aposentados têm para onde ir",
   "facilities.build": "Construir · {cost}",
   "facilities.upgradeCost": "Melhorar · {cost}",
+
+  // -- The first screen a stranger sees ------------------------------------
+  "welcome.eyebrow": "Abriu uma vaga",
+  "welcome.title": "Você comanda a liga. Você nunca batalha.",
+  "welcome.beat1": "Você não é o desafiante.",
+  "welcome.beat1detail":
+    "Os treinadores vêm buscar suas insígnias. Seu trabalho é garantir que eles saiam sem nenhuma.",
+  "welcome.beat2": "Você contrata gente, e escala Pokémon para eles.",
+  "welcome.beat2detail":
+    "Um Líder segura um ginásio. Uma equipe trabalha uma rota e traz Pokémon para casa. Quem fica onde é o jogo inteiro.",
+  "welcome.beat3": "Todo mundo aqui se desgasta.",
+  "welcome.beat3detail":
+    "As carreiras acabam, os treinadores perdem a paciência, e um Pokémon que serviu por muito tempo é lembrado. Nada do que você constrói dura para sempre.",
+  "welcome.idle": "Continua rodando enquanto você está fora. Volte e veja o que aconteceu.",
+  "welcome.begin": "Assumir o cargo",
 };

@@ -11,6 +11,7 @@ import {
   staffEverything,
 } from "../../sim/index.js";
 import { clearGame } from "../../persist/save.js";
+import { forgetIntro } from "./Welcome.js";
 
 /** On top of the league's own clock, which already runs at TIME_SCALE. */
 const SPEEDS = [1, 5, 25] as const;
@@ -161,6 +162,8 @@ export function DevBar() {
         className="btn sm ghost"
         onClick={() => {
           void clearGame();
+          // A reset that skips the introduction is not a fresh start.
+          forgetIntro();
           useGame.getState().replace(createInitialState(Date.now() & 0x7fffffff));
         }}
         title="Wipe the save and start a fresh league"

@@ -549,6 +549,23 @@ export const HANDLER = {
   tiredAt: 0.9,
   rested: 0.3,
 
+  /**
+   * Sim-seconds between reviews of an auto-managed Handler's crew.
+   *
+   * Not every tick: the review reads the whole box against every Handler, and at
+   * eight Handlers and three hundred creatures that is thousands of comparisons
+   * a second for a decision that changes about once an hour.
+   */
+  reviewSeconds: 60,
+  /**
+   * On-type creatures an auto-managed Handler leaves in the box.
+   *
+   * Left unchecked they take the strongest of a type into training — which are
+   * exactly the ones the gyms of that type want — and eight Handlers holding
+   * four each emptied the board's supply. Training has to cost you availability;
+   * it must not cost you the gym.
+   */
+  leaveInBox: 3,
   /** Levels below a route's floor a party may be pushed. */
   maxStretch: 14,
   /** Extra pay and experience per level of stretch. */
@@ -597,6 +614,15 @@ export const GYM_TRAINERS = {
   /** Level band a junior's creatures arrive at, relative to league renown. */
   levelBase: 6,
   levelPerThousandRenown: 6,
+  /**
+   * Levels added across the board, first gym to last.
+   *
+   * Rank was simply not read: every junior in the league was granted the same
+   * level whether they stood in gym one or gym eight, so a challenger with seven
+   * badges met the same rookies a first-timer did. A board without a ladder in
+   * it is eight copies of the same gym.
+   */
+  levelAcrossBoard: 24,
   slotCostBase: 2200,
   slotCostGrowth: 1.7,
   /** Hiring a junior is far cheaper than hiring a Leader. */
@@ -750,6 +776,8 @@ export const DOCTRINE = {
 } as const;
 
 export const LEADER_OFFER = {
+  /** Levels a Leader's signature gains across the board, first gym to last. */
+  levelAcrossBoard: 20,
   /** Candidates shown when a gym opens. Choosing one is free. */
   candidates: 3,
   /** Their signature creature arrives already trained and fully bonded. */

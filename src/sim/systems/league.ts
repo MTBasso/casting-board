@@ -128,7 +128,7 @@ export function offerLeaders(state: LeagueState, gymId: string): void {
   const gym = state.gyms[gymId];
   if (!gym) return;
 
-  const level = leaderLevel(state);
+  const level = leaderLevel(state, gymId);
 
   // Distinct doctrines, so the three are a real choice rather than a reroll.
   const doctrines: Doctrine[] = ["stall", "sweep", "mentor", "drillmaster"];
@@ -165,6 +165,38 @@ export function offerLeaders(state: LeagueState, gymId: string): void {
  * Read live rather than stored, so a gym that rises in rank deepens on its own
  * and every existing save picks up the curve without a migration.
  */
+/**
+ * How far along the board a gym sits, 0..1.
+ *
+ * The first gym is 0 and the last is 1, so anything that should get harder
+ * across the board reads it rather than inventing its own curve.
+ */
+export function gymProgress(state: LeagueState, gymId: string): number {
+  const rank = state.gymOrder.indexOf(gymId);
+  const last = Math.max(1, LEAGUE.maxGyms - 1);
+  return Math.min(1, Math.max(0, rank) / last);
+}
+
+/**
+ * The calibre of creature a Gym Trainer at this gym fields.
+ *
+ * Scaled by the gym's rank, which it simply was not before: every junior in the
+ * league was granted the same level whether they stood in the first gym or the
+ * eighth, so a challenger with seven badges met the same rookies the first-time
+ * challenger did. Rank is the only thing that makes a board a *ladder*.
+ *
+ * Level does the quality work too — `grantableAtLevel` filters the species pool
+ * to what a trainer could plausibly have, so a late gym's juniors field evolved
+ * forms rather than the same base forms with bigger numbers.
+ */
+export function gymTrainerLevel(state: LeagueState, gymId: string): number {
+  const renown = Math.round(
+    (state.peakRenown / 1000) * GYM_TRAINERS.levelPerThousandRenown,
+  );
+  const rank = Math.round(gymProgress(state, gymId) * GYM_TRAINERS.levelAcrossBoard);
+  return GYM_TRAINERS.levelBase + renown + rank;
+}
+
 export function leaderPartyCap(state: LeagueState, gymId: string): number {
   const rank = state.gymOrder.indexOf(gymId);
   const last = Math.max(1, LEAGUE.maxGyms - 1);
@@ -174,10 +206,14 @@ export function leaderPartyCap(state: LeagueState, gymId: string): number {
   );
 }
 
-export function leaderLevel(state: LeagueState): number {
+export function leaderLevel(state: LeagueState, gymId?: string): number {
+  const rank = gymId
+    ? Math.round(gymProgress(state, gymId) * LEADER_OFFER.levelAcrossBoard)
+    : 0;
   return (
     LEADER_OFFER.signatureLevelBase +
-    Math.round((state.peakRenown / 1000) * LEADER_OFFER.signatureLevelPerThousandRenown)
+    Math.round((state.peakRenown / 1000) * LEADER_OFFER.signatureLevelPerThousandRenown) +
+    rank
   );
 }
 
@@ -422,9 +458,7 @@ export function hireGymTrainer(
   // Juniors run small parties and bring their own creatures — one who turned up
   // empty-handed and waited for the box would be a slot, not a person.
   const cap = int(state.rng, GYM_TRAINERS.partyMin, GYM_TRAINERS.partyMax);
-  const level =
-    GYM_TRAINERS.levelBase +
-    Math.round((state.peakRenown / 1000) * GYM_TRAINERS.levelPerThousandRenown);
+  const level = gymTrainerLevel(state, gymId);
 
   const trainer = makeTrainer(state, affinity, "gym", {
     bond: 0.5,

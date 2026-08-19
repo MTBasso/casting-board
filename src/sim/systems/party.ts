@@ -65,6 +65,9 @@ export function canJoin(
   const creature = state.creatures[creatureId];
   if (!trainer || !creature) return { ok: false, reason: "Not found" };
   if (creature.role === "retired") return { ok: false, reason: "Retired" };
+  if (creature.role === "field" && creature.trainerId !== trainerId) {
+    return { ok: false, reason: "Out on a route" };
+  }
   if (!creature.owned) return { ok: false, reason: "Not yours to assign" };
   if (partyFull(trainer, state)) {
     return { ok: false, reason: `Party is full (${partyCapOf(trainer, state)})` };
@@ -288,7 +291,22 @@ export interface Candidate {
   reason?: string;
 }
 
-export function candidatesFor(state: LeagueState, trainerId: string): Candidate[] {
+export function candidatesFor(
+  state: LeagueState,
+  trainerId: string,
+  /**
+   * Whether creatures already serving a gym can be taken.
+   *
+   * A Handler's whole job is to take a creature away and bring it back
+   * stronger, and the ones most worth training are exactly the ones currently
+   * defending. Only offering the box meant a Leader's creature, once cast, could
+   * never be trained again — it was stuck at whatever level it happened to be.
+   *
+   * Off by default: a gym should never lose a defender by accident. It is opt-in
+   * for the screens where taking one is the point.
+   */
+  includeServing = false,
+): Candidate[] {
   const trainer = state.trainers[trainerId];
   if (!trainer) return [];
 
@@ -298,7 +316,8 @@ export function candidatesFor(state: LeagueState, trainerId: string): Candidate[
     .filter(
       (c) =>
         c.owned &&
-        c.role === "reserve" &&
+        (c.role === "reserve" || (includeServing && c.role === "party")) &&
+        c.trainerId !== trainerId &&
         !parked.has(c.id) &&
         // Only creatures this trainer could field, which is their own type.
         c.types.includes(trainer.affinity),

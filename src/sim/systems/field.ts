@@ -6,7 +6,7 @@ import { chance, int, pick, weighted } from "../rng.js";
 import { rangerSlots, handlerSlots, hasSurvey } from "./facilities.js";
 import { gainXp } from "./growth.js";
 import { isSuspended } from "./morale.js";
-import { canJoin, leaveParty, partyCapOf } from "./party.js";
+import { canJoin, candidatesFor, leaveParty, partyCapOf } from "./party.js";
 import { displayName } from "./wave.js";
 import { log } from "../tick.js";
 import { TYPES } from "../types.js";
@@ -238,6 +238,11 @@ export function canCrew(
   if (postingFor(state, trainerId)) {
     return { ok: false, reason: "Recall them before changing the crew" };
   }
+  // A trainer's signature creature is welded to them and cannot be borrowed.
+  const owner = state.creatures[creatureId]?.trainerId;
+  if (owner && state.trainers[owner]?.signatureId === creatureId) {
+    return { ok: false, reason: "Their trainer's own partner" };
+  }
   return canJoin(state, creatureId, trainerId);
 }
 
@@ -465,14 +470,103 @@ function repostIdle(state: LeagueState): void {
                 (b.supply[trainer.affinity] ?? 0) - (a.supply[trainer.affinity] ?? 0) ||
                 b.levelMax - a.levelMax,
             )
-        : [...open].sort((a, b) => b.levelMax - a.levelMax);
+        : // A Handler works the *lowest* ground that still has something to
+          // teach somebody. Finishing a route before moving up is the whole
+          // shape of training: bring everyone to ten on the 5–10, then go on.
+          [...open].sort((a, b) => a.levelMax - b.levelMax);
 
     for (const route of ranked) {
+      if (trainer.kind === "handler" && !anyoneToTeach(state, trainer, route)) continue;
       if (canPost(state, route.id, trainer.id).ok) {
         post(state, route.id, trainer.id);
         break;
       }
     }
+  }
+}
+
+/** Whether this trainer could bring anybody to this route's ceiling. */
+function anyoneToTeach(state: LeagueState, trainer: Trainer, route: Route): boolean {
+  if (crewOf(state, trainer.id).some((c) => c.level < route.levelMax)) return true;
+  return trainableFor(state, trainer, route).length > 0;
+}
+
+/**
+ * Creatures this Handler could take to this route, best first.
+ *
+ * "Best" is the strongest that still has something to gain here — the point of
+ * a training run is to raise what you will actually field, so a Handler works
+ * on the creature that will matter most, not the one that needs it most.
+ *
+ * Includes creatures currently serving a gym: those are usually the ones worth
+ * raising, and a Leader's creature that could never be trained again was stuck
+ * at whatever level it happened to be cast at.
+ */
+export function trainableFor(
+  state: LeagueState,
+  trainer: Trainer,
+  route: Route,
+  /**
+   * Whether creatures currently defending a gym are on the table.
+   *
+   * True for the player choosing by hand — taking a Leader's creature away to
+   * raise it is exactly what a Handler is for. False for automation: left to
+   * itself it stripped gyms down to three of six while it trained their
+   * defenders, and pulling a gym apart is a decision, not a chore.
+   */
+  includeServing = false,
+): Creature[] {
+  return candidatesFor(state, trainer.id, includeServing)
+    .filter((o) => o.ok && o.creature.level < route.levelMax)
+    .map((o) => o.creature)
+    .sort((a, b) => b.power - a.power);
+}
+
+/**
+ * Keep auto-managed Handlers working on whoever benefits most.
+ *
+ * Three rules, and they are the ones a player would follow by hand:
+ *
+ *   - a creature that has hit the route's ceiling has learned all it can here,
+ *     so it goes home and its slot opens;
+ *   - empty slots take the strongest creature that can still gain, because the
+ *     point of training is to raise what you will field;
+ *   - when nobody on this route has anything left to learn, move up.
+ *
+ * This is an idle game. The player decides who they employ and whether staff
+ * manage themselves; they should not have to hand-shuffle four creatures every
+ * time one of them hits ten.
+ */
+function reviewCrews(state: LeagueState, dt: number): void {
+  state.crewReviewIn -= dt;
+  if (state.crewReviewIn > 0) return;
+  state.crewReviewIn = HANDLER.reviewSeconds;
+
+  for (const posting of [...state.postings]) {
+    if (posting.role !== "handler") continue;
+    const trainer = state.trainers[posting.trainerId];
+    if (!trainer?.autoWork) continue;
+    const route = routeById(posting.routeId);
+    if (!route) continue;
+
+    // Send home anyone who has learned all this ground can teach.
+    for (const c of crewOf(state, trainer.id)) {
+      if (c.level >= route.levelMax) removeFromCrew(state, c.id);
+    }
+
+    // Fill the space with whoever gains most from being here — but leave the
+    // gyms something to draw on. Training costs you availability; it must not
+    // cost you the gym.
+    const room = () => trainer.partyCap - crewOf(state, trainer.id).length;
+    const spare = trainableFor(state, trainer, route);
+    const takeable = Math.max(0, spare.length - HANDLER.leaveInBox);
+    for (const c of spare.slice(0, takeable)) {
+      if (room() <= 0) break;
+      addToCrew(state, c.id, trainer.id);
+    }
+
+    // Nothing left to teach on this ground: go and find harder ground.
+    if (crewOf(state, trainer.id).length === 0) recall(state, trainer.id);
   }
 }
 
@@ -670,6 +764,7 @@ export function suppliesType(route: Route, type: TypeId): boolean {
 }
 
 export function tickField(state: LeagueState, dt: number, report: TickReport): void {
+  reviewCrews(state, dt);
   repostIdle(state);
   if (state.postings.length === 0) return;
 

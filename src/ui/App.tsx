@@ -9,6 +9,7 @@ import { LeaderOffer } from "./components/LeaderOffer.js";
 import { DevBar } from "./components/DevBar.js";
 import { FieldWork } from "./components/FieldWork.js";
 import { ReplayDriver } from "./components/BattleFeed.js";
+import { HallOfFame } from "./components/HallOfFame.js";
 import { Facilities } from "./components/Facilities.js";
 import { EliteFour } from "./components/EliteFour.js";
 import { DayCare } from "./components/DayCare.js";
@@ -108,6 +109,12 @@ export function App() {
         {tab === "staff" && (
           <div className="single-screen">
             <EliteFour />
+          </div>
+        )}
+
+        {tab === "hall" && (
+          <div className="single-screen wide">
+            <HallOfFame />
           </div>
         )}
 

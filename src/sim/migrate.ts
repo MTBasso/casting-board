@@ -100,6 +100,7 @@ export function normalize(raw: unknown): LeagueState | null {
   state.titleLost ??= false;
   state.grudges ??= [];
   state.legends ??= [];
+  state.crewReviewIn ??= 0;
   state.lastSeenAt ??= 0;
   state.dayCare ??= [];
   state.eggProgress ??= 0;

@@ -2652,3 +2652,86 @@ button.slot-pick:hover { border-color: var(--accent); }
   object-fit: contain;
   image-rendering: pixelated;
 }
+
+/* -- The Hall of Fame ------------------------------------------------------ */
+
+.hall { display: flex; flex-direction: column; gap: 0.6rem; min-width: 0; }
+.hall .hint { margin: 0; }
+
+.hall-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(13rem, 100%), 1fr));
+  gap: 0.6rem;
+}
+
+/* A plaque, not a row: these are the twelve you remember. */
+.plaque {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0.25rem;
+  padding: 0.75rem 0.6rem 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-top: 3px solid var(--rule);
+  border-radius: var(--radius);
+  min-width: 0;
+}
+.plaque.is-mentor {
+  border-top-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.mentor-mark {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.45rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.plaque-name {
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plaque-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.15rem 0.5rem;
+  margin: 0.25rem 0 0;
+  width: 100%;
+}
+.plaque-facts div { display: flex; justify-content: space-between; gap: 0.3rem; }
+.plaque-facts dt {
+  font-family: var(--mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.plaque-facts dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.plaque-note {
+  margin-top: 0.3rem;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: var(--muted);
+  text-align: center;
+  text-wrap: balance;
+}

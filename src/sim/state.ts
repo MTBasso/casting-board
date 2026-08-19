@@ -53,6 +53,7 @@ export function createInitialState(seed = 1): LeagueState {
     titleLost: false,
     grudges: [],
     postings: [],
+    crewReviewIn: 0,
     fieldOffer: { ranger: [], handler: [] },
     lastSeenAt: 0,
     dayCare: [],

@@ -58,6 +58,7 @@ export {
   stretchOf,
   suppliesType,
   takesCrew,
+  trainableFor,
   throughBand,
   tickField,
   usableReserve,

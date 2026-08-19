@@ -701,6 +701,8 @@ export interface LeagueState {
   grudges: Grudge[];
   /** Field staff currently working routes. */
   postings: Posting[];
+  /** Sim-seconds until auto-managed Handlers reconsider their crews. */
+  crewReviewIn: number;
   /**
    * Types on offer when hiring field staff, per role.
    *

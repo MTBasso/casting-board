@@ -1,5 +1,6 @@
 import { catalog } from "../../data/catalog.js";
 import { BOND, GYM_TRAINERS, HALL } from "../constants.js";
+import { gymTrainerLevel } from "./league.js";
 import { grantParty } from "./party.js";
 import { nickname } from "../../data/names.js";
 import type { Creature, LeagueState, Trainer } from "../types.js";
@@ -93,6 +94,12 @@ function handoverFrom(c: Creature): number {
  * that creature's own career, which is what makes it fair to a short-lived one.
  */
 function remember(state: LeagueState, c: Creature): void {
+  // Only creatures that were actually yours. A junior Gym Trainer brings their
+  // own and takes them when they go — they served *at* your league, not in it,
+  // and the Hall filling up with other people's partners would make it a record
+  // of everyone who ever walked through.
+  if (!c.owned) return;
+
   const served = c.careerTotal > 0 ? c.careerSpent / c.careerTotal : 0;
   if (served < HALL.minCareerServed) return;
 
@@ -129,9 +136,10 @@ function replaceRetired(state: LeagueState, trainer: Trainer): void {
   const pool = catalog.staffableByType(trainer.affinity);
   if (pool.length === 0) return;
 
-  const level =
-    GYM_TRAINERS.levelBase +
-    Math.round((state.peakRenown / 1000) * GYM_TRAINERS.levelPerThousandRenown);
+  // Replacements match the gym they stand in, not some league-wide average.
+  const level = trainer.gymId
+    ? gymTrainerLevel(state, trainer.gymId)
+    : GYM_TRAINERS.levelBase;
 
   grantParty(state, trainer, pool, trainer.party.length + 1, {
     level,

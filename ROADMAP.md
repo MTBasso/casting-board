@@ -1102,8 +1102,8 @@ game has always been designed for someone already sitting in front of it.
 | Marking the wild slot | **No.** The type badge already says it; labelling the dice makes the game explain itself. |
 | What waits for you | Encounters at wild-weight ≤ 0.12 — final forms and stage three — **hold until the trip ends**, then resolve in character. |
 | Pacing vs clock | Retune `gymUnlockRenown` now; move the gates onto counts that time cannot inflate as the real fix. |
-| Onboarding shape | A **guided sequence** driven by the objective spine, plus **coach marks** per tab. |
-| Where it lives | A strip under the header saying *what*, a tab glow saying *where*. Both stop when the spine is done. |
+| Onboarding shape | A **guided sequence** driven by the objective spine, plus **coach marks** per tab. **The guided sequence was later removed** — see below. |
+| Where it lives | A strip under the header saying *what*, a tab glow saying *where*. **Removed.** |
 | Coach marks | First visit to each tab, and a "?" in the header that replays any of them. |
 | Softened opening | **Weaker challengers** until the spine's fourth step is claimed — no special case in the battle path, nothing the player can notice as a rule. |
 
@@ -1122,6 +1122,22 @@ right. Bounding it by the expedition is better on every axis: no new number, it
 can never accumulate past the number of crews you employ, and it explains itself
 in one sentence — *they will hold it until they come home, then decide for
 themselves*.
+
+### The guided strip, and why it came out
+
+It assumed the spine's steps were short. Most are not: "hold all eight" sits at
+5/8 for hours, and a strip that cannot be dismissed spends that whole time
+reporting slow progress in the most prominent space on the screen. That is
+furniture, not guidance — and a permanent banner is exactly the thing the Desk
+was built to avoid becoming.
+
+The tab glow went with it. The two were designed as one mechanism — the strip
+says *what*, the glow says *where* — so a glow left pointing at a tab with
+nothing to explain it is worse than neither.
+
+What remains is the part that was actually about teaching: the premise stated
+once, coach marks per screen, and objectives on the Desk, which is a place the
+player chooses to look.
 
 ### Deferred out of this block
 

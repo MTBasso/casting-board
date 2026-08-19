@@ -20,7 +20,6 @@ import { RivalWatch } from "./components/RivalWatch.js";
 import { Tabs, type TabId } from "./components/Tabs.js";
 import { PcBox } from "./components/PcBox.js";
 import { Welcome } from "./components/Welcome.js";
-import { Guide, OBJECTIVE_TAB, guidedStep } from "./components/Guide.js";
 import { CoachMark } from "./components/CoachMark.js";
 
 /**
@@ -83,11 +82,6 @@ export function App() {
     badges.staff = "!";
   }
 
-  // The tab the guided step is done on, so it can ask to be visited. A finished
-  // step points back at the Desk, where it is collected.
-  const step = guidedStep(state);
-  const pointingAt = step ? (step.done ? "desk" : OBJECTIVE_TAB[step.where]) : null;
-
   return (
     <div className="app" data-revision={revision}>
       <ReplayDriver />
@@ -130,10 +124,7 @@ export function App() {
         </button>
       </header>
 
-      {/* The strip says what; the glow says where. Both stop with the spine. */}
-      <Tabs active={tab} onChange={setTab} badges={badges} pointingAt={pointingAt} />
-
-      <Guide onGo={setTab} />
+      <Tabs active={tab} onChange={setTab} badges={badges} />
 
       <main className="screen">
         {/* Keyed on the tab so it re-evaluates on every change: one explanation

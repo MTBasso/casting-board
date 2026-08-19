@@ -24,13 +24,10 @@ export function Tabs({
   active,
   onChange,
   badges,
-  pointingAt,
 }: {
   active: TabId;
   onChange: (id: TabId) => void;
   badges?: Partial<Record<TabId, string>>;
-  /** The tab the guided step wants, while onboarding is still running. */
-  pointingAt?: TabId | null;
 }) {
   const t = useT();
   return (
@@ -39,9 +36,7 @@ export function Tabs({
         <button
           key={tab.id}
           type="button"
-          className={`tab ${active === tab.id ? "is-active" : ""} ${
-            pointingAt === tab.id && active !== tab.id ? "is-pointed" : ""
-          }`}
+          className={`tab ${active === tab.id ? "is-active" : ""}`}
           onClick={() => onChange(tab.id)}
           aria-current={active === tab.id ? "page" : undefined}
         >

@@ -109,6 +109,8 @@ import {
   tradeableStock,
   typesForRank,
   TYPES,
+  tradePreview,
+  canTrade,
   gymChallengeInterval,
   rankMultiplier,
   challengeInterval,
@@ -201,6 +203,58 @@ describe("determinism", () => {
     run(restored, 300);
 
     expect(JSON.stringify(restored)).toBe(JSON.stringify(original));
+  });
+});
+
+describe("the Trade Desk", () => {
+  it("lands inside the promised band, or as close as the type allows", () => {
+    // The desk used to filter to `power <= target * 1.1` and weight by
+    // closeness — a ceiling with no floor, so a good offer could come back with
+    // something far weaker and nothing on the screen said that was possible.
+    const state = newLeague(551);
+    state.money = 500_000;
+
+    let inBand = 0;
+    let trades = 0;
+    for (let i = 0; i < 300; i++) {
+      const stock = tradeableStock(state);
+      if (stock.length < 2) {
+        const grown = scoutCatch(state, "water");
+        if (!grown) break;
+        continue;
+      }
+      const offer = stock.slice(0, 2).map((c) => c.id);
+      const preview = tradePreview(state, "water", offer);
+      const result = trade(state, "water", offer);
+      if (!result.ok) break;
+      trades += 1;
+      const got = state.creatures[result.creatureId];
+      expect(got).toBeDefined();
+      if (!got) break;
+      if (got.power >= preview.low * 0.95 && got.power <= preview.high * 1.05) inBand += 1;
+    }
+
+    expect(trades).toBeGreaterThan(10);
+    // Not all — a narrow type can have a gap where the band falls, and the
+    // fallback takes the nearest rather than refusing the trade.
+    expect(inBand / trades).toBeGreaterThan(0.7);
+  });
+
+  it("refuses a creature that is doing something", () => {
+    const state = newLeague(552);
+    state.money = 500_000;
+    const stock = tradeableStock(state);
+    expect(stock.length).toBeGreaterThan(1);
+
+    const first = stock[0];
+    const second = stock[1];
+    if (!first || !second) throw new Error("need two");
+
+    // Parked at the Day-Care: still `reserve`, very much in use. Trading it out
+    // from under the Day-Care leaves a dangling id nothing notices until later.
+    state.dayCare.push({ creatureId: first.id, since: state.time, levelAtDropoff: first.level });
+    expect(tradeableStock(state).some((c) => c.id === first.id)).toBe(false);
+    expect(canTrade(state, "water", [first.id, second.id]).ok).toBe(false);
   });
 });
 

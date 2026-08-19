@@ -652,6 +652,15 @@ export const TRADE = {
    * hoarding-then-dumping is never the optimal play.
    */
   volumeBonus: 0.16,
+  /**
+   * How far from the target the desk may land, either way.
+   *
+   * The desk used to filter to `power <= target * 1.1` and then weight by
+   * closeness, which gave it a ceiling but no *floor* — a good offer could come
+   * back with something far weaker than what went in, and nothing about the
+   * screen said that was possible. A band is a promise the player can read.
+   */
+  band: 0.2,
   /** Flat fee on top of the creatures traded away. */
   fee: 80,
 } as const;

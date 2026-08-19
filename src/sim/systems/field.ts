@@ -96,7 +96,7 @@ export function frontier(state: LeagueState): { from: Route; to: Route }[] {
 // ---------------------------------------------------------------------------
 
 export function crewSlots(state: LeagueState): number {
-  return FIELD.baseSlots + catcherSlots(state);
+  return FIELD.baseSlots + catcherSlots(state) + state.objectives.crewSlots;
 }
 
 export function crewHireCost(state: LeagueState): number {
@@ -281,6 +281,13 @@ export function kitCost(kit: Kit): number {
 }
 
 /** What comes back when a trip ends with kit unspent. They sold it on. */
+/**
+ * What comes back when a trip ends with kit unspent.
+ *
+ * A loss on purpose: over-buying has to cost something, or the outfitting
+ * decision collapses into "buy the maximum every time". Kit *granted* by an
+ * objective is different — that sits in hand until it is used.
+ */
 export function refundFor(kit: Kit): number {
   return Math.round(kitCost(kit) * FIELD.refund);
 }
@@ -331,9 +338,15 @@ export function canSend(
     if (isOpen(state, towardId)) return { ok: false, reason: "Already reached" };
   }
 
-  const cost = kitCost(kit);
-  if (state.money < cost) return { ok: false, reason: `The kit costs ${cost}` };
-  return { ok: true, cost };
+  // Whatever is already in hand does not need buying again.
+  const owed = kitCost({
+    balls: Math.max(0, kit.balls - state.stock.balls),
+    potions: Math.max(0, kit.potions - state.stock.potions),
+    revives: Math.max(0, kit.revives - state.stock.revives),
+    lures: Math.max(0, kit.lures - state.stock.lures),
+  });
+  if (state.money < owed) return { ok: false, reason: `The kit costs ${owed}` };
+  return { ok: true, cost: owed };
 }
 
 export function send(
@@ -352,8 +365,21 @@ export function send(
   const handler = crew ? state.trainers[crew.handlerId] : undefined;
   if (!crew || !handler) return { ok: false, reason: "Gone" };
 
-  // Money changes hands now: they bought the kit before setting off.
-  state.money -= check.cost;
+  // Kit already in hand goes first — an objective that paid in Poké Balls
+  // should feel like Poké Balls, not like a discount.
+  const fromStock: Kit = { balls: 0, potions: 0, revives: 0, lures: 0 };
+  for (const k of ["balls", "potions", "revives", "lures"] as const) {
+    fromStock[k] = Math.min(state.stock[k], kit[k]);
+    state.stock[k] -= fromStock[k];
+  }
+  const owed = kitCost({
+    balls: kit.balls - fromStock.balls,
+    potions: kit.potions - fromStock.potions,
+    revives: kit.revives - fromStock.revives,
+    lures: kit.lures - fromStock.lures,
+  });
+  // Money changes hands now: they bought the rest before setting off.
+  state.money -= owed;
 
   const taken: string[] = [];
   for (const id of party) {
@@ -463,6 +489,17 @@ export function usableReserve(state: LeagueState): number {
     if (c.types.some((t) => types.has(t))) n += 1;
   }
   return n;
+}
+
+/** Record that this species has actually been found here. */
+function note_seen(state: LeagueState, routeId: string, speciesId: string): void {
+  const list = state.seen[routeId] ?? [];
+  if (!list.includes(speciesId)) state.seen[routeId] = [...list, speciesId];
+}
+
+/** What this league has met on this ground. */
+export function seenOn(state: LeagueState, routeId: string): string[] {
+  return state.seen[routeId] ?? [];
 }
 
 /** Species a crew has been told to leave alone on this route. */
@@ -610,6 +647,7 @@ function workRound(
     if (caught) {
       trip.kit.balls -= 1;
       trip.caught += 1;
+      note_seen(state, route.id, caught.speciesId);
       ranger && (ranger.experience += 1);
       report.caught.push(caught.id);
     }
@@ -825,6 +863,8 @@ function finish(
   const route = routeById(trip.routeId);
   state.expeditions = state.expeditions.filter((e) => e !== trip);
 
+  // Unspent kit is sold on, at a loss. Carrying it home in full would make
+  // over-buying free, and the size of the kit is meant to be the decision.
   const refund = refundFor(trip.kit);
   if (refund > 0) state.money += refund;
 

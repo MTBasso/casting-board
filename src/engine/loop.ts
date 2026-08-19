@@ -1,4 +1,4 @@
-import { TICK_SECONDS } from "../sim/constants.js";
+import { TICK_SECONDS, TIME_SCALE } from "../sim/constants.js";
 import { tick } from "../sim/index.js";
 import type { LeagueState, TickReport } from "../sim/index.js";
 
@@ -38,7 +38,8 @@ export function startLoop(opts: LoopOptions): LoopHandle {
   function step(now: number): void {
     if (!running) return;
 
-    const speed = opts.getSpeed?.() ?? 1;
+    // The league's clock runs at TIME_SCALE; the dev multiplier sits on top.
+    const speed = (opts.getSpeed?.() ?? 1) * TIME_SCALE;
     const realDelta = Math.min((now - last) / 1000, maxCatchUp) * speed;
     last = now;
     accumulator += realDelta;

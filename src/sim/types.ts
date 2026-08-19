@@ -823,6 +823,23 @@ export interface LeagueState {
   titleLost: boolean;
   /** People who left and intend to come back for the league. */
   grudges: Grudge[];
+  /**
+   * Objectives claimed, and what claiming them bought.
+   *
+   * Only the *claims* are stored: whether an objective is finished is read live
+   * off the league, so a rule can change without a save carrying a stale answer.
+   */
+  objectives: { claimed: string[]; crewSlots: number };
+  /**
+   * Running totals nothing else keeps.
+   *
+   * The league knows its current shape but not its history — how many
+   * challengers it has ever turned away, how many creatures have ever come home
+   * — and objectives are the first thing that has needed to count.
+   */
+  tally: { held: number; caught: number; trips: number };
+  /** Kit in hand, from objectives. Spent before money when outfitting. */
+  stock: Kit;
   /** Crews on the payroll. */
   crews: Crew[];
   /** Crews currently out. */
@@ -845,6 +862,14 @@ export interface LeagueState {
    * the game is already keeping the list.
    */
   bans: Record<string, string[]>;
+  /**
+   * Species actually found on each route.
+   *
+   * Kept because you cannot sensibly ban what you have never seen, and because
+   * it is the honest beginning of a Pokédex — a record of what this league has
+   * met and where, rather than a list handed to you.
+   */
+  seen: Record<string, string[]>;
   /**
    * Wall-clock ms at the last save. The 15-day rule needs real elapsed time,
    * which credited sim time cannot answer — offline is capped at twelve hours.

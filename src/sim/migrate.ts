@@ -100,6 +100,9 @@ export function normalize(raw: unknown): LeagueState | null {
   state.usurperId ??= null;
   state.titleLost ??= false;
   state.grudges ??= [];
+  state.objectives ??= { claimed: [], crewSlots: 0 };
+  state.tally ??= { held: 0, caught: 0, trips: 0 };
+  state.stock ??= { balls: 0, potions: 0, revives: 0, lures: 0 };
   state.legends ??= [];
   state.crewReviewIn ??= 0;
   state.lastSeenAt ??= 0;
@@ -190,6 +193,7 @@ export function normalize(raw: unknown): LeagueState | null {
   state.explored ??= [];
   state.known ??= {};
   state.bans ??= {};
+  state.seen ??= {};
   delete (state as unknown as { postings?: unknown }).postings;
   delete (state as unknown as { fieldOffer?: unknown }).fieldOffer;
   delete (state as unknown as { crewReviewIn?: unknown }).crewReviewIn;
@@ -345,6 +349,8 @@ const STEPS: Record<number, (state: LeagueState) => LeagueState> = {
   23: (state) => state,
   // v24 → v25: crews, the map, and outfitted expeditions.
   24: (state) => state,
+  // v25 → v26: objectives, and the running totals they count against.
+  25: (state) => state,
 };
 
 export function migrateState(

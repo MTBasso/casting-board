@@ -11,7 +11,7 @@ import type { LeagueState } from "./types.js";
  * it, which let stale saves through the version check and crashed the app on
  * load — hence v2 and the defensive normalize pass.
  */
-export const SAVE_VERSION = 25;
+export const SAVE_VERSION = 26;
 
 /**
  * The first hour, per the design doc: one trainer, one signature creature,
@@ -52,12 +52,16 @@ export function createInitialState(seed = 1): LeagueState {
     usurperId: null,
     titleLost: false,
     grudges: [],
+    objectives: { claimed: [], crewSlots: 0 },
+    tally: { held: 0, caught: 0, trips: 0 },
+    stock: { balls: 0, potions: 0, revives: 0, lures: 0 },
     crews: [],
     expeditions: [],
     crewOffer: [],
     explored: [],
     known: {},
     bans: {},
+    seen: {},
     lastSeenAt: 0,
     dayCare: [],
     eggProgress: 0,

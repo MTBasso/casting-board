@@ -9,6 +9,19 @@
 export const TICK_SECONDS = 1;
 
 /** Offline accrual is capped here. 12 hours, per the design doc. */
+/**
+ * Sim-seconds the league lives per real second.
+ *
+ * Every constant in this file is written in sim-seconds — a career is ~160 of
+ * those hours, a rival announces twenty minutes out — and at 1:1 that made the
+ * game unplayably slow to actually sit with. This is the one number that decides
+ * how fast the clock runs, and it applies everywhere: the live loop, offline
+ * catch-up, the balance runner. Nothing about the *relationships* between the
+ * constants changes when it moves, which is why it is a single knob rather than
+ * a rebalance.
+ */
+export const TIME_SCALE = 40;
+
 export const OFFLINE_CAP_SECONDS = 12 * 60 * 60;
 
 /**

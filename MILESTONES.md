@@ -27,12 +27,23 @@ matter. Creatures level, evolve, bond, and wear out.
 
 ## M3 — Creatures come from somewhere ✅
 
-Rangers and Handlers work routes. A Ranger catches their own type and gets
-better at it; a Handler takes a party out and brings it back stronger, and may
-be pushed onto ground over their heads for more pay and a real risk. Field staff
-are hired from a drawn offer, can be fired, and can be told to keep working.
+**Rebuilt as crews, a map, and expeditions.** A crew is one hire and two people
+— the Ranger brings creatures back, the Handler raises the ones they took — with
+one shared trait that decides what they do when nobody answers them. Competence
+is per crew per route and never decays.
 
-*Done.* Blocks 8.3 and 8.3b.
+Sixteen places in a web with loops, three open from the first hour, the rest
+reached by pushing on from ground the league knows. Every place has a resident
+that lives nowhere else and a landmark that does real work. Routes stopped
+unlocking at renown thresholds: you get there by going there.
+
+A trip is outfitted and finite — balls, potions, revives, lures, paid up front —
+and ends when the balls run out or the crew is too worn to carry on. Five kinds
+of event, each answering to one line of the kit.
+
+*Done, on the fourth attempt.* The three before it fixed layout complaints; this
+one fixed the shape, which was that the two halves were parallel systems that
+never met.
 
 ## M4 — A career ends, and that means something ✅
 
@@ -92,7 +103,7 @@ caught, retired, plus the named events worth a line.
 Still open: objectives (M7) belong here, and the digest currently resets per
 session rather than per visit-with-offline-time.
 
-## M7 — There is something to work toward 🔜
+## M7 — There is something to work toward ✅
 
 **Objectives**: an authored spine that introduces systems in order — hire a
 Ranger, work a route, cast what they bring back — plus derived repeatables for
@@ -100,7 +111,16 @@ the long tail. They suggest rather than gate, because renown is already the
 progression spine and two gates would contradict each other. They pay in
 **posting slots and facility levels**, the things every screen is waiting on.
 
-This is also the onboarding the game has never had.
+*Built.* Eleven authored steps in the order a Director meets the game — open a
+gym, put a crew on the payroll, send them out, reach somewhere new, build a
+bonded core, see a career out, climb a tier — plus three derived repeatables so
+the list never empties. They live on the Desk, and only the *claims* are stored:
+whether something is finished is read live off the league, so a rule can change
+without a save carrying a stale answer.
+
+Rewards are crew slots and facility levels, with kit and money as seasoning. Kit
+granted this way sits in hand and is spent before money, so a reward paid in
+Poké Balls feels like Poké Balls rather than a discount.
 
 ## M8 — Breeding is a reason to keep someone 🔲
 

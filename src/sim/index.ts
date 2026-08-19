@@ -18,6 +18,8 @@ export { resolveOffline } from "./offline.js";
 export * from "./rng.js";
 export * from "./devtools.js";
 export * from "./systems/desk.js";
+export * from "./systems/objectives.js";
+export type { Reward, ObjectiveDef } from "../data/objectives.js";
 
 export * from "./systems/field.js";
 export * from "./systems/challenge.js";

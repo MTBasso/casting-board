@@ -12,7 +12,8 @@ import {
 } from "../../sim/index.js";
 import { clearGame } from "../../persist/save.js";
 
-const SPEEDS = [1, 10, 100] as const;
+/** On top of the league's own clock, which already runs at TIME_SCALE. */
+const SPEEDS = [1, 5, 25] as const;
 
 /**
  * Dev-only controls.

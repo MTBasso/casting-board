@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useGame } from "../../engine/store.js";
 import {
   ROUTES,
@@ -6,7 +7,10 @@ import {
   crewName,
   expeditionOn,
   isOpen,
+  bannedOn,
   knownOf,
+  seenOn,
+  toggleBan,
   routeById,
   type Route,
 } from "../../sim/index.js";
@@ -124,6 +128,66 @@ function Node({
   );
 }
 
+/**
+ * What the league has met here, and what it would rather not bring home.
+ *
+ * A crew brings back its Ranger's type, and by the mid-game most of that is
+ * things you already have six of. Banning a species is how you say *stop* —
+ * and because you can only ban what you have actually seen, the list doubles as
+ * the honest beginning of a Pokédex: a record of what this league has met, and
+ * where, rather than a catalogue handed to you.
+ */
+function WhatLivesHere({ route }: { route: Route }) {
+  const state = useGame((s) => s.state);
+  const act = useGame((s) => s.act);
+  const [open, setOpen] = useState(false);
+
+  const seen = seenOn(state, route.id);
+  const banned = bannedOn(state, route.id);
+  if (seen.length === 0) {
+    return (
+      <p className="dim">
+        Nothing met here yet. Send a crew and this fills in.
+      </p>
+    );
+  }
+
+  return (
+    <div className="seen-here">
+      <button type="button" className="linky" onClick={() => setOpen((v) => !v)}>
+        {open ? "hide" : `${seen.length} met here${banned.length > 0 ? `, ${banned.length} refused` : ""}`}
+      </button>
+
+      {open && (
+        <>
+          <ul className="seen-grid">
+            {seen.map((slug) => {
+              const off = banned.includes(slug);
+              return (
+                <li key={slug}>
+                  <button
+                    type="button"
+                    className={`seen ${off ? "is-banned" : ""}`}
+                    title={off ? "Crews leave these alone" : "Tell crews to leave these alone"}
+                    onClick={() => act((s) => toggleBan(s, route.id, slug))}
+                  >
+                    <Sprite speciesId={slug} kind="icon" size={34} />
+                    <span>{speciesName(slug)}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="dim">
+            Refused species are left where they are. Crews still spend the trip
+            looking, so refusing everything common is how you go hunting.
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
 /** Everything about one place, once you have been there. */
 export function RouteDetail({ routeId }: { routeId: string }) {
   const state = useGame((s) => s.state);
@@ -193,6 +257,8 @@ export function RouteDetail({ routeId }: { routeId: string }) {
       </div>
 
       {trip && <p className="hint">A crew is out here now.</p>}
+
+      <WhatLivesHere route={route} />
     </section>
   );
 }

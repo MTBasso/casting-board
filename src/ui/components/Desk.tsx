@@ -1,6 +1,13 @@
 import { useEffect } from "react";
 import { useGame } from "../../engine/store.js";
-import { pendingDecisions, type DeskTarget } from "../../sim/index.js";
+import {
+  claim,
+  facilityDef,
+  objectives,
+  pendingDecisions,
+  type DeskTarget,
+  type Reward,
+} from "../../sim/index.js";
 import type { TabId } from "./Tabs.js";
 
 /**
@@ -51,6 +58,8 @@ export function Desk({ onGo }: { onGo: (tab: TabId) => void }) {
 
       <Digest />
 
+      <Objectives />
+
       {decisions.length === 0 ? (
         <p className="empty">
           Nothing is waiting on you. The league is holding, everyone is working,
@@ -73,6 +82,72 @@ export function Desk({ onGo }: { onGo: (tab: TabId) => void }) {
       )}
     </div>
   );
+}
+
+/**
+ * What the league could be working toward.
+ *
+ * The game had no stated goal at any moment. These suggest and never gate —
+ * renown already does the gating — and they pay in crew slots and facility
+ * levels, the two things every screen is waiting on and the two things money
+ * cannot hurry.
+ */
+function Objectives() {
+  const state = useGame((s) => s.state);
+  const act = useGame((s) => s.act);
+  const list = objectives(state).slice(0, 5);
+  if (list.length === 0) return null;
+
+  return (
+    <section className="objectives">
+      <h3>Working toward</h3>
+      <ul>
+        {list.map((o) => (
+          <li key={o.id} className={o.done ? "is-done" : ""}>
+            <span className="obj-id">
+              <span className="obj-title">{o.title}</span>
+              <span className="obj-detail">{o.detail}</span>
+            </span>
+
+            <span className="obj-right">
+              <span className="obj-reward">{rewardOf(o.reward)}</span>
+              {o.done ? (
+                <button
+                  type="button"
+                  className="btn sm"
+                  onClick={() => act((s) => void claim(s, o.id))}
+                >
+                  Collect
+                </button>
+              ) : (
+                <span className="obj-count">
+                  {o.have.toLocaleString()}/{o.goal.toLocaleString()}
+                </span>
+              )}
+            </span>
+
+            <span className="obj-track">
+              <span style={{ width: `${(o.have / Math.max(1, o.goal)) * 100}%` }} />
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** What an objective pays, said plainly. */
+function rewardOf(reward: Reward): string {
+  switch (reward.kind) {
+    case "crew":
+      return "a crew slot";
+    case "facility":
+      return `a level of ${facilityDef(reward.id)?.name ?? "a facility"}`;
+    case "kit":
+      return `${reward.balls} balls, ${reward.potions} potions`;
+    case "money":
+      return `\u20b1${reward.amount.toLocaleString()}`;
+  }
 }
 
 /** What the league did while you were not reading. */

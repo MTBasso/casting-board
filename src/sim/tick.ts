@@ -20,6 +20,7 @@ import { payroll, recover } from "./systems/economy.js";
 import { tickMorale } from "./systems/morale.js";
 import { tickUsurper } from "./systems/title.js";
 import { markBondedGyms } from "./systems/promotion.js";
+import { tallyTick } from "./systems/objectives.js";
 import { checkGymUnlock } from "./systems/league.js";
 import { driftMeta } from "./systems/meta.js";
 import { tickElite } from "./systems/elite.js";
@@ -185,6 +186,8 @@ export function tick(state: LeagueState, dt: number = TICK_SECONDS): TickReport 
   // The promotion gate ratchets, so the moment a gym reaches the standard has
   // to be caught while it is happening.
   markBondedGyms(state);
+  // Objectives count against history, which nothing else was keeping.
+  tallyTick(state, report.wavesWon, report.caught.length, report.returned.length);
   recover(state, dt);
   checkGymUnlock(state);
 

@@ -43,6 +43,8 @@ import {
   dropOff,
   eliteUnlocked,
   emptyReport,
+  claim,
+  objectives,
   weighted,
   ROUTES,
   canHireCrew,
@@ -532,6 +534,84 @@ describe("the field", () => {
   });
 });
 
+
+describe("objectives", () => {
+  it("opens with something to work toward", () => {
+    const state = createInitialState(4001);
+    const list = objectives(state);
+    expect(list.length).toBeGreaterThan(0);
+    // The spine's first step is the first thing a Director actually does.
+    expect(list.some((o) => o.id === "first-gym")).toBe(true);
+  });
+
+  it("reads progress off the league rather than storing it", () => {
+    const state = newLeague(4002);
+    const gym = objectives(state).find((o) => o.id === "first-gym");
+    expect(gym?.done).toBe(true);
+    // Nothing was written when it completed — only claims are stored, so a rule
+    // can change without a save carrying a stale answer.
+    expect(state.objectives.claimed).toHaveLength(0);
+  });
+
+  it("pays what it promised, once", () => {
+    const state = newLeague(4003);
+    expect(claim(state, "first-gym").ok).toBe(true);
+    expect(state.stock.balls).toBeGreaterThan(0);
+    expect(claim(state, "first-gym").ok).toBe(false);
+  });
+
+  it("reveals the next step only once the last is collected", () => {
+    const state = newLeague(4004);
+    expect(objectives(state).some((o) => o.id === "first-crew")).toBe(false);
+    claim(state, "first-gym");
+    expect(objectives(state).some((o) => o.id === "first-crew")).toBe(true);
+  });
+
+  it("refuses to pay for something unfinished", () => {
+    const state = newLeague(4005);
+    claim(state, "first-gym");
+    expect(claim(state, "first-crew").ok).toBe(false);
+  });
+
+  it("buys crew slots, which money cannot", () => {
+    const state = newLeague(4006);
+    const before = crewSlots(state);
+    state.objectives.crewSlots += 1;
+    expect(crewSlots(state)).toBe(before + 1);
+  });
+
+  it("spends kit in hand before it spends money", () => {
+    const state = newLeague(4007);
+    state.money = 500_000;
+    claim(state, "first-gym");
+
+    const offer = crewOffer(state)[0];
+    if (!offer) throw new Error("no offer");
+    const hired = hireCrew(state, offer.id);
+    if (!hired.ok) throw new Error(hired.reason);
+
+    const route = openRoutes(state)[0];
+    if (!route) throw new Error("no ground");
+    const stocked = state.stock.balls;
+    const money = state.money;
+
+    // A reward paid in Poké Balls should feel like Poké Balls, not a discount.
+    send(state, hired.crewId, route.id, "work", null, {
+      balls: stocked,
+      potions: 0,
+      revives: 0,
+      lures: 0,
+    });
+    expect(state.stock.balls).toBe(0);
+    expect(state.money).toBe(money);
+  });
+
+  it("never runs out of things to be doing", () => {
+    const state = newLeague(4008);
+    for (const o of objectives(state)) claim(state, o.id);
+    expect(objectives(state).length).toBeGreaterThan(0);
+  });
+});
 
 describe("renown", () => {
   it("ratchets peak renown and never lowers it", () => {

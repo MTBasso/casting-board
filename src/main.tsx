@@ -10,6 +10,7 @@ import {
   quarantineSave,
 } from "./persist/save.js";
 import { createInitialState, resolveOffline } from "./sim/index.js";
+import { TIME_SCALE } from "./sim/constants.js";
 import "./ui/styles.css";
 
 /**
@@ -27,7 +28,9 @@ async function boot(): Promise<void> {
       useGame.getState().replace(saved.state);
       const away = elapsedSince(saved);
       if (away > 5) {
-        const report = resolveOffline(getState(), away);
+        // Away time is credited on the same clock the live game runs on, or
+        // twelve hours asleep would be worth twenty minutes of playing.
+        const report = resolveOffline(getState(), away * TIME_SCALE);
         useGame.getState().bump(report);
       }
     }

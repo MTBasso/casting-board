@@ -283,9 +283,11 @@ function RouteRow({ route }: { route: Route }) {
         )}
       </div>
 
-      <div className="supply">
+      {/* Its own class, not the shared `.supply`: two global rules of that name
+          were fighting and the later one stacked every type onto its own line. */}
+      <div className="route-supply">
         {rows.map((r) => (
-          <span key={r.type} className="supply-row">
+          <span key={r.type} className="route-type">
             <TypeBadge type={r.type} size="sm" />
             {known && <b>{Math.round((r.share / total) * 100)}%</b>}
           </span>

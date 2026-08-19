@@ -2221,24 +2221,49 @@ body { padding-bottom: 3rem; }
 .posting .warn { margin: 0; font-size: 0.72rem; color: var(--warn); }
 
 /*
- * Routes lay out in columns where there is room.
+ * Routes lay out in columns.
  *
- * A route row carries two slots side by side, so it wants about thirty rems to
- * itself — below that the slots stack and the row is still fine, above twice
- * that two routes sit abreast. The screen was capped at 52rem inside
- * `.single-screen`, which meant a desktop window showed the phone layout with
- * empty space either side of it.
+ * Explicit breakpoints rather than `auto-fill`, because the list sits in a grid
+ * track beside a 20rem rail: `auto-fill` computes its track count from the
+ * *floor* of the minmax, so a card whose contents will not shrink below that
+ * floor produces one wide column and overflow rather than two. Counting columns
+ * against the viewport, which is the thing the rail's width is subtracted from,
+ * is predictable — and predictable is the whole job here.
  */
 .route-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(26rem, 100%), 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.5rem;
   align-items: start;
   min-width: 0;
 }
+@media (min-width: 78rem) {
+  .route-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 112rem) {
+  .route-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* A route's types, as a wrapping row of chips rather than a column of them. */
+.route-supply {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.35rem;
+  min-width: 0;
+}
+.route-type { display: inline-flex; align-items: center; gap: 0.2rem; }
+.route-type b {
+  font-family: var(--mono);
+  font-size: 0.5625rem;
+  font-weight: 500;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .route-card {
   display: flex;
   flex-direction: column;
@@ -2503,8 +2528,9 @@ body { padding-bottom: 3rem; }
 
 .route-row {
   display: grid;
-  gap: 0.45rem;
+  gap: 0.4rem;
   min-width: 0;
+  align-content: start;
   padding: 0.65rem 0.75rem;
   background: var(--surface);
   border: 1px solid var(--rule);
@@ -2520,16 +2546,23 @@ body { padding-bottom: 3rem; }
  */
 .route-slots {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
-  gap: 0.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+/* One card per row means each slot has the whole width; stack them there. */
+@media (max-width: 78rem) {
+  .route-slots { grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr)); }
+}
+@media (max-width: 40rem) {
+  .route-slots { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* A slot is either the work happening in it, or the way to start some. */
 .slot {
   display: grid;
-  gap: 0.3rem;
+  gap: 0.25rem;
   align-content: start;
-  padding: 0.5rem 0.55rem;
+  padding: 0.4rem 0.45rem;
   background: var(--sunken);
   border: 1px dashed var(--rule);
   border-radius: var(--radius);
@@ -2544,7 +2577,7 @@ body { padding-bottom: 3rem; }
   text-transform: uppercase;
   color: var(--muted);
 }
-.slot-who { display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; }
+.slot-who { display: flex; align-items: center; gap: 0.3rem; font-size: 0.76rem; min-width: 0; }
 .slot-who strong { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .slot-stat {
   font-family: var(--mono);

@@ -44,9 +44,22 @@ creature that stands up and gets knocked down still learns.
 *Done this pass.* Retirements went from 3 to 81 per run when careers were fixed,
 and the Hall is where those 81 endings now lead.
 
-## M5 — A run can be finished 🔜
+## M5 — A run can be finished ✅
 
-**The current milestone.** Promotion fires: eight gyms reach a bonded core, you
+**Done.** A 90-hour league reads 8/8 gyms bonded, and the Hall fills with real
+careers — `Claydol 331W bond 1.00`, `Exeggutor 294W`. Induction draws from
+finished stories. The one thing still blocking the earned path in a measured run
+is a gym short of its own type, which is a supply problem the Trade Desk answers.
+
+Two corrections it took to get here, both from measuring the wrong population:
+career was fitted against the league *average*, which is dominated by junior
+trainers' creatures who fight three times as much — the creatures the player
+actually owns were on a completely different curve and would have taken 415
+hours to retire. And the Hall's first cut admitted creatures with three wins that
+had burned short lives losing, because faint penalties spend career faster than
+fighting does. A hall that rewards attrition is a casualty list.
+
+*Superseded notes from when this was the current milestone:* Promotion fires: eight gyms reach a bonded core, you
 induct from the Hall, and the Mentors you choose carry into a harder tier.
 
 The gate now ratchets — a gym that has *held* a core keeps the credit — because
@@ -59,14 +72,25 @@ What is left:
   stat column. DESIGN.md calls this the emotional peak; it has never been seen.
 - Confirm a full run end-to-end in the app, not only in the balance runner.
 
-## M6 — The game asks something of you 🔜
+## M6 — The game asks something of you ✅ (first pass)
 
 A **Desk**: the first tab and the landing screen. What happened while you were
 away, and what needs a decision — retirees awaiting the Day-Care, a rival
 announced, a suspension pending, a Professor at the door — each linking to the
 screen that resolves it.
 
-Right now the game never speaks to you, and the reason to open it is unstated.
+*Built.* The Desk is the first tab and the landing screen. `pendingDecisions`
+lives in the sim — these are rules about the league, not about a screen — and
+reads out what is standing open: gyms fielding nobody, unstaffed Elite seats,
+staff close to walking, retirees the Day-Care has room for, a rival's countdown,
+a full box, a promotion available. Each links to the screen that settles it, and
+the Desk itself does nothing, which keeps every other screen's job intact.
+
+Above it, a digest of what happened since you last read it — held, lost, taken,
+caught, retired, plus the named events worth a line.
+
+Still open: objectives (M7) belong here, and the digest currently resets per
+session rather than per visit-with-offline-time.
 
 ## M7 — There is something to work toward 🔜
 

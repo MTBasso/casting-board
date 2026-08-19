@@ -16,12 +16,48 @@ import {
  * live state directly. One integer of indirection, and React stays out of the
  * simulation entirely.
  */
+/** A running account of what happened, for the Desk to read out. */
+export interface Digest {
+  held: number;
+  lost: number;
+  earned: number;
+  caught: number;
+  retired: number;
+  evolved: string[];
+  rivals: string[];
+  usurped: string | null;
+  suspended: string[];
+}
+
+function emptyDigest(): Digest {
+  return {
+    held: 0,
+    lost: 0,
+    earned: 0,
+    caught: 0,
+    retired: 0,
+    evolved: [],
+    rivals: [],
+    usurped: null,
+    suspended: [],
+  };
+}
+
 interface GameStore {
   state: LeagueState;
   revision: number;
   lastReport: TickReport;
   /** Cumulative totals since load, for the UI's session readouts. */
   session: { waves: number; earned: number };
+  /**
+   * What has happened since the player last read the Desk.
+   *
+   * Accumulated here rather than in the sim because it is a fact about *this
+   * viewer*, not about the league — a save reopened on another device has not
+   * been read by anyone. Cleared when the Desk is opened.
+   */
+  digest: Digest;
+  clearDigest(): void;
 
   /** Dev-only time multiplier. See LoopOptions.getSpeed. */
   speed: number;
@@ -44,9 +80,11 @@ export const useGame = create<GameStore>((set, get) => ({
   speed: 1,
   lastReport: emptyReport(),
   session: { waves: 0, earned: 0 },
+  digest: emptyDigest(),
 
   bump(report) {
     const s = get().session;
+    const d = get().digest;
     set({
       revision: get().revision + 1,
       lastReport: report,
@@ -54,7 +92,22 @@ export const useGame = create<GameStore>((set, get) => ({
         waves: s.waves + report.wavesResolved,
         earned: s.earned + report.earned,
       },
+      digest: {
+        held: d.held + report.wavesWon,
+        lost: d.lost + report.badgesLost,
+        earned: d.earned + report.earned,
+        caught: d.caught + report.caught.length,
+        retired: d.retired + report.retirements.length,
+        evolved: [...d.evolved, ...report.evolutions].slice(-6),
+        rivals: [...d.rivals, ...report.rivals.map((r) => r.name)].slice(-6),
+        usurped: report.usurped ?? d.usurped,
+        suspended: [...d.suspended, ...report.suspended.map((x) => x.name)].slice(-6),
+      },
     });
+  },
+
+  clearDigest() {
+    set({ digest: emptyDigest() });
   },
 
   replace(state) {

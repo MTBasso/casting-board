@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { useGame } from "../engine/store.js";
-import { rangers, doctrineUnlocked, handlers, nextRival, postingFor } from "../sim/index.js";
+import {
+  doctrineUnlocked,
+  handlers,
+  pendingDecisions,
+  postingFor,
+  rangers,
+} from "../sim/index.js";
 import { LeagueMap } from "./components/LeagueMap.js";
 import { GymPanel } from "./components/GymPanel.js";
 import { EventLog } from "./components/EventLog.js";
@@ -10,6 +16,7 @@ import { DevBar } from "./components/DevBar.js";
 import { FieldWork } from "./components/FieldWork.js";
 import { ReplayDriver } from "./components/BattleFeed.js";
 import { HallOfFame } from "./components/HallOfFame.js";
+import { Desk } from "./components/Desk.js";
 import { Facilities } from "./components/Facilities.js";
 import { EliteFour } from "./components/EliteFour.js";
 import { DayCare } from "./components/DayCare.js";
@@ -23,16 +30,18 @@ export function App() {
   const revision = useGame((s) => s.revision);
   const state = useGame((s) => s.state);
 
-  const [tab, setTab] = useState<TabId>("gyms");
+  const [tab, setTab] = useState<TabId>("desk");
   const [selected, setSelected] = useState<string | null>(null);
   const activeGymId = selected ?? state.gymOrder[0] ?? null;
 
   const inParty = Object.values(state.creatures).filter((c) => c.role === "party").length;
   const owned = Object.values(state.creatures).filter((c) => c.role !== "retired").length;
 
-  const rival = nextRival(state);
   const badges: Partial<Record<TabId, string>> = {};
-  if (rival) badges.gyms = "!";
+  // The Desk carries the count, so the other tabs stop shouting.
+  const open = pendingDecisions(state);
+  const urgent = open.filter((d) => d.urgency === "urgent").length;
+  if (open.length > 0) badges.desk = urgent > 0 ? String(urgent) : "•";
   // Field staff off a route are money going out with nothing coming back.
   const unposted = [...rangers(state), ...handlers(state)].filter(
     (t) => !postingFor(state, t.id),
@@ -77,6 +86,12 @@ export function App() {
       <Tabs active={tab} onChange={setTab} badges={badges} />
 
       <main className="screen">
+        {tab === "desk" && (
+          <div className="single-screen">
+            <Desk onGo={setTab} />
+          </div>
+        )}
+
         {tab === "gyms" && (
           <div className="league-screen">
             <aside className="league-side">

@@ -17,6 +17,7 @@ export * from "./migrate.js";
 export { resolveOffline } from "./offline.js";
 export * from "./rng.js";
 export * from "./devtools.js";
+export * from "./systems/desk.js";
 
 export {
   addToCrew,

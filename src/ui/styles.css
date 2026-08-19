@@ -2735,3 +2735,87 @@ button.slot-pick:hover { border-color: var(--accent); }
   text-align: center;
   text-wrap: balance;
 }
+
+/* -- The Desk -------------------------------------------------------------- */
+
+.desk { display: flex; flex-direction: column; gap: 0.7rem; min-width: 0; }
+
+.digest {
+  padding: 0.6rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+}
+.digest.is-quiet { border-left-color: var(--rule); }
+.digest.is-quiet p { margin: 0; font-size: 0.78rem; }
+.digest h3 {
+  margin: 0 0 0.45rem;
+  font-family: var(--mono);
+  font-size: 0.5625rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.digest-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(6rem, 45%), 1fr));
+  gap: 0.4rem;
+  margin: 0;
+}
+.digest-facts div { display: grid; gap: 0.05rem; }
+.digest-facts dt {
+  font-family: var(--mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.digest-facts dd {
+  margin: 0;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+.digest-facts dd.is-bad { color: var(--danger); }
+
+.digest-notes {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0 0;
+  border-top: 1px solid var(--rule);
+  display: grid;
+  gap: 0.15rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.digest-notes li.is-bad { color: var(--danger); }
+.digest-notes b { color: var(--ink); font-weight: 600; }
+
+/* Each open decision is a way through to the screen that settles it. */
+.decisions { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.35rem; }
+.decision button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.15rem 0.6rem;
+  padding: 0.55rem 0.7rem;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--rule);
+  border-radius: var(--radius);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.decision button:hover { border-color: var(--muted); }
+.decision.is-urgent button { border-left-color: var(--danger); }
+.decision.is-waiting button { border-left-color: var(--warn); }
+.decision.is-idle button { border-left-color: var(--rule); opacity: 0.85; }
+
+.decision-title { font-size: 0.85rem; font-weight: 600; }
+.decision-detail { grid-column: 1; font-size: 0.75rem; color: var(--muted); }
+.decision-go { grid-row: 1 / span 2; color: var(--muted); font-size: 1rem; }
+.decision button:hover .decision-go { color: var(--accent); }

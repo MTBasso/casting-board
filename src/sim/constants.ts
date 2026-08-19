@@ -982,6 +982,17 @@ export const DAYCARE = {
  * not all of them. Careers now end properly, which is roughly eighty a run, and
  * a hall that everyone enters is a staff list rather than an honour.
  */
+/**
+ * The Desk's thresholds.
+ *
+ * Only the numbers that decide *when* something is worth saying. The Desk is
+ * the one screen that interrupts, so it has to be right about that.
+ */
+export const DESK = {
+  /** Careers ended before the Desk suggests building somewhere for them to go. */
+  retireesBeforeNudge: 3,
+} as const;
+
 export const HALL = {
   /**
    * Fraction of its own career a creature must have spent to be remembered.

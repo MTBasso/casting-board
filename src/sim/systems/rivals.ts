@@ -1,4 +1,5 @@
 import { catalog, minLevelFor } from "../../data/catalog.js";
+import type { Report } from "../report.js";
 import { effectivenessAgainst } from "../../data/typechart.js";
 import { GYM_TRAINERS, RIVAL } from "../constants.js";
 import { addGymTrainer, makeTrainer } from "../factory.js";
@@ -15,7 +16,7 @@ import {
   runChallenge,
 } from "./challenge.js";
 import { tierMultiplier } from "./promotion.js";
-import type { Creature, LeagueState, Rival, TickReport, TypeId } from "../types.js";
+import type { Creature, LeagueState, Rival, TypeId } from "../types.js";
 
 /**
  * Named rivals.
@@ -119,7 +120,7 @@ function defenders(state: LeagueState, gymId: string): Creature[] {
  * A rival fights the same gauntlet an ordinary challenger does — juniors first,
  * the Leader last, faints carrying through. They are simply better at it.
  */
-function resolve(state: LeagueState, rival: Rival, report: TickReport): void {
+function resolve(state: LeagueState, rival: Rival, report: Report): void {
   rival.resolved = true;
 
   const gym = state.gyms[rival.gymId];
@@ -164,7 +165,7 @@ function resolve(state: LeagueState, rival: Rival, report: TickReport): void {
     const purse = RIVAL.purse * tierMultiplier(state.tier);
     state.money += purse;
     state.renown += RIVAL.renownForWinning;
-    report.earned += purse;
+    report.took(purse);
 
     // Beaten rivals come to work for you, bringing their own team — unless they
     // are still carrying a grudge, in which case they are not done yet.
@@ -195,7 +196,7 @@ function resolve(state: LeagueState, rival: Rival, report: TickReport): void {
         jitter: 2,
         owned: false,
       });
-      report.recruited.push(rival.name);
+      report.recruited(rival.name);
     }
   } else {
     state.renown = Math.max(0, state.renown - RIVAL.renownForLosing);
@@ -206,10 +207,10 @@ function resolve(state: LeagueState, rival: Rival, report: TickReport): void {
     ].slice(-RIVAL.historyCap);
   }
 
-  report.rivals.push({ name: rival.name, held: rival.held, gymId: rival.gymId });
+  report.rival(rival.name, rival.held, rival.gymId);
 }
 
-export function tickRivals(state: LeagueState, dt: number, report: TickReport): void {
+export function tickRivals(state: LeagueState, dt: number, report: Report): void {
   if (state.gymOrder.length === 0) return;
 
   state.rivalCooldown -= dt;

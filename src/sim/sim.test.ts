@@ -43,7 +43,6 @@ import {
   seatParty,
   dropOff,
   eliteUnlocked,
-  emptyReport,
   claim,
   objectives,
   weighted,
@@ -109,6 +108,7 @@ import {
   tradeableStock,
   typesForRank,
   TYPES,
+  newReport,
   tradePreview,
   canTrade,
   gymChallengeInterval,
@@ -2397,7 +2397,7 @@ describe("the Elite Four", () => {
 
   it("lets an unstaffed seat be walked straight past", () => {
     const state = fullBoard(612);
-    const report = emptyReport();
+    const report = newReport();
     const result = runGauntlet(state, report);
     // Nothing is staffed, so a challenger clears every seat and takes the league.
     expect(result.cleared).toBe(5);
@@ -2419,7 +2419,7 @@ describe("the Elite Four", () => {
     }
 
     const money = state.money;
-    const report = emptyReport();
+    const report = newReport();
     const result = runGauntlet(state, report);
     expect(result.tookLeague).toBe(false);
     expect(state.money).toBeGreaterThan(money);
@@ -2574,7 +2574,7 @@ describe("losing the title", () => {
     const state = fullBoard(4201);
     const before = Object.keys(state.trainers).length;
 
-    forceRecruit(state, makeChallenger(state, 8), 4, emptyReport());
+    forceRecruit(state, makeChallenger(state, 8), 4, newReport());
 
     const champSeat = state.elite.find((s) => s.rank === constants.ELITE.championRank);
     const champ = champSeat?.trainerId ? state.trainers[champSeat.trainerId] : undefined;
@@ -2589,7 +2589,7 @@ describe("losing the title", () => {
 
   it("cannot be benched while their protection holds", () => {
     const state = fullBoard(4202);
-    forceRecruit(state, makeChallenger(state, 8), 4, emptyReport());
+    forceRecruit(state, makeChallenger(state, 8), 4, newReport());
     const champ = state.trainers[state.usurperId ?? ""];
     expect(champ).toBeDefined();
     expect(isProtected(state, champ!)).toBe(true);
@@ -2605,7 +2605,7 @@ describe("losing the title", () => {
     const heldBefore = state.trainers[heldId]?.morale ?? 0;
 
     // The challenger got through the first seat only.
-    forceRecruit(state, makeChallenger(state, 8), 1, emptyReport());
+    forceRecruit(state, makeChallenger(state, 8), 1, newReport());
 
     expect(state.trainers[beatenId]?.morale).toBeLessThan(beatenBefore);
     expect(state.trainers[heldId]?.morale).toBe(heldBefore);
@@ -2625,7 +2625,7 @@ describe("losing the title", () => {
 
   it("the forced path carries the usurper and no Mentors", () => {
     const state = fullBoard(4205);
-    forceRecruit(state, makeChallenger(state, 8), 4, emptyReport());
+    forceRecruit(state, makeChallenger(state, 8), 4, newReport());
     const usurperName = state.trainers[state.usurperId ?? ""]?.name;
 
     const result = promote(state, inductable(state).slice(0, 3).map((c) => c.id));
@@ -2697,7 +2697,7 @@ describe("the morale staircase", () => {
     let left = seconds;
     while (left > 0) {
       t.morale = 0;
-      tickMorale(state, 1, emptyReport());
+      tickMorale(state, 1, newReport());
       state.time += 1;
       left -= 1;
     }
@@ -2722,7 +2722,7 @@ describe("the morale staircase", () => {
 
     // Serve it out, then run them down again.
     state.time += constants.MORALE.suspensionSeconds + 1;
-    tickMorale(state, 1, emptyReport());
+    tickMorale(state, 1, newReport());
     grind(state, id, constants.MORALE.strainToSuspend + 2);
 
     expect(state.trainers[id]?.suspensions).toBe(2);
@@ -2739,7 +2739,7 @@ describe("the morale staircase", () => {
     for (let i = 0; i <= constants.MORALE.suspensionsBeforeDeparture; i++) {
       grind(state, id, constants.MORALE.strainToSuspend + 2);
       state.time += constants.MORALE.suspensionSeconds + 1;
-      tickMorale(state, 1, emptyReport());
+      tickMorale(state, 1, newReport());
     }
     expect(state.trainers[id]).toBeUndefined();
   });
@@ -2752,7 +2752,7 @@ describe("the morale staircase", () => {
     if (!gym || !t) throw new Error("no gym");
 
     t.suspendedUntil = state.time + 1000;
-    const result = runChallenge(state, gym, makeChallenger(state, 0), emptyReport());
+    const result = runChallenge(state, gym, makeChallenger(state, 0), newReport());
     expect(result.tookBadge).toBe(true);
   });
 

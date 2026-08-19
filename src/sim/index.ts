@@ -8,6 +8,7 @@
  */
 
 export * as constants from "./constants.js";
+export { newReport, Report } from "./report.js";
 
 export * from "./types.js";
 export * from "./state.js";

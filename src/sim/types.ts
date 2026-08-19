@@ -1010,8 +1010,6 @@ export interface TickReport {
   usurped: string | null;
   /** People who walked out and now hold a grudge. */
   departures: string[];
-  /** Spillover released because the box was overrun. */
-  released: string[];
   /** Handlers whose party came back beaten from ground over their heads. */
   beaten: string[];
   /** Rangers whose shift ended this tick, and what they brought home. */

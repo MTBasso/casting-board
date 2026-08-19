@@ -1,11 +1,12 @@
 import { catalog, isGrantable } from "../../data/catalog.js";
+import type { Report } from "../report.js";
 import { BREEDING, DAYCARE } from "../constants.js";
 import { makeCreature } from "../factory.js";
 import { pick, range } from "../rng.js";
 import { gainXp } from "./growth.js";
 import { level as facilityLevel } from "./facilities.js";
 import { displayName } from "./wave.js";
-import type { Creature, LeagueState, TickReport } from "../types.js";
+import type { Creature, LeagueState } from "../types.js";
 
 /**
  * The Day-Care.
@@ -114,7 +115,7 @@ export function collect(
  * count toward an egg, which is what keeps the Day-Care the place a lineage
  * comes from.
  */
-export function tickDayCare(state: LeagueState, dt: number, report: TickReport): void {
+export function tickDayCare(state: LeagueState, dt: number, report: Report): void {
   if (state.dayCare.length === 0) return;
 
   const xp = dt / DAYCARE.secondsPerXp;
@@ -123,14 +124,14 @@ export function tickDayCare(state: LeagueState, dt: number, report: TickReport):
     if (!creature || creature.role === "retired") continue;
     const became = gainXp(state, creature, xp);
     if (became) {
-      report.evolutions.push(`${displayName(creature)} evolved into ${became} at the Day-Care`);
+      report.evolved(`${displayName(creature)} evolved into ${became} at the Day-Care`);
     }
   }
 
   tickEgg(state, dt, report);
 }
 
-function tickEgg(state: LeagueState, dt: number, report: TickReport): void {
+function tickEgg(state: LeagueState, dt: number, report: Report): void {
   const pair = occupants(state);
   if (pair.length < 2) {
     state.eggProgress = 0;
@@ -149,7 +150,7 @@ function tickEgg(state: LeagueState, dt: number, report: TickReport): void {
 
   state.eggProgress = 0;
   const child = hatch(state, a, b);
-  if (child) report.hatched.push(displayName(child));
+  if (child) report.hatched(displayName(child));
 }
 
 /** Walk an evolution line back to its first form. Eggs hatch as base forms. */

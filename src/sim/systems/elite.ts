@@ -1,4 +1,5 @@
 import { ELITE, LEAGUE } from "../constants.js";
+import type { Report } from "../report.js";
 import { emptyThreatReport, makeTrainer } from "../factory.js";
 import { isSuspended } from "./morale.js";
 import { leaderLevel } from "./league.js";
@@ -12,7 +13,6 @@ import type {
   EliteSeat,
   Gym,
   LeagueState,
-  TickReport,
   Trainer,
   TypeId,
 } from "../types.js";
@@ -173,7 +173,7 @@ export interface GauntletResult {
  * from seat to seat, which is why an Elite tier staffed four deep is worth so
  * much more than one staffed twice.
  */
-export function runGauntlet(state: LeagueState, report: TickReport): GauntletResult {
+export function runGauntlet(state: LeagueState, report: Report): GauntletResult {
   const seats = [...state.elite].sort((a, b) => a.rank - b.rank);
   // Scaled to the tier that will meet them, floored against the league that
   // produced the challenger. Someone who fought through eight gyms is a product
@@ -224,7 +224,7 @@ export function runGauntlet(state: LeagueState, report: TickReport): GauntletRes
     state.renown += ELITE.renownForHolding;
   }
 
-  report.earned += receipts;
+  report.took(receipts);
   return { cleared, tookLeague, receipts };
 }
 
@@ -233,7 +233,7 @@ function battleSeat(
   state: LeagueState,
   trainer: Trainer,
   challenger: Challenger,
-  report: TickReport,
+  report: Report,
 ): boolean {
   // Reuse the gym battle wholesale by treating the seat as a one-trainer gym.
   const fake: Gym = {
@@ -251,7 +251,7 @@ function battleSeat(
   return !result.tookBadge;
 }
 
-export function tickElite(state: LeagueState, dt: number, report: TickReport): void {
+export function tickElite(state: LeagueState, dt: number, report: Report): void {
   ensureSeats(state);
   if (!eliteUnlocked(state)) return;
 
@@ -259,7 +259,7 @@ export function tickElite(state: LeagueState, dt: number, report: TickReport): v
   let guard = 0;
   while (state.gauntletCooldown <= 0 && guard < 16) {
     const result = runGauntlet(state, report);
-    report.gauntlets.push(result);
+    report.gauntlet(result.cleared, result.tookLeague, result.receipts);
     state.gauntletCooldown += ELITE.intervalSeconds;
     guard += 1;
   }

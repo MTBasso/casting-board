@@ -17,7 +17,9 @@ import { driftMeta } from "./systems/meta.js";
 import { tickField } from "./systems/field.js";
 import { displayName, retire } from "./systems/wave.js";
 import { emptyReport, gymChallengeInterval, log, rankMultiplier, tick } from "./tick.js";
+import { newReport } from "./report.js";
 import type { Creature, LeagueState, TickReport } from "./types.js";
+import type { Report } from "./report.js";
 
 /**
  * Offline catch-up.
@@ -43,13 +45,15 @@ export function resolveOffline(
   const elapsed = Math.min(absence, OFFLINE_CAP_SECONDS);
   if (elapsed <= 0) return emptyReport();
 
-  const report =
-    elapsed <= OFFLINE_ANALYTIC_THRESHOLD_SECONDS
-      ? stepExact(state, elapsed)
-      : stepAnalytic(state, elapsed);
+  // One report for the whole span, threaded through whichever path runs. There
+  // is no merging: a report that can only be recorded into cannot lose a field
+  // on the way out.
+  const report = newReport();
+  if (elapsed <= OFFLINE_ANALYTIC_THRESHOLD_SECONDS) stepExact(state, elapsed, report);
+  else stepAnalytic(state, elapsed, report);
 
   resolveTitleWhileAway(state, absence, report);
-  return report;
+  return report.done();
 }
 
 /**
@@ -69,7 +73,7 @@ export function resolveOffline(
 function resolveTitleWhileAway(
   state: LeagueState,
   absenceSeconds: number,
-  report: TickReport,
+  report: Report,
 ): void {
   const days = absenceSeconds / 86_400;
   if (days <= TITLE.safeDays) return;
@@ -80,7 +84,7 @@ function resolveTitleWhileAway(
   const before = state.leagueTaken;
   for (let i = 0; i < runs; i++) {
     const result = runGauntlet(state, report);
-    report.gauntlets.push(result);
+    report.gauntlet(result.cleared, result.tookLeague, result.receipts);
     if (result.tookLeague) break;
   }
 
@@ -114,15 +118,13 @@ function cushionOnReturn(state: LeagueState, titleFell: boolean): void {
   }
 }
 
-function stepExact(state: LeagueState, elapsed: number): TickReport {
-  const total = emptyReport();
+function stepExact(state: LeagueState, elapsed: number, report: Report): void {
   let remaining = elapsed;
   while (remaining > 0) {
     const dt = Math.min(1, remaining);
-    merge(total, tick(state, dt));
+    tick(state, dt, report);
     remaining -= dt;
   }
-  return total;
 }
 
 // The flat 0.85 that used to live here is now `awayRate` — a floor the player
@@ -138,8 +140,7 @@ function stepExact(state: LeagueState, elapsed: number): TickReport {
  *
  * It runs pessimistic on purpose: offline must never outperform playing.
  */
-function stepAnalytic(state: LeagueState, elapsed: number): TickReport {
-  const report = emptyReport();
+function stepAnalytic(state: LeagueState, elapsed: number, report: Report): void {
   const away = awayRate(state);
 
   for (const gymId of state.gymOrder) {
@@ -170,8 +171,8 @@ function stepAnalytic(state: LeagueState, elapsed: number): TickReport {
 
     if (bodies === 0) {
       state.renown = Math.max(0, state.renown - challenges * RENOWN.perBadgeLost);
-      report.wavesResolved += challenges;
-      report.badgesLost += challenges;
+      // An unstaffed gym resolves every challenge as a loss.
+      report.challenges(challenges, 0, 0);
       continue;
     }
 
@@ -208,10 +209,7 @@ function stepAnalytic(state: LeagueState, elapsed: number): TickReport {
       state.renown + held * RENOWN.perChallengeHeld * byRank * away - lost * RENOWN.perBadgeLost * byRank,
     );
 
-    report.wavesResolved += challenges;
-    report.wavesWon += held;
-    report.earned += gate;
-    report.badgesLost += lost;
+    report.challenges(challenges, held, gate);
 
     // Spread the wear across everyone who would have fought.
     const exchangesEach = (challenges * OFFLINE_EXCHANGES_PER_CHALLENGE) / bodies;
@@ -222,7 +220,7 @@ function stepAnalytic(state: LeagueState, elapsed: number): TickReport {
         c.careerSpent += exchangesEach * CAREER.costPerExchange;
         c.fatigue = clamp01(c.fatigue + exchangesEach * FATIGUE.perExchange * 0.25);
         if (c.careerSpent >= c.careerTotal) {
-          report.retirements.push(displayName(c));
+          report.retired(displayName(c));
           retire(state, c);
         }
       }
@@ -238,7 +236,7 @@ function stepAnalytic(state: LeagueState, elapsed: number): TickReport {
       trainer.salary * (1 + (trainer.tenure / 3600) * STAFF.salaryPerTenureHour) * hours;
     const paid = Math.min(state.money, owed);
     state.money -= paid;
-    report.paid += paid;
+    report.paid(paid);
     if (paid < owed) {
       trainer.morale = Math.max(
         0,
@@ -271,18 +269,18 @@ function stepAnalytic(state: LeagueState, elapsed: number): TickReport {
 
   if (state.renown > state.peakRenown) state.peakRenown = state.renown;
 
+  const so_far = report.done();
   log(
     state,
     "wave",
     "log.whileAway",
     {
-      waves: report.wavesResolved,
-      money: Math.round(report.earned),
-      caught: report.caught.length,
+      waves: so_far.wavesResolved,
+      money: Math.round(so_far.earned),
+      caught: so_far.caught.length,
     },
   );
 
-  return report;
 }
 
 /** Rough strength-per-level-per-creature for a challenger, offline only. */
@@ -299,11 +297,3 @@ function clamp01(n: number): number {
   return n < 0 ? 0 : n > 1 ? 1 : n;
 }
 
-function merge(into: TickReport, from: TickReport): void {
-  into.wavesResolved += from.wavesResolved;
-  into.wavesWon += from.wavesWon;
-  into.earned += from.earned;
-  into.paid += from.paid;
-  into.retirements.push(...from.retirements);
-  into.resignations.push(...from.resignations);
-}

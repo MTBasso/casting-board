@@ -161,7 +161,6 @@ function absorb(r: TickReport): void {
   tally.caught += r.caught.length;
   tally.shifts += r.returned.length;
   tally.beaten += r.beaten.length;
-  tally.released += r.released.length;
   tally.upsets += r.upsets.length;
   tally.earned += r.earned;
   tally.paid += r.paid;

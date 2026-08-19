@@ -1,4 +1,5 @@
 import { catalog } from "../../data/catalog.js";
+import type { Report } from "../report.js";
 import { MORALE, PARTY, STAFF, TITLE } from "../constants.js";
 import { makeCreature, makeTrainer } from "../factory.js";
 import { resign } from "./economy.js";
@@ -8,7 +9,6 @@ import type {
   Challenger,
   Grudge,
   LeagueState,
-  TickReport,
   Trainer,
   TypeId,
 } from "../types.js";
@@ -58,7 +58,7 @@ export function forceRecruit(
   state: LeagueState,
   challenger: Challenger,
   clearedSeats: number,
-  report: TickReport,
+  report: Report,
 ): Trainer | null {
   const seat = state.elite.find((s) => s.rank === Math.max(...state.elite.map((e) => e.rank)));
   if (!seat) return null;
@@ -75,7 +75,7 @@ export function forceRecruit(
     } else {
       log(state, "quit", "log.refusedToServe", { name: incumbent.name });
       remember(state, incumbent.name, incumbent.affinity, 1);
-      report.departures.push(incumbent.name);
+      report.departed(incumbent.name);
       resign(state, incumbent.id, report);
     }
     seat.trainerId = null;
@@ -114,7 +114,7 @@ export function forceRecruit(
   // who held take nothing, which quietly tells the player who is worth keeping.
   bruiseDefeated(state, clearedSeats);
 
-  report.usurped = usurper.name;
+  report.usurped(usurper.name);
   log(
     state,
     "gauntlet",
@@ -195,7 +195,7 @@ export function grudgeMultiplier(grudge: Grudge): number {
  * Handled here rather than in `payroll` because it is a property of *how they
  * arrived*, and the next origin (the arrogant prodigy) will want the same hook.
  */
-export function tickUsurper(state: LeagueState, dt: number, report: TickReport): void {
+export function tickUsurper(state: LeagueState, dt: number, report: Report): void {
   if (!state.usurperId) return;
   const usurper = state.trainers[state.usurperId];
   if (!usurper) {
@@ -217,7 +217,7 @@ export function tickUsurper(state: LeagueState, dt: number, report: TickReport):
   // quietly: they go onto the list of people coming back for the league.
   if (usurper.suspensions > MORALE.suspensionsBeforeDeparture) {
     remember(state, usurper.name, usurper.affinity, 2);
-    report.departures.push(usurper.name);
+    report.departed(usurper.name);
     log(state, "quit", "log.usurperWalks", { name: usurper.name });
     resign(state, usurper.id, report);
     state.usurperId = null;

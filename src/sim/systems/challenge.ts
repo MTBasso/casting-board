@@ -1,4 +1,5 @@
 import { catalog, encounterWeight, familyOf, minLevelFor } from "../../data/catalog.js";
+import type { Report } from "../report.js";
 import { effectivenessAgainst } from "../../data/typechart.js";
 import { BOND, CAREER, CHALLENGE, ELITE, LEAGUE, FATIGUE, LEVELS } from "../constants.js";
 import { chance, int, pick, range, weighted } from "../rng.js";
@@ -17,7 +18,6 @@ import type {
   Creature,
   Gym,
   LeagueState,
-  TickReport,
   Trainer,
   TypeId,
 } from "../types.js";
@@ -403,7 +403,7 @@ function battleParty(
   state: LeagueState,
   trainer: Trainer,
   challenger: Challenger,
-  report: TickReport,
+  report: Report,
   log: BattleEvent[],
 ): BattleOutcome {
   const bench = trainer.party
@@ -479,7 +479,7 @@ function battleParty(
     // project, which is as good as not buying anything.
     const expected = favoured(us, them);
     if (expected !== null && expected !== (winner === "ours")) {
-      report.upsets.push({ name: us.name, bond: defender.bond, won: winner === "ours" });
+      report.upset(us.name, defender.bond, winner === "ours");
     }
 
     spend(state, defender, CAREER.costPerExchange, trainer, report);
@@ -500,7 +500,7 @@ function battleParty(
         challenger.revives -= 1;
         attackerMon.fainted = false;
         attackerMon.hp = Math.round(them.maxHp * 0.5);
-        report.revives.push(them.name);
+        report.revived(them.name);
         them.hp = attackerMon.hp;
         log.push(event("revive", them, them, 0, 1));
       }
@@ -576,9 +576,9 @@ function gainBondFor(
   );
 }
 
-function grow(state: LeagueState, c: Creature, xp: number, report: TickReport): void {
+function grow(state: LeagueState, c: Creature, xp: number, report: Report): void {
   const became = gainXp(state, c, xp);
-  if (became) report.evolutions.push(`${displayName(c)} evolved into ${became}`);
+  if (became) report.evolved(`${displayName(c)} evolved into ${became}`);
 }
 
 function spend(
@@ -586,14 +586,14 @@ function spend(
   c: Creature,
   cost: number,
   trainer: Trainer,
-  report: TickReport,
+  report: Report,
 ): void {
   const mult = trainer.doctrine === "drillmaster" ? CAREER.drillmasterMultiplier : 1;
   c.careerSpent += cost * mult;
   if (c.careerSpent >= c.careerTotal && c.role !== "retired") {
     const name = displayName(c);
     retire(state, c);
-    report.retirements.push(name);
+    report.retired(name);
   }
 }
 
@@ -620,7 +620,7 @@ export function runChallenge(
   state: LeagueState,
   gym: Gym,
   challenger: Challenger,
-  report: TickReport,
+  report: Report,
   record?: BattleRecord,
 ): ChallengeResult {
   const order = [

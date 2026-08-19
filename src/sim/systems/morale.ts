@@ -1,8 +1,9 @@
 import { GYM_TRAINERS, MORALE, PARTY } from "../constants.js";
+import type { Report } from "../report.js";
 import { resign } from "./economy.js";
 import { partyCapOf } from "./party.js";
 import { log } from "../tick.js";
-import type { LeagueState, TickReport, Trainer } from "../types.js";
+import type { LeagueState, Trainer } from "../types.js";
 
 /**
  * The morale staircase, and the way off it.
@@ -61,7 +62,7 @@ export function postingRank(trainer: Trainer): number {
   }
 }
 
-export function tickMorale(state: LeagueState, dt: number, report: TickReport): void {
+export function tickMorale(state: LeagueState, dt: number, report: Report): void {
   for (const trainer of Object.values(state.trainers)) {
     if (trainer.kind === "candidate") continue;
 
@@ -81,7 +82,7 @@ export function tickMorale(state: LeagueState, dt: number, report: TickReport): 
     if (trainer.suspendedUntil !== null) {
       trainer.suspendedUntil = null;
       trainer.strain = 0;
-      report.reinstated.push(trainer.name);
+      report.reinstated(trainer.name);
       log(state, "staff", "log.backOnDuty", { name: trainer.name });
       continue;
     }
@@ -96,7 +97,7 @@ export function tickMorale(state: LeagueState, dt: number, report: TickReport): 
   }
 }
 
-function suspend(state: LeagueState, trainer: Trainer, report: TickReport): void {
+function suspend(state: LeagueState, trainer: Trainer, report: Report): void {
   trainer.suspensions += 1;
 
   // The last step of the staircase. It takes three of these to get here, and
@@ -115,7 +116,7 @@ function suspend(state: LeagueState, trainer: Trainer, report: TickReport): void
   );
   trainer.morale = trainer.standing * MORALE.returnMorale;
 
-  report.suspended.push({ name: trainer.name, count: trainer.suspensions });
+  report.suspended(trainer.name, trainer.suspensions);
   log(
     state,
     "staff",

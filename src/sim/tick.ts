@@ -30,6 +30,7 @@ import { autoFillAll } from "./systems/party.js";
 import { tickField } from "./systems/field.js";
 import { partyOf } from "./systems/party.js";
 import type { BattleRecord, Gym, LeagueState, LogKind, TickReport } from "./types.js";
+import { newReport, type Report } from "./report.js";
 
 /**
  * How often challengers arrive, in sim-seconds.
@@ -128,10 +129,8 @@ function applyChallenge(
   state: LeagueState,
   gym: Gym,
   result: ChallengeResult,
-  report: TickReport,
+  report: Report,
 ): void {
-  report.wavesResolved += 1;
-
   // The whole gate scales with rank, base and per-trainer alike. Scaling one
   // half and not the other is the kind of split nobody remembers later, and
   // "how far they got" should stay the shape of the payout at every rank.
@@ -145,7 +144,7 @@ function applyChallenge(
     tierMultiplier(state.tier);
 
   state.money += gate;
-  report.earned += gate;
+  report.challenge(!result.tookBadge, gate);
 
   if (result.tookBadge) {
     const pressure = threatAgainst(gym.type, gym.threat.distribution);
@@ -157,40 +156,16 @@ function applyChallenge(
       state.renown -
         RENOWN.perBadgeLost * byRank * Math.max(1, pressure ** RENOWN.mismatchExponent),
     );
-    report.badgesLost += 1;
   } else {
-    report.wavesWon += 1;
     // Renown follows money up the ladder. Flat would mean an unstaffed gym
     // eight barely dented progression, which contradicts the promotion gate.
     state.renown += RENOWN.perChallengeHeld * byRank;
   }
 }
 
+/** A report with nothing in it, for callers that need the shape and no events. */
 export function emptyReport(): TickReport {
-  return {
-    wavesResolved: 0,
-    wavesWon: 0,
-    earned: 0,
-    paid: 0,
-    retirements: [],
-    resignations: [],
-    caught: [],
-    evolutions: [],
-    hatched: [],
-    upsets: [],
-    revives: [],
-    badgesLost: 0,
-    rivals: [],
-    recruited: [],
-    gauntlets: [],
-    suspended: [],
-    reinstated: [],
-    usurped: null,
-    departures: [],
-    released: [],
-    beaten: [],
-    returned: [],
-  };
+  return newReport().done();
 }
 
 export function log(
@@ -214,8 +189,20 @@ export function log(
  * Callers should keep `dt` small and fixed (see `engine/loop.ts`). Long spans
  * belong in `offline.ts`, which resolves them analytically instead.
  */
-export function tick(state: LeagueState, dt: number = TICK_SECONDS): TickReport {
-  const report = emptyReport();
+export function tick(
+  state: LeagueState,
+  dt: number = TICK_SECONDS,
+  /**
+   * Record into this rather than a fresh one.
+   *
+   * The offline pass steps many ticks and wants one report for the span. It
+   * used to merge each tick's struct into a running total with a hand-written
+   * `merge` that copied six of the twenty-one fields — so a short absence
+   * silently dropped every catch, evolution and gauntlet it produced.
+   */
+  into?: Report,
+): TickReport {
+  const report = into ?? newReport();
 
   // Challenges, per gym. A challenger fights up through the juniors and then
   // the Leader; how far they get is the whole story.
@@ -299,25 +286,30 @@ export function tick(state: LeagueState, dt: number = TICK_SECONDS): TickReport 
 
   state.time += dt;
 
-  for (const name of report.retirements) {
+  // Everything below reads the report rather than writing it, so it reads the
+  // finished one. `done()` hands back the same object each time — this is a
+  // change of stance, not a copy.
+  const events = report.done();
+
+  for (const name of events.retirements) {
     log(state, "retire", "log.retired", { name });
   }
-  for (const name of report.hatched) {
+  for (const name of events.hatched) {
     log(state, "breed", "log.hatched", { name });
   }
-  for (const name of report.revives) {
+  for (const name of events.revives) {
     log(state, "wave", "log.revived", { name });
   }
-  if (report.badgesLost > 0) {
-    log(state, "wave", "log.badgesClaimed", { n: report.badgesLost });
+  if (events.badgesLost > 0) {
+    log(state, "wave", "log.badgesClaimed", { n: events.badgesLost });
   }
-  for (const r of report.rivals) {
+  for (const r of events.rivals) {
     log(state, "rival", r.held ? "log.rivalHeld" : "log.rivalWon", { name: r.name });
   }
-  for (const name of report.recruited) {
+  for (const name of events.recruited) {
     log(state, "hire", "log.rivalJoined", { name });
   }
-  for (const run of report.gauntlets) {
+  for (const run of events.gauntlets) {
     log(
       state,
       "gauntlet",
@@ -328,7 +320,7 @@ export function tick(state: LeagueState, dt: number = TICK_SECONDS): TickReport 
   // Only report upsets from creatures that are still settling in. A veteran
   // having an off day is noise; an unfamiliar creature throwing a battle it
   // should have won is the mechanic explaining itself.
-  for (const upset of report.upsets) {
+  for (const upset of events.upsets) {
     if (upset.bond >= 0.6) continue;
     log(
       state,
@@ -337,10 +329,10 @@ export function tick(state: LeagueState, dt: number = TICK_SECONDS): TickReport 
       { name: upset.name },
     );
   }
-  for (const text of report.evolutions) {
+  for (const text of events.evolutions) {
     log(state, "evolve", "log.evolved", { text });
   }
-  for (const name of report.resignations) {
+  for (const name of events.resignations) {
     log(state, "quit", "log.resigned", { name });
   }
 
@@ -350,7 +342,7 @@ export function tick(state: LeagueState, dt: number = TICK_SECONDS): TickReport 
   // `tickField` for a long time, which meant `caught` and `returned` were read
   // before anything wrote them — so two of the twelve measures could only ever
   // be zero, and the objective spine dead-ended at "Send them out".
-  tallyTick(state, report.wavesWon, report.caught.length, report.returned.length);
+  tallyTick(state, events.wavesWon, events.caught.length, events.returned.length);
 
-  return report;
+  return events;
 }

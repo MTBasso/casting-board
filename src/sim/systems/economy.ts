@@ -1,8 +1,9 @@
 import { FATIGUE, FIELD, STAFF } from "../constants.js";
+import type { Report } from "../report.js";
 import { isSuspended } from "./morale.js";
 
 import { recoverySpeed } from "./facilities.js";
-import type { LeagueState, TickReport, Trainer } from "../types.js";
+import type { LeagueState, Trainer } from "../types.js";
 
 /**
  * Recurring salary is what separates a tycoon from a shop: every hire is a
@@ -28,7 +29,7 @@ export function wageOf(state: LeagueState, trainer: Trainer): number {
   return retainer * (1 + levels * STAFF.upkeepPerLevel);
 }
 
-export function payroll(state: LeagueState, dt: number, report: TickReport): void {
+export function payroll(state: LeagueState, dt: number, report: Report): void {
   const hours = dt / 3600;
 
   for (const trainer of Object.values(state.trainers)) {
@@ -42,11 +43,11 @@ export function payroll(state: LeagueState, dt: number, report: TickReport): voi
 
     if (state.money >= owed) {
       state.money -= owed;
-      report.paid += owed;
+      report.paid(owed);
       trainer.morale = Math.min(1, trainer.morale + STAFF.moraleRecovery * dt);
     } else {
       // Partial payment still happens; morale absorbs the rest.
-      report.paid += state.money;
+      report.paid(state.money);
       state.money = 0;
       trainer.morale -= STAFF.moraleLossUnpaid * dt;
     }
@@ -69,7 +70,7 @@ export function payroll(state: LeagueState, dt: number, report: TickReport): voi
 export function resign(
   state: LeagueState,
   trainerId: string,
-  report: TickReport,
+  report: Report,
 ): void {
   const trainer = state.trainers[trainerId];
   if (!trainer) return;
@@ -98,7 +99,7 @@ export function resign(
   }
 
   delete state.trainers[trainerId];
-  report.resignations.push(trainer.name);
+  report.resigned(trainer.name);
 }
 
 /**

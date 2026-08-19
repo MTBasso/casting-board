@@ -20,7 +20,7 @@ import { canStaff, ensureSeats, eliteUnlocked, runGauntlet } from "./systems/eli
 import { staffSeat } from "./systems/elite.js";
 import { acceptGymOffer, canHireGymTrainer, checkGymUnlock, chooseLeader, hireGymTrainer } from "./systems/league.js";
 import { autoFillAll } from "./systems/party.js";
-import { emptyReport } from "./tick.js";
+import { newReport } from "./report.js";
 import { nextRival, tickRivals } from "./systems/rivals.js";
 import { TYPES, type LeagueState, type TypeId } from "./types.js";
 
@@ -139,7 +139,7 @@ export function fillBox(state: LeagueState, count: number): void {
 
 /** Land the next rival challenge right now. */
 export function forceRival(state: LeagueState): void {
-  const report = emptyReport();
+  const report = newReport();
   if (!nextRival(state)) {
     state.rivalCooldown = 0;
     tickRivals(state, 1, report);
@@ -153,7 +153,7 @@ export function forceRival(state: LeagueState): void {
 export function forceGauntlet(state: LeagueState): void {
   ensureSeats(state);
   if (!eliteUnlocked(state)) return;
-  const report = emptyReport();
+  const report = newReport();
   runGauntlet(state, report);
   state.gauntletCooldown = ELITE.intervalSeconds;
 }

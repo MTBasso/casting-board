@@ -1,4 +1,5 @@
 import { catalog, encounterWeight, minLevelFor } from "../../data/catalog.js";
+import type { Report } from "../report.js";
 import {
   ROUTES,
   neighboursOf,
@@ -27,7 +28,6 @@ import type {
   Route,
   StandingOrders,
   StandingStop,
-  TickReport,
   Trainer,
   TypeId,
 } from "../types.js";
@@ -602,7 +602,7 @@ function drawOne(
   });
 }
 
-export function tickField(state: LeagueState, dt: number, report: TickReport): void {
+export function tickField(state: LeagueState, dt: number, report: Report): void {
   if (state.crewOffer.length === 0) rollCrewOffer(state);
   if (state.expeditions.length === 0) return;
 
@@ -649,7 +649,7 @@ function workRound(
   crew: Crew,
   route: Route,
   boxFull: boolean,
-  report: TickReport,
+  report: Report,
 ): void {
   const known = competence(crew, route.id);
   const trait = TRAITS[crew.trait];
@@ -661,7 +661,7 @@ function workRound(
     (route.landmark.effect === "lucrative" && isOpen(state, route.id) ? 1.25 : 1);
   state.money += pay;
   trip.earned += pay;
-  report.earned += pay;
+  report.took(pay);
 
   // Training. The route caps what it can teach, as it always has.
   for (const id of trip.party) {
@@ -669,7 +669,7 @@ function workRound(
     if (!c || c.level >= route.levelMax) continue;
     const became = gainXp(state, c, FIELD.xpPerRound);
     if (became) {
-      report.evolutions.push(became);
+      report.evolved(became);
       log(state, "evolve", "log.evolvedOnRoute", { name: became, route: route.id });
     }
   }
@@ -695,7 +695,7 @@ function workRound(
       trip.caught += 1;
       note_seen(state, route.id, caught.speciesId);
       ranger && (ranger.experience += 1);
-      report.caught.push(caught.id);
+      report.caught(caught.id);
     }
   }
 
@@ -738,7 +738,7 @@ function fireEvent(
   trip: Expedition,
   crew: Crew,
   route: Route,
-  report: TickReport,
+  report: Report,
 ): void {
   const risk = danger(state, trip);
   const roll = range(state.rng, 0, 1);
@@ -784,7 +784,7 @@ function trouble(
   trip: Expedition,
   crew: Crew,
   route: Route,
-  report: TickReport,
+  report: Report,
 ): void {
   if (trip.kit.revives > 0) {
     trip.kit.revives -= 1;
@@ -794,7 +794,7 @@ function trouble(
   }
   trip.hurt = clamp01(trip.hurt + FIELD.troubleHurt);
   note(trip, "trouble", "ev.troubleRaw", { route: route.id }, state.time);
-  report.beaten.push(crewName(state, crew));
+  report.beaten(crewName(state, crew));
 }
 
 /** A cache, a haul, a favour returned. */
@@ -939,7 +939,7 @@ function finish(
   state: LeagueState,
   trip: Expedition,
   how: "returned" | "beaten" | "recalled",
-  report?: TickReport,
+  report?: Report,
 ): void {
   const crew = crewById(state, trip.crewId);
   const route = routeById(trip.routeId);
@@ -1000,7 +1000,7 @@ function finish(
   // player pulling them back early, which is not the same thing and does not
   // satisfy an objective that asked for a trip to be worked.
   if (report && how !== "recalled") {
-    report.returned.push({ name: crewName(state, crew), caught: trip.caught });
+    report.returned(crewName(state, crew), trip.caught);
   }
 
   if (crew) reissue(state, crew, how);

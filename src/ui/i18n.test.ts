@@ -116,3 +116,62 @@ describe("no hardcoded English in the interface", () => {
     });
   }
 });
+
+/**
+ * Every key the sim can emit must exist in both dictionaries.
+ *
+ * The strict `t()` cannot check these: the sim is language-free and hands the
+ * screen a `string`. Those call sites used to be written `t(entry.key as never)`
+ * — the check switched off at exactly the places a missing translation comes
+ * from. `useTk` is now honest about being dynamic, and this is the guarantee
+ * that replaces the cast.
+ */
+describe("keys the sim emits", () => {
+  const SIM = join(UI, "..", "sim");
+  const DATA = join(UI, "..", "data");
+
+  function sources(dir: string): string[] {
+    return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) return sources(path);
+      if (!entry.name.endsWith(".ts") || entry.name.endsWith(".test.ts")) return [];
+      return [readFileSync(path, "utf8")];
+    });
+  }
+
+  const code = [...sources(SIM), ...sources(DATA)].join("\n");
+
+  /** Key literals, by the shapes the sim actually writes them in. */
+  const emitted = new Set<string>();
+  for (const re of [
+    // log(state, kind, "key.name", …) and note(trip, kind, "key.name", …)
+    /\b(?:log|note)\(\s*[^,]+,\s*[^,]+,\s*"([a-z][\w.]*\.[\w.]+)"/g,
+    // key: "x", prompt: "x", label: "x", title: "x", detail: "x"
+    /\b(?:key|prompt|label|title|detail)\s*:\s*"([a-z][\w.]*\.[\w.]+)"/g,
+  ]) {
+    for (const m of code.matchAll(re)) emitted.add(m[1] as string);
+  }
+  // The Desk's `say` helper takes a *stem* and appends both halves itself.
+  for (const m of code.matchAll(/\bsay\(\s*[^,]+,\s*[^,]+,\s*"([a-z][\w.]*)"/g)) {
+    emitted.add(`${m[1]}.title`);
+    emitted.add(`${m[1]}.detail`);
+  }
+
+  it("finds keys to check", () => {
+    expect(emitted.size).toBeGreaterThan(40);
+  });
+
+  it("has an English string for each", () => {
+    const missing = [...emitted].filter((k) => !(k in en)).sort();
+    expect(missing, `sim emits keys with no English string:\n  ${missing.join("\n  ")}`).toEqual(
+      [],
+    );
+  });
+
+  it("has a Portuguese string for each", () => {
+    const missing = [...emitted].filter((k) => !(k in pt)).sort();
+    expect(missing, `sim emits keys with no Portuguese string:\n  ${missing.join("\n  ")}`).toEqual(
+      [],
+    );
+  });
+});

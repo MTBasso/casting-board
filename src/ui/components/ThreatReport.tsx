@@ -1,4 +1,4 @@
-import { useT } from "../i18n.js";
+import { useT, useTk } from "../i18n.js";
 import { TYPES, type Gym, type TypeId } from "../../sim/index.js";
 import { effectiveness } from "../../data/typechart.js";
 import { TypeBadge } from "./TypeBadge.js";
@@ -11,6 +11,7 @@ import { TYPE_COLORS } from "../typeColors.js";
  */
 export function ThreatReport({ gym }: { gym: Gym }) {
   const t = useT();
+  const tk = useTk();
   const rows = TYPES.map((t) => ({
     type: t,
     share: gym.threat.distribution[t],
@@ -27,7 +28,7 @@ export function ThreatReport({ gym }: { gym: Gym }) {
       <div className="threat-head">
         <h3>{t("threat.title")}</h3>
         <span className={`status-pill status-${gym.threat.status}`}>
-          {t(`threat.${gym.threat.status}` as never)}
+          {tk(`threat.${gym.threat.status}`)}
         </span>
       </div>
       <p className="threat-sub">

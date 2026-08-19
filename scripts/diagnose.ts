@@ -78,14 +78,17 @@ function play(state: LeagueState): void {
     }
     for (const trainer of fieldStaff(state, role)) {
       if (postingFor(state, trainer.id)) continue;
-      const bench = Object.values(state.creatures)
-        .filter((c) => c.role === "reserve" && c.owned)
-        .sort((a, b) => a.level - b.level);
-      for (const c of bench.slice(0, Math.max(0, bench.length - 6))) {
-        if (crewOf(state, trainer.id).length >= trainer.partyCap) break;
-        addToCrew(state, c.id, trainer.id);
+      // Rangers work alone; only a Handler needs anyone with them.
+      if (role === "handler") {
+        const bench = Object.values(state.creatures)
+          .filter((c) => c.role === "reserve" && c.owned)
+          .sort((a, b) => a.level - b.level);
+        for (const c of bench.slice(0, Math.max(0, bench.length - 6))) {
+          if (crewOf(state, trainer.id).length >= trainer.partyCap) break;
+          addToCrew(state, c.id, trainer.id);
+        }
+        if (crewOf(state, trainer.id).length === 0) continue;
       }
-      if (crewOf(state, trainer.id).length === 0) continue;
       for (const route of [...eligibleRoutes(state)].sort((a, b) => b.levelMax - a.levelMax)) {
         if (canPost(state, route.id, trainer.id).ok) {
           post(state, route.id, trainer.id);

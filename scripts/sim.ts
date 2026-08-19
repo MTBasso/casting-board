@@ -205,14 +205,17 @@ function greedyPolicy(
 
       // Crew from the box, on-type — the same rule a gym obeys.
       // Only from genuine surplus, so casting the board always wins the tie.
-      const bench = Object.values(state.creatures)
-        .filter((c) => c.role === "reserve" && c.owned)
-        .sort((a, b) => a.level - b.level);
-      for (const c of bench.slice(0, Math.max(0, bench.length - 6))) {
-        if (crewOf(state, trainer.id).length >= trainer.partyCap) break;
-        addToCrew(state, c.id, trainer.id);
+      // Rangers work alone; only a Handler needs anyone with them.
+      if (role === "handler") {
+        const bench = Object.values(state.creatures)
+          .filter((c) => c.role === "reserve" && c.owned)
+          .sort((a, b) => a.level - b.level);
+        for (const c of bench.slice(0, Math.max(0, bench.length - 6))) {
+          if (crewOf(state, trainer.id).length >= trainer.partyCap) break;
+          addToCrew(state, c.id, trainer.id);
+        }
+        if (crewOf(state, trainer.id).length === 0) continue;
       }
-      if (crewOf(state, trainer.id).length === 0) continue;
 
       const routes = [...eligibleRoutes(state)].sort((a, b) => {
         if (role === "ranger") {

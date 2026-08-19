@@ -99,12 +99,15 @@ function postEveryone(state: LeagueState): void {
     for (const trainer of fieldStaff(state, role)) {
       if (postingFor(state, trainer.id)) continue;
 
-      const bench = Object.values(state.creatures)
-        .filter((c) => c.role === "reserve" && c.owned)
-        .sort((a, b) => b.level - a.level);
-      for (const c of bench) {
-        if (crewOf(state, trainer.id).length >= trainer.partyCap) break;
-        addToCrew(state, c.id, trainer.id);
+      // Rangers work alone; only a Handler needs anyone with them.
+      if (role === "handler") {
+        const bench = Object.values(state.creatures)
+          .filter((c) => c.role === "reserve" && c.owned)
+          .sort((a, b) => b.level - a.level);
+        for (const c of bench) {
+          if (crewOf(state, trainer.id).length >= trainer.partyCap) break;
+          addToCrew(state, c.id, trainer.id);
+        }
       }
 
       for (const route of routes) {

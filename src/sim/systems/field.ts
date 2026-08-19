@@ -449,20 +449,6 @@ export function reserveCeiling(state: LeagueState): number {
   );
 }
 
-/**
- * Whether any trainer on the board is fielding less than they could.
- *
- * While someone is short, the league still needs creatures, whatever the box
- * happens to be holding.
- */
-function anyoneShort(state: LeagueState): boolean {
-  for (const t of Object.values(state.trainers)) {
-    if (t.kind === "candidate" || t.kind === "ranger" || t.kind === "handler") continue;
-    if (t.party.length < partyCapOf(t, state)) return true;
-  }
-  return false;
-}
-
 /** Types some trainer on the board could actually field. */
 function fieldableTypes(state: LeagueState): Set<string> {
   const types = new Set<string>();
@@ -552,11 +538,14 @@ export function tickField(state: LeagueState, dt: number, report: TickReport): v
   if (state.postings.length === 0) return;
 
   releaseSpillover(state, report);
-  // A full box only stops the work when nobody is waiting on it. The ceiling
-  // exists to stop hoarding, not to stop the league being staffed — and it was
-  // doing the second: gyms stood at one creature while catching sat idle
-  // against a box full of types those gyms could not field.
-  const boxFull = usableReserve(state) >= reserveCeiling(state) && !anyoneShort(state);
+  // The ceiling is absolute. Exempting "somebody is short-handed" was tried and
+  // is a trap: a gym can be short of a type *no open route supplies*, so the
+  // exemption never resolves and the roster ran to thirteen hundred creatures.
+  //
+  // A gym starved of its own type is a supply problem, and the game already has
+  // the answer to it — the Trade Desk, which exists to turn the types you have
+  // into the type you need.
+  const boxFull = usableReserve(state) >= reserveCeiling(state);
 
   for (const posting of [...state.postings]) {
     const trainer = state.trainers[posting.trainerId];

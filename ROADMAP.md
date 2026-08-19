@@ -1004,8 +1004,13 @@ in the low millions rather than at fifty.
 needed 125 wins to reach the bar — fine when one creature took every bout,
 hopeless once each slot saw a quarter of the traffic.
 
-**Catching no longer stalls while gyms stand short.** The box ceiling exists to
-stop hoarding, not to stop the league being staffed, and it was doing the second.
+**The box ceiling stays absolute.** Exempting "somebody is short-handed" was
+tried twice — unconditionally, then narrowed to "and nothing of their type is
+waiting" — and both are traps, because a gym can be short of a type *no open
+route supplies*, so the exemption never resolves. The roster ran to 904 and then
+1,273 creatures. A gym starved of its own type is a supply problem, and the game
+already has the answer: the Trade Desk turns the types you have into the type
+you need.
 
 ### The Field, rebuilt around the route
 

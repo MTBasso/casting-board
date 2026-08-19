@@ -274,7 +274,7 @@ button { font: inherit; color: inherit; }
 
 .gym-card {
   display: grid;
-  grid-template-columns: 0.3rem 1fr auto;
+  grid-template-columns: 0.3rem 1fr auto auto;
   align-items: center;
   gap: 0 0.75rem;
   width: 100%;
@@ -287,7 +287,10 @@ button { font: inherit; color: inherit; }
 }
 
 .gym-card:hover { border-color: var(--muted); }
-.gym-card.is-selected { border-color: var(--accent); background: var(--sunken); }
+.gym-card.is-selected {
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--rule));
+  background: var(--sunken);
+}
 
 .gym-type { align-self: stretch; border-radius: 2px; min-height: 2.5rem; }
 .gym-type.lg { width: 0.4rem; min-height: 2.75rem; }
@@ -551,15 +554,14 @@ button { font: inherit; color: inherit; }
 
 /* ---------- undercard readout ---------- */
 
+/* A footnote, and it should look like one. It used to be a sunken box with an
+   accent rail — the visual weight of a callout on a line that reports how many
+   battles the juniors absorbed. */
 .absorbed {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   color: var(--muted);
-  margin: 0 0 0.75rem;
-  padding: 0.5rem 0.65rem;
-  background: var(--sunken);
-  border-left: 2px solid var(--accent);
-  border-radius: 0 var(--radius) var(--radius) 0;
-  max-width: 46ch;
+  margin: 0 0 0.6rem;
+  max-width: 60ch;
 }
 .absorbed strong {
   color: var(--accent);
@@ -1346,7 +1348,10 @@ body { padding-bottom: 3rem; }
 
 /* ---------- pc box ---------- */
 
-.single-screen.wide { max-width: 72rem; }
+/* The PC and the Hall are capped at 72rem; on a wider window that cap used to
+   pin them against the left edge with dead space beside them. Centred, the box
+   reads as a page rather than as a column that ran out. */
+.single-screen.wide { max-width: 72rem; margin-inline: auto; }
 
 .box-nav {
   display: flex;
@@ -3181,4 +3186,81 @@ body { padding-bottom: 3rem; }
   font-size: 0.8125rem;
   background: color-mix(in srgb, var(--accent) 10%, transparent);
   border-radius: var(--radius);
+}
+
+
+/* ---------- the gym screen ---------- */
+
+/* A vacancy, where a Leader's face would be. */
+.gym-vacant {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 6px;
+  border: 1px dashed var(--rule);
+  color: var(--muted);
+  font-size: 1.1rem;
+}
+.gym-vacant.lg { width: 72px; height: 72px; font-size: 1.5rem; }
+
+/* The gym as a place with a person in it.
+   `--gym` is the type colour, set inline; everything here is derived from it so
+   each gym looks like itself rather than like the eight others. */
+.gym-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--gym, var(--accent)) 35%, var(--rule));
+  border-left: 4px solid var(--gym, var(--accent));
+  background:
+    linear-gradient(
+      100deg,
+      color-mix(in srgb, var(--gym, var(--accent)) 18%, transparent),
+      transparent 62%
+    ),
+    var(--surface);
+}
+
+.gym-banner-id { flex: 1; min-width: 0; display: grid; gap: 0.2rem; }
+.gym-banner h2 { margin: 0; font-size: 1.35rem; letter-spacing: -0.02em; }
+.gym-banner-sub {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+.gym-banner-sub b { color: var(--ink); font-weight: 600; }
+.gym-banner-sub .dot { color: var(--rule); }
+
+/* Junior trainers: a face, a name, and the creatures they actually field.
+   A gym trainer whose team you cannot see is a number, and this game is about
+   creatures being individuals. */
+.trainer-row .trainer-head { align-items: center; gap: 0.6rem; }
+.trainer-row .trainer-id { gap: 0.1rem; min-width: 0; }
+.trainer-name { font-size: 0.875rem; font-weight: 600; }
+
+.mini-party li {
+  position: relative;
+  transition: transform 120ms ease;
+}
+.mini-party li:hover { transform: translateY(-2px); }
+/* Worn out, and it shows without needing a number read. */
+.mini-party li.is-spent { opacity: 0.45; }
+
+.empty.sm { font-size: 0.75rem; margin: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mini-party li { transition: none; }
+  .mini-party li:hover { transform: none; }
+}
+
+@media (max-width: 640px) {
+  .gym-banner { flex-wrap: wrap; gap: 0.75rem; }
+  .gym-banner h2 { font-size: 1.15rem; }
 }

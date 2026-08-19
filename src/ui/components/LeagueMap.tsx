@@ -4,6 +4,7 @@ import { constants, gymChallengeInterval } from "../../sim/index.js";
 import { isDone, leaderStanding, shieldOf, useReplay } from "../replay.js";
 import { TYPE_COLORS } from "../typeColors.js";
 import { useT } from "../i18n.js";
+import { Portrait } from "./Portrait.js";
 
 /**
  * What this gym is doing right now.
@@ -128,6 +129,16 @@ export function LeagueMap({
                 </span>
                 <GymBar gymId={id} />
               </span>
+              {/* The Leader's face, because a gym is a person before it is a
+                  row. Without it the list is eight identical rectangles that
+                  differ only in a word. */}
+              {leader ? (
+                <Portrait trainer={leader} size={52} />
+              ) : (
+                <span className="gym-vacant" aria-hidden="true">
+                  ?
+                </span>
+              )}
               <span className={`light light-${gym.threat.status}`} aria-hidden="true" />
               <span className="sr-only">
                 {t(`threat.${gym.threat.status}` as const)}

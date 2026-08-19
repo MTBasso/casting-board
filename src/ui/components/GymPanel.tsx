@@ -1,5 +1,6 @@
+import type { CSSProperties } from "react";
 import { useGame } from "../../engine/store.js";
-import { useT } from "../i18n.js";
+import { useT, type Key } from "../i18n.js";
 import { Sprite } from "./Sprite.js";
 import { StaffStanding } from "./StaffStanding.js";
 import { Portrait } from "./Portrait.js";
@@ -49,20 +50,37 @@ export function GymPanel({ gymId }: { gymId: string }) {
 
   return (
     <div className="panel">
-      <header className="panel-head">
-        <span className="gym-type lg" style={{ background: TYPE_COLORS[gym.type] }} />
-        {leader && <Portrait trainer={leader} size={52} />}
-        <div>
+      {/* The gym as a place with a person in it, washed in its own type colour.
+          The header used to be a coloured sliver, a name and a line of mono
+          text — accurate, and it read like a database row for something the
+          player is meant to feel ownership of. */}
+      <header
+        className="gym-banner"
+        style={{ "--gym": TYPE_COLORS[gym.type] } as CSSProperties}
+      >
+        {leader ? (
+          <Portrait trainer={leader} size={72} />
+        ) : (
+          <span className="gym-vacant lg" aria-hidden="true">
+            ?
+          </span>
+        )}
+        <div className="gym-banner-id">
           <h2>{gym.name}</h2>
-          <p className="panel-sub">
+          <p className="gym-banner-sub">
             {leader ? (
               <>
-                {leader.name} · {leader.doctrine}
+                <b>{leader.name}</b>
+                <span className="dot" aria-hidden="true">
+                  ·
+                </span>
+                {t(`arch.${leader.doctrine}` as Key, {})}
               </>
             ) : (
               t("gyms.noLeader")
             )}
           </p>
+          {leader && <StaffStanding trainer={leader} />}
         </div>
         {!leader && (
           <button
@@ -75,8 +93,6 @@ export function GymPanel({ gymId }: { gymId: string }) {
           </button>
         )}
       </header>
-
-      {leader && <StaffStanding trainer={leader} />}
 
       <BattleFeed gymId={gym.id} />
 
@@ -171,30 +187,37 @@ function TrainerRow({ trainer }: { trainer: Trainer }) {
   return (
     <li className="trainer-row">
       <div className="trainer-head">
+        <Portrait trainer={trainer} size={44} />
         <span className="trainer-id">
-          <Portrait trainer={trainer} size={34} />
-          <span>{trainer.name}</span>
+          <span className="trainer-name">{trainer.name}</span>
           <span className="dim">
-            {trainer.affinity} · {trainer.doctrine}
+            {trainer.affinity} · {t(`arch.${trainer.doctrine}` as Key, {})}
           </span>
-        </span>
-        <span className="dim">
-          {party.length}/{partyCapOf(trainer, state)} · avg Lv{avgLevel} · {t("gyms.rested", { n: rested })}
+          <span className="dim">
+            {party.length}/{partyCapOf(trainer, state)} · Lv{avgLevel} ·{" "}
+            {t("gyms.rested", { n: rested })}
+          </span>
         </span>
       </div>
 
       <StaffStanding trainer={trainer} />
 
-      <ul className="mini-party">
-        {party.map((c) => {
-          return (
-            <li key={c.id} title={`${creatureName(c)} · Lv${c.level} · ${c.power} power`}>
-              <Sprite speciesId={c.speciesId} kind="icon" size={38} />
+      {party.length === 0 ? (
+        <p className="empty sm">{t("gyms.noParty")}</p>
+      ) : (
+        <ul className="mini-party">
+          {party.map((c) => (
+            <li
+              key={c.id}
+              className={c.fatigue > 0.6 ? "is-spent" : ""}
+              title={`${creatureName(c)} · Lv${c.level} · ${c.power} ${t("pc.power")}`}
+            >
+              <Sprite speciesId={c.speciesId} kind="icon" size={44} />
               <span className="mini-level">Lv{c.level}</span>
             </li>
-          );
-        })}
-      </ul>
+          ))}
+        </ul>
+      )}
     </li>
   );
 }

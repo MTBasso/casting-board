@@ -4,7 +4,7 @@ export const TABS: { id: TabId; label: string }[] = [
   { id: "desk", label: "Desk" },
   { id: "gyms", label: "Gyms" },
   { id: "pc", label: "PC Box" },
-  { id: "field", label: "Field" },
+  { id: "field", label: "Map" },
   { id: "staff", label: "Elite" },
   { id: "hall", label: "Hall" },
   { id: "daycare", label: "Day-Care" },

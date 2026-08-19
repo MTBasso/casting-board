@@ -326,17 +326,58 @@ export interface Route {
   name: string;
   /** Weights over types. Need not be normalized. */
   supply: TypeTally;
-  /** Peak renown needed before this route can appear in an offer. */
-  unlockAt: number;
-  /** Cost to scout here. */
-  cost: number;
-  /** How many creatures come back. */
-  yieldMin: number;
-  yieldMax: number;
   /** Level band of creatures found here. */
   levelMin: number;
   levelMax: number;
+  /**
+   * Ground you can reach from here.
+   *
+   * A web rather than a tree, deliberately: with loops, *where a crew currently
+   * stands* decides what they can open next, and two crews on opposite sides of
+   * the map open different frontiers. A tree would make the shortest path to
+   * anything fixed, and the map a checklist with a nicer picture.
+   */
+  neighbours: readonly string[];
+  /** Where it sits on the drawn map, 0..100 in each axis. */
+  at: { x: number; y: number };
+  /** Open from the first hour, with no exploring needed. */
+  starting: boolean;
+  /**
+   * The creature that lives here and nowhere else.
+   *
+   * Found on arrival. This is the thing you would tell somebody about the route
+   * — the reason it is a place rather than the next set of numbers along.
+   */
+  resident: string;
+  /** What arriving here permanently gives you. */
+  landmark: Landmark;
+  /** How dangerous the ground is in itself, before the crew is considered. */
+  peril: number;
 }
+
+/**
+ * A permanent property of a route, found on arrival.
+ *
+ * The resident is what makes a route memorable; the landmark is what makes it
+ * worth going back to.
+ */
+export interface Landmark {
+  name: string;
+  blurb: string;
+  effect: LandmarkEffect;
+}
+
+export type LandmarkEffect =
+  /** Trips from here consume fewer Poké Balls per catch. */
+  | "plentiful"
+  /** The crew recovers between events; hazards cost less. */
+  | "sheltered"
+  /** Rarer species turn up more often. */
+  | "storied"
+  /** Expeditions here pay more. */
+  | "lucrative"
+  /** Familiarity with this route grows faster. */
+  | "mapped";
 
 // ---------------------------------------------------------------------------
 // League state
@@ -487,41 +528,124 @@ export interface Challenger {
   revives: number;
 }
 
+export type FieldRole = "ranger" | "handler";
+
 /**
- * A Ranger working a route, with the creature that works it alongside them.
+ * What a crew is like.
  *
- * The field partner is the concept draft's whole anti-duplicate thesis made
- * literal: your fortieth Zubat is not inventory, it is somebody's working
- * partner. Route work costs fatigue and never career, so a posting is honest
- * work that never uses anyone up.
+ * One trait for the pair, because the personality belongs to *the sum of the
+ * two* — and because events need a hook they can ask a question of. "What does a
+ * Reckless crew do here" is a sentence; a matrix of temperament values is not.
+ *
+ * It is also the mechanism that lets an idle game hold a real choice: an event
+ * the player never answers is resolved by the crew, in character.
  */
-export interface Posting {
-  routeId: string;
-  trainerId: string;
+export type CrewTrait = "meticulous" | "reckless" | "patient" | "lucky";
+
+/**
+ * Two people who work together.
+ *
+ * Hired as a unit and posted as a unit — the Field used to be two payrolls and
+ * two lists, which is why it read as two half-features sharing a screen. The
+ * Ranger's type decides what they bring back; the Handler's decides who they can
+ * train, so a crew's coverage is a real thing to compare between offers.
+ */
+export interface Crew {
+  id: string;
+  rangerId: string;
+  handlerId: string;
+  trait: CrewTrait;
   /**
-   * What this posting is for. Rangers bring creatures back; Handlers bring the
-   * ones they took stronger. Both are a trainer standing on a route with their
-   * party, which is why they share a shape.
+   * Competence on each route, by id. Never decays.
+   *
+   * Distinct from the league's knowledge of a route: knowledge is what lives
+   * there and what to expect, and it is shared. Competence is *this crew* on
+   * *this ground*, and a new crew does badly on well-known ground.
+   *
+   * It does not decay because decay would punish the one thing the map exists
+   * to encourage — going somewhere new means neglecting somewhere known.
    */
-  role: FieldRole;
-  /** Sim-seconds banked toward the next catch or training round. */
-  progress: number;
-  /** Creatures brought in since this posting began. Rangers only. */
-  caught: number;
-  /** Pokéyen earned since this posting began. Handlers only. */
-  earned: number;
-  /** Times the party has come back beaten. Handlers only. */
-  beaten: number;
-  /** True while the party is sitting the shift out to recover. */
-  resting: boolean;
-  /**
-   * Sim-time this posting ends of its own accord, or null if it stands until
-   * recalled. Rangers work shifts; Handlers stay.
-   */
-  endsAt: number | null;
+  familiar: Record<string, number>;
 }
 
-export type FieldRole = "ranger" | "handler";
+/** What a crew was sent out with. Every line of it costs money up front. */
+export interface Kit {
+  /** Caps how many they can catch, and so how long they stay out. */
+  balls: number;
+  /** Absorbs hazards. Runs out, and a rough route sends them home early. */
+  potions: number;
+  /** Insurance against one disaster. You hope to waste them. */
+  revives: number;
+  /** Biases the draw toward rarer species. The greed option. */
+  lures: number;
+}
+
+export interface FieldEvent {
+  kind: "encounter" | "hazard" | "trouble" | "windfall" | "discovery";
+  text: string;
+  at: number;
+}
+
+/**
+ * A choice an event is holding open.
+ *
+ * If the player does not answer within `decidesAt`, the crew decides for
+ * themselves according to their trait. That default has to be defensible — an
+ * idle game that punishes you for sleeping is punishing you for playing it the
+ * way it is built.
+ */
+export interface PendingChoice {
+  id: string;
+  prompt: string;
+  options: { id: string; label: string }[];
+  /** Sim-time the crew stops waiting and acts in character. */
+  decidesAt: number;
+}
+
+/**
+ * A crew out on the ground.
+ *
+ * There is no such thing as a standing posting any more. Every trip is outfitted
+ * and finite: they work until the Poké Balls run out or they are too beaten to
+ * carry on, and then they come home. How long that is, is what you chose when
+ * you paid for the kit.
+ */
+export interface Expedition {
+  crewId: string;
+  routeId: string;
+  /** Working the ground, or pushing on to what lies beyond it. */
+  objective: "work" | "explore";
+  /** The route being pushed toward, when exploring. */
+  towardId: string | null;
+  /** What is left of the kit. */
+  kit: Kit;
+  /** What was bought, for the report when they return. */
+  bought: Kit;
+  spent: number;
+  /** Creatures the Handler took to train. */
+  party: string[];
+  progress: number;
+  caught: number;
+  earned: number;
+  /** How worn the crew is, 0..1. At 1 they come home. */
+  hurt: number;
+  log: FieldEvent[];
+  pending: PendingChoice | null;
+  startedAt: number;
+}
+
+/** A crew on offer, with everything you need to judge them. */
+export interface CrewOffer {
+  id: string;
+  rangerType: TypeId;
+  handlerType: TypeId;
+  trait: CrewTrait;
+  rangerName: string;
+  handlerName: string;
+  rangerLook: string;
+  handlerLook: string;
+  cost: number;
+}
 
 export type Tier = "regional" | "national" | "world";
 
@@ -699,18 +823,28 @@ export interface LeagueState {
   titleLost: boolean;
   /** People who left and intend to come back for the league. */
   grudges: Grudge[];
-  /** Field staff currently working routes. */
-  postings: Posting[];
-  /** Sim-seconds until auto-managed Handlers reconsider their crews. */
-  crewReviewIn: number;
+  /** Crews on the payroll. */
+  crews: Crew[];
+  /** Crews currently out. */
+  expeditions: Expedition[];
+  /** Crews on offer, drawn rather than chosen. */
+  crewOffer: CrewOffer[];
+  /** Ground the league has reached. Route ids. */
+  explored: string[];
   /**
-   * Types on offer when hiring field staff, per role.
+   * The league's knowledge of each route, as expeditions completed there.
    *
-   * Drawn rather than chosen. Picking freely made a Ranger a component you
-   * bought; being *offered* three types means the staff you end up with is
-   * partly the staff that turned up, exactly as the Leader offer works.
+   * Shared, unlike a crew's competence: knowing what lives on Hollow Wood is a
+   * fact about the league, and it is what gates pushing on to the ground beyond.
    */
-  fieldOffer: Record<FieldRole, TypeId[]>;
+  known: Record<string, number>;
+  /**
+   * Species the player has told crews not to bring back, per route.
+   *
+   * The beginning of a Pokédex: to ban something you have to have seen it, so
+   * the game is already keeping the list.
+   */
+  bans: Record<string, string[]>;
   /**
    * Wall-clock ms at the last save. The 15-day rule needs real elapsed time,
    * which credited sim time cannot answer — offline is capped at twelve hours.

@@ -1,20 +1,29 @@
 import { catalog, encounterWeight, minLevelFor } from "../../data/catalog.js";
-import { ROUTES, routeById, routesUpTo } from "../../data/routes.js";
-import { RANGER, HANDLER, FIELD, SCOUTING, STAFF } from "../constants.js";
-import { makeCreature, makeTrainer } from "../factory.js";
-import { chance, int, pick, weighted } from "../rng.js";
-import { rangerSlots, handlerSlots, hasSurvey } from "./facilities.js";
+import {
+  ROUTES,
+  neighboursOf,
+  routeById,
+  startingRoutes,
+} from "../../data/routes.js";
+import { FIELD, KIT, SCOUTING, STAFF, TRAITS } from "../constants.js";
+import { makeCreature, makeTrainer, nextId, pickLook } from "../factory.js";
+import { trainerName } from "../../data/names.js";
+import { chance, int, pick, range, weighted } from "../rng.js";
+import { catcherSlots } from "./facilities.js";
 import { gainXp } from "./growth.js";
 import { isSuspended } from "./morale.js";
-import { canJoin, candidatesFor, leaveParty, partyCapOf } from "./party.js";
+import { canJoin, candidatesFor, leaveParty } from "./party.js";
 import { displayName } from "./wave.js";
 import { log } from "../tick.js";
 import { TYPES } from "../types.js";
 import type {
   Creature,
-  FieldRole,
+  Crew,
+  CrewOffer,
+  CrewTrait,
+  Expedition,
+  Kit,
   LeagueState,
-  Posting,
   Route,
   TickReport,
   Trainer,
@@ -22,626 +31,421 @@ import type {
 } from "../types.js";
 
 /**
- * Field staff: Rangers, and Handlers.
+ * The Field: crews, the ground, and what happens out there.
  *
- * Both are a trainer standing on a route with their own party, which is why
- * they share a module and a `Posting`. What differs is what the route gives
- * back.
+ * Three ideas, and the whole feature is the three of them together.
  *
- *   Rangers  bring creatures *in*. One partner, and the ground has to be
- *             within that partner's reach.
- *   Handlers  bring the ones they took back *stronger*, and paid. Up to four,
- *             and the ground may be deliberately over their heads.
+ * **A crew is one hire.** Two people who already work together — the Ranger
+ * brings creatures back, the Handler raises the ones they took. They were two
+ * separate payrolls, which is why the screen read as two half-features sharing
+ * a tab, and why neither half ever cared what the other did.
  *
- * Three rules hold for both:
+ * **The ground is a map.** Sixteen places in a web with loops, three of them
+ * open from the first hour and the rest reached by pushing on from somewhere you
+ * know well. Routes stopped unlocking by a renown number nobody acts on; you get
+ * there by going there.
  *
- *   - **type-bound, like everyone else.** A Fire Ranger works with Fire
- *     creatures. Field staff used to be the one place in the league where type
- *     did not matter, which made them the one place with no casting decision.
- *   - **the route caps them.** Route work levels a creature only to the top of
- *     the route's band, so outgrowing a posting is the signal to move on.
- *   - **fatigue, never career.** Routes are the safe posting. A shift, then a
- *     break — the duty cycle is what paces the whole system.
+ * **A trip is finite and paid for up front.** You outfit a crew — balls, potions,
+ * revives, lures — and they work until the balls run out or they are too beaten
+ * to carry on. How long that is, is what you chose at the counter.
  */
 
 function clamp01(n: number): number {
   return Math.max(0, Math.min(1, n));
 }
 
-/** Routes the league has earned access to. */
-export function eligibleRoutes(state: LeagueState): Route[] {
-  return routesUpTo(state.peakRenown);
-}
-
-/** Intel is a purchase, made before committing anyone to a route. */
-export function hasIntel(state: LeagueState, routeId: string): boolean {
-  return state.routeIntel[routeId] === true || hasSurvey(state);
-}
-
-export function intelCost(routeId: string): number {
-  const route = routeById(routeId);
-  return route ? Math.round(route.cost * RANGER.intelCostFactor) : 0;
-}
-
-export function buyIntel(
-  state: LeagueState,
-  routeId: string,
-): { ok: true } | { ok: false; reason: string } {
-  if (hasIntel(state, routeId)) return { ok: false, reason: "Already surveyed" };
-  const cost = intelCost(routeId);
-  if (state.money < cost) return { ok: false, reason: `Costs ${cost}` };
-  state.money -= cost;
-  state.routeIntel[routeId] = true;
-  return { ok: true };
-}
-
 // ---------------------------------------------------------------------------
-// Hiring — the offer, not the catalogue
+// The map
 // ---------------------------------------------------------------------------
 
-/**
- * The level field staff arrive with.
- *
- * Pegged to the easiest ground the league has open, so a new hire can always be
- * put to work immediately, and rising with renown so late hires are not useless.
- */
-export function fieldStartingLevel(state: LeagueState): number {
-  const open = eligibleRoutes(state);
-  const floor = open.length > 0 ? Math.min(...open.map((r) => r.levelMin)) : 1;
-  return Math.max(floor, Math.round((state.peakRenown / 1000) * RANGER.levelPerThousandRenown));
+/** Ground the league has reached. */
+export function openRoutes(state: LeagueState): Route[] {
+  return ROUTES.filter((r) => state.explored.includes(r.id));
 }
 
-export function fieldStaff(state: LeagueState, role: FieldRole): Trainer[] {
-  return Object.values(state.trainers).filter((t) => t.kind === role);
+export function isOpen(state: LeagueState, routeId: string): boolean {
+  return state.explored.includes(routeId);
 }
 
-export function rangers(state: LeagueState): Trainer[] {
-  return fieldStaff(state, "ranger");
+/** How well the league knows this ground, 0..1. */
+export function knownOf(state: LeagueState, routeId: string): number {
+  return clamp01((state.known[routeId] ?? 0) / FIELD.tripsToPushOn);
 }
 
-export function handlers(state: LeagueState): Trainer[] {
-  return fieldStaff(state, "handler");
+/** Whether the league knows this ground well enough to push on from it. */
+export function canPushOnFrom(state: LeagueState, routeId: string): boolean {
+  return knownOf(state, routeId) >= 1;
 }
 
-export function slotsAvailable(state: LeagueState, role: FieldRole): number {
-  return role === "ranger"
-    ? RANGER.baseSlots + rangerSlots(state)
-    : HANDLER.baseSlots + handlerSlots(state);
-}
-
-export function hireCost(state: LeagueState, role: FieldRole): number {
-  const n = fieldStaff(state, role).length;
-  return Math.round(
-    role === "ranger"
-      ? RANGER.hireCostBase * RANGER.hireCostGrowth ** n
-      : HANDLER.hireCostBase * HANDLER.hireCostGrowth ** n,
-  );
-}
-
-/** Draw a fresh set of types for a role. Distinct, so it is a real choice. */
-export function rollFieldOffer(state: LeagueState, role: FieldRole): void {
-  const pool = [...TYPES];
-  const chosen: TypeId[] = [];
-  while (chosen.length < FIELD.offerSize && pool.length > 0) {
-    const [taken] = pool.splice(int(state.rng, 0, pool.length - 1), 1);
-    if (taken) chosen.push(taken);
-  }
-  state.fieldOffer[role] = chosen;
-}
-
-export function fieldOffer(state: LeagueState, role: FieldRole): TypeId[] {
-  if (state.fieldOffer[role].length === 0) rollFieldOffer(state, role);
-  return state.fieldOffer[role];
-}
-
-export function canHire(
-  state: LeagueState,
-  role: FieldRole,
-): { ok: true; cost: number } | { ok: false; reason: string } {
-  if (fieldStaff(state, role).length >= slotsAvailable(state, role)) {
-    const where = role === "ranger" ? "Scouting Office" : "Training Grounds";
-    return { ok: false, reason: `No slots left — upgrade the ${where}` };
-  }
-  const cost = hireCost(state, role);
-  if (state.money < cost) return { ok: false, reason: `Costs ${cost}` };
-  return { ok: true, cost };
-}
-
-/**
- * Hire one of the types currently on offer.
- *
- * Refusing a type you cannot use is a real cost, because the offer redraws and
- * the next one may be worse — which is the trade-off free choice never had.
- */
-export function hire(
-  state: LeagueState,
-  role: FieldRole,
-  type: TypeId,
-): { ok: true; trainerId: string } | { ok: false; reason: string } {
-  const check = canHire(state, role);
-  if (!check.ok) return check;
-  if (!fieldOffer(state, role).includes(type)) {
-    return { ok: false, reason: "Not on offer" };
-  }
-
-  state.money -= check.cost;
-  // A Ranger works alone. Their job is to find creatures, not to train them —
-  // pairing them with a partner meant every Ranger tied up a creature that a
-  // gym could have fielded, and gave the role a training function it was
-  // explicitly not supposed to have.
-  const cap = role === "ranger" ? 0 : HANDLER.partyMax;
-  // They arrive with a working partner, not a hatchling. A level 1 signature
-  // meant a Ranger could never be posted anywhere at all — every route has a
-  // floor, and theirs was below all of them.
-  const trainer = makeTrainer(state, type, role, {
-    partyCap: cap,
-    level: fieldStartingLevel(state),
-  });
-  trainer.salary =
-    STAFF.baseSalaryPerHour *
-    (role === "ranger" ? RANGER.salaryFactor : HANDLER.salaryFactor);
-
-  if (role === "ranger") {
-    // Even the signature creature goes to the box: a Ranger travels light.
-    for (const id of trainer.party) {
-      const c = state.creatures[id];
-      if (c) {
-        c.role = "reserve";
-        c.trainerId = null;
-      }
-    }
-    trainer.party = [];
-    trainer.signatureId = "";
-  } else {
-    for (const id of trainer.party) {
-      const c = state.creatures[id];
-      if (c) c.role = "field";
+/** Everywhere reachable from open ground that has not been reached yet. */
+export function frontier(state: LeagueState): { from: Route; to: Route }[] {
+  const out: { from: Route; to: Route }[] = [];
+  for (const from of openRoutes(state)) {
+    if (!canPushOnFrom(state, from.id)) continue;
+    for (const to of neighboursOf(from.id)) {
+      if (isOpen(state, to.id)) continue;
+      if (out.some((e) => e.to.id === to.id)) continue;
+      out.push({ from, to });
     }
   }
-
-  rollFieldOffer(state, role);
-  return { ok: true, trainerId: trainer.id };
-}
-
-/** Redraw without hiring. Costs the offer you had. */
-export function passOnOffer(state: LeagueState, role: FieldRole): void {
-  rollFieldOffer(state, role);
+  return out;
 }
 
 // ---------------------------------------------------------------------------
 // Crews
 // ---------------------------------------------------------------------------
 
-export function crewOf(state: LeagueState, trainerId: string): Creature[] {
-  const trainer = state.trainers[trainerId];
-  if (!trainer) return [];
-  return trainer.party
-    .map((id) => state.creatures[id])
-    .filter((c): c is Creature => c !== undefined);
+export function crewSlots(state: LeagueState): number {
+  return FIELD.baseSlots + catcherSlots(state);
+}
+
+export function crewHireCost(state: LeagueState): number {
+  return Math.round(FIELD.hireCostBase * FIELD.hireCostGrowth ** state.crews.length);
 }
 
 /**
- * Whether this creature can join this field trainer's crew.
+ * Draw a fresh set of crews to choose between.
  *
- * Delegates the type rule to `canJoin`, so field staff obey exactly the same
- * casting rules as a Gym Leader — one place decides what "their type" means.
+ * Offered rather than assembled. Picking two individuals off a list made a crew
+ * a component you bought — you already knew which types you wanted, so the only
+ * question was affordability. Being offered *these two people, who work
+ * together, and are like this* is a choice.
  */
-export function canCrew(
-  state: LeagueState,
-  creatureId: string,
-  trainerId: string,
-): { ok: true } | { ok: false; reason: string } {
-  const trainer = state.trainers[trainerId];
-  if (!trainer || (trainer.kind !== "ranger" && trainer.kind !== "handler")) {
-    return { ok: false, reason: "Not field staff" };
+export function rollCrewOffer(state: LeagueState): void {
+  const out: CrewOffer[] = [];
+  for (let i = 0; i < FIELD.offerSize; i++) {
+    const rangerType = pick(state.rng, [...TYPES]);
+    // Usually a second type, sometimes the same — a single-type crew is
+    // narrower and deeper, and that is a legitimate thing to be offered.
+    const handlerType = chance(state.rng, 0.15)
+      ? rangerType
+      : pick(state.rng, TYPES.filter((t) => t !== rangerType));
+
+    out.push({
+      id: `co_${state.time}_${i}_${state.crews.length}`,
+      rangerType,
+      handlerType,
+      trait: pick(state.rng, Object.keys(TRAITS) as CrewTrait[]),
+      rangerName: trainerName(state.rng),
+      handlerName: trainerName(state.rng),
+      rangerLook: pickLook(state.rng, rangerType, "ranger"),
+      handlerLook: pickLook(state.rng, handlerType, "handler"),
+      cost: crewHireCost(state),
+    });
   }
-  if (postingFor(state, trainerId)) {
-    return { ok: false, reason: "Recall them before changing the crew" };
-  }
-  // A trainer's signature creature is welded to them and cannot be borrowed.
-  const owner = state.creatures[creatureId]?.trainerId;
-  if (owner && state.trainers[owner]?.signatureId === creatureId) {
-    return { ok: false, reason: "Their trainer's own partner" };
-  }
-  return canJoin(state, creatureId, trainerId);
+  state.crewOffer = out;
 }
 
-export function addToCrew(
+export function crewOffer(state: LeagueState): CrewOffer[] {
+  if (state.crewOffer.length === 0) rollCrewOffer(state);
+  return state.crewOffer;
+}
+
+export function canHireCrew(
   state: LeagueState,
-  creatureId: string,
-  trainerId: string,
-): { ok: true } | { ok: false; reason: string } {
-  const check = canCrew(state, creatureId, trainerId);
+): { ok: true; cost: number } | { ok: false; reason: string } {
+  if (state.crews.length >= crewSlots(state)) {
+    return { ok: false, reason: "No room — upgrade the Scouting Office" };
+  }
+  const cost = crewHireCost(state);
+  if (state.money < cost) return { ok: false, reason: `Costs ${cost}` };
+  return { ok: true, cost };
+}
+
+export function hireCrew(
+  state: LeagueState,
+  offerId: string,
+): { ok: true; crewId: string } | { ok: false; reason: string } {
+  const check = canHireCrew(state);
   if (!check.ok) return check;
 
-  const trainer = state.trainers[trainerId];
-  const creature = state.creatures[creatureId];
-  if (!trainer || !creature) return { ok: false, reason: "Gone" };
+  const offer = state.crewOffer.find((o) => o.id === offerId);
+  if (!offer) return { ok: false, reason: "Not on offer" };
 
-  leaveParty(state, creatureId);
-  trainer.party.push(creatureId);
-  creature.trainerId = trainerId;
-  creature.gymId = null;
-  // `field` rather than `party`, so auto-fill can never quietly pull someone
-  // off a route to plug a gym. A crew is a commitment.
-  creature.role = "field";
-  return { ok: true };
+  state.money -= check.cost;
+
+  const ranger = makeFieldHand(state, offer.rangerType, "ranger", offer.rangerName, offer.rangerLook);
+  const handler = makeFieldHand(state, offer.handlerType, "handler", offer.handlerName, offer.handlerLook);
+
+  const crew: Crew = {
+    id: nextId(state, "cw"),
+    rangerId: ranger.id,
+    handlerId: handler.id,
+    trait: offer.trait,
+    familiar: {},
+  };
+  state.crews.push(crew);
+  rollCrewOffer(state);
+  return { ok: true, crewId: crew.id };
 }
 
-export function removeFromCrew(state: LeagueState, creatureId: string): void {
-  for (const trainer of Object.values(state.trainers)) {
-    if (trainer.kind !== "ranger" && trainer.kind !== "handler") continue;
-    if (!trainer.party.includes(creatureId)) continue;
-    if (postingFor(state, trainer.id)) return;
-    trainer.party = trainer.party.filter((id) => id !== creatureId);
+/** One half of a crew. They travel light: a Ranger brings nobody of their own. */
+function makeFieldHand(
+  state: LeagueState,
+  type: TypeId,
+  kind: "ranger" | "handler",
+  name: string,
+  look: string,
+): Trainer {
+  const trainer = makeTrainer(state, type, kind, {
+    partyCap: kind === "handler" ? FIELD.partyMax : 0,
+    level: 1,
+  });
+  trainer.name = name;
+  trainer.look = look;
+  trainer.salary = STAFF.baseSalaryPerHour * FIELD.salaryFactor;
+
+  for (const id of trainer.party) {
+    const c = state.creatures[id];
+    if (c) {
+      c.role = "reserve";
+      c.trainerId = null;
+    }
   }
-  const creature = state.creatures[creatureId];
-  if (creature) {
-    creature.role = "reserve";
-    creature.trainerId = null;
-  }
+  trainer.party = [];
+  trainer.signatureId = "";
+  return trainer;
 }
 
-// ---------------------------------------------------------------------------
-// Postings
-// ---------------------------------------------------------------------------
+export function passOnCrewOffer(state: LeagueState): void {
+  rollCrewOffer(state);
+}
 
-export function postingFor(state: LeagueState, trainerId: string): Posting | undefined {
-  return state.postings.find((p) => p.trainerId === trainerId);
+export function crewById(state: LeagueState, crewId: string): Crew | undefined {
+  return state.crews.find((c) => c.id === crewId);
+}
+
+export function crewMembers(
+  state: LeagueState,
+  crew: Crew,
+): { ranger: Trainer | undefined; handler: Trainer | undefined } {
+  return {
+    ranger: state.trainers[crew.rangerId],
+    handler: state.trainers[crew.handlerId],
+  };
+}
+
+export function crewName(state: LeagueState, crew: Crew): string {
+  const { ranger, handler } = crewMembers(state, crew);
+  return `${ranger?.name ?? "?"} & ${handler?.name ?? "?"}`;
+}
+
+/** How well this crew knows this ground, 0..1. Never decays. */
+export function competence(crew: Crew, routeId: string): number {
+  return clamp01(crew.familiar[routeId] ?? 0);
 }
 
 /**
- * What is happening on a route right now.
+ * Let a crew go.
  *
- * A route holds one Ranger *and* one Handler at a time. They are doing
- * different things on the same ground — one is looking for creatures, the other
- * is training the ones they brought — and making them compete for the same slot
- * meant Handlers, who stay until recalled, quietly squeezed Rangers off the map
- * entirely: eight Rangers managed ten shifts each across sixty hours.
+ * Their trained creatures come home — those were always yours. What you lose is
+ * the pair, their trait, and every hour of competence they had built on ground
+ * they knew, which a replacement starts without.
  */
-export function postingsOnRoute(state: LeagueState, routeId: string): Posting[] {
-  return state.postings.filter((p) => p.routeId === routeId);
+export function dismissCrew(state: LeagueState, crewId: string): void {
+  const crew = crewById(state, crewId);
+  if (!crew) return;
+
+  recall(state, crewId);
+  for (const id of [crew.rangerId, crew.handlerId]) {
+    const trainer = state.trainers[id];
+    if (!trainer) continue;
+    for (const cid of trainer.party) {
+      const c = state.creatures[cid];
+      if (c) {
+        c.role = "reserve";
+        c.trainerId = null;
+      }
+    }
+    delete state.trainers[id];
+  }
+  state.crews = state.crews.filter((c) => c.id !== crewId);
+  log(state, "quit", `${crewName(state, crew)} have been let go.`);
 }
 
-export function postingOnRoute(
-  state: LeagueState,
-  routeId: string,
-  role?: FieldRole,
-): Posting | undefined {
-  return state.postings.find(
-    (p) => p.routeId === routeId && (role === undefined || p.role === role),
+// ---------------------------------------------------------------------------
+// Outfitting
+// ---------------------------------------------------------------------------
+
+export function emptyKit(): Kit {
+  return { balls: 0, potions: 0, revives: 0, lures: 0 };
+}
+
+export function kitCost(kit: Kit): number {
+  return (
+    kit.balls * KIT.balls.cost +
+    kit.potions * KIT.potions.cost +
+    kit.revives * KIT.revives.cost +
+    kit.lures * KIT.lures.cost
   );
 }
 
-/** The crew's level, as the route judges it: the weakest one there. */
-export function crewLevel(state: LeagueState, trainerId: string): number {
-  const crew = crewOf(state, trainerId);
-  if (crew.length === 0) return 0;
-  return Math.min(...crew.map((c) => c.level));
+/** What comes back when a trip ends with kit unspent. They sold it on. */
+export function refundFor(kit: Kit): number {
+  return Math.round(kitCost(kit) * FIELD.refund);
 }
 
-/** Whether this role brings creatures with it. Rangers do not. */
-export function takesCrew(trainer: Trainer): boolean {
-  return trainer.kind === "handler";
+// ---------------------------------------------------------------------------
+// Sending them out
+// ---------------------------------------------------------------------------
+
+export function expeditionOf(state: LeagueState, crewId: string): Expedition | undefined {
+  return state.expeditions.find((e) => e.crewId === crewId);
 }
 
-/**
- * How far under a route's floor this crew is standing.
- *
- * Zero for a Ranger, always — they refuse ground they cannot handle. For an
- * Handler it is the whole mechanic: the stretch pays better, teaches faster,
- * and is how a party comes back beaten.
- */
-export function stretchOf(state: LeagueState, posting: Posting): number {
-  const route = routeById(posting.routeId);
-  if (!route) return 0;
-  return Math.max(0, route.levelMin - crewLevel(state, posting.trainerId));
+export function expeditionOn(state: LeagueState, routeId: string): Expedition | undefined {
+  return state.expeditions.find((e) => e.routeId === routeId);
 }
 
-export function canPost(
+export function canSend(
   state: LeagueState,
+  crewId: string,
   routeId: string,
-  trainerId: string,
-): { ok: true } | { ok: false; reason: string } {
-  const route = routeById(routeId);
-  if (!route) return { ok: false, reason: "Route unknown" };
-  if (!eligibleRoutes(state).some((r) => r.id === routeId)) {
-    return { ok: false, reason: "Route not open yet" };
-  }
-  const trainer = state.trainers[trainerId];
-  if (!trainer || (trainer.kind !== "ranger" && trainer.kind !== "handler")) {
-    return { ok: false, reason: "Not field staff" };
-  }
-  const role: FieldRole = trainer.kind === "handler" ? "handler" : "ranger";
-  if (postingOnRoute(state, routeId, role)) {
-    return {
-      ok: false,
-      reason: role === "ranger" ? "A Ranger is already working here" : "A Handler is already here",
-    };
-  }
-  if (postingFor(state, trainerId)) return { ok: false, reason: "Already posted" };
+  objective: "work" | "explore",
+  towardId: string | null,
+  kit: Kit,
+): { ok: true; cost: number } | { ok: false; reason: string } {
+  const crew = crewById(state, crewId);
+  if (!crew) return { ok: false, reason: "No such crew" };
+  if (expeditionOf(state, crewId)) return { ok: false, reason: "Already out" };
+  if (!isOpen(state, routeId)) return { ok: false, reason: "Not reached yet" };
+  if (expeditionOn(state, routeId)) return { ok: false, reason: "Another crew is there" };
 
-  if (trainer.kind === "ranger") {
-    // They go alone, but they only bring back their own type — so ground that
-    // does not hold it is a shift spent walking.
-    if (!suppliesType(route, trainer.affinity)) {
-      return { ok: false, reason: `No ${trainer.affinity} lives here` };
+  const { ranger, handler } = crewMembers(state, crew);
+  if (!ranger || !handler) return { ok: false, reason: "Crew is incomplete" };
+  if (isSuspended(state, ranger) || isSuspended(state, handler)) {
+    return { ok: false, reason: "One of them is suspended" };
+  }
+
+  if (kit.balls < 1) {
+    return { ok: false, reason: "They need Poké Balls to bring anything back" };
+  }
+
+  if (objective === "explore") {
+    if (!canPushOnFrom(state, routeId)) {
+      return { ok: false, reason: "The league does not know this ground well enough yet" };
     }
-    return { ok: true };
+    if (!towardId || !routeById(routeId)?.neighbours.includes(towardId)) {
+      return { ok: false, reason: "Nothing to push on to that way" };
+    }
+    if (isOpen(state, towardId)) return { ok: false, reason: "Already reached" };
   }
 
-  const crew = crewOf(state, trainerId);
-  if (crew.length === 0) return { ok: false, reason: "Nobody in their crew" };
-
-  const level = Math.min(...crew.map((c) => c.level));
-  if (level < route.levelMin - HANDLER.maxStretch) {
-    return {
-      ok: false,
-      reason: `Lv${route.levelMin - HANDLER.maxStretch} at the very least — this is far over their heads`,
-    };
-  }
-  return { ok: true };
+  const cost = kitCost(kit);
+  if (state.money < cost) return { ok: false, reason: `The kit costs ${cost}` };
+  return { ok: true, cost };
 }
 
-export function post(
+export function send(
   state: LeagueState,
+  crewId: string,
   routeId: string,
-  trainerId: string,
+  objective: "work" | "explore",
+  towardId: string | null,
+  kit: Kit,
+  party: readonly string[] = [],
 ): { ok: true } | { ok: false; reason: string } {
-  const check = canPost(state, routeId, trainerId);
+  const check = canSend(state, crewId, routeId, objective, towardId, kit);
   if (!check.ok) return check;
 
-  const trainer = state.trainers[trainerId];
-  if (!trainer) return { ok: false, reason: "Gone" };
+  const crew = crewById(state, crewId);
+  const handler = crew ? state.trainers[crew.handlerId] : undefined;
+  if (!crew || !handler) return { ok: false, reason: "Gone" };
 
-  const role: FieldRole = trainer.kind === "handler" ? "handler" : "ranger";
-  state.postings.push({
+  // Money changes hands now: they bought the kit before setting off.
+  state.money -= check.cost;
+
+  const taken: string[] = [];
+  for (const id of party) {
+    if (taken.length >= FIELD.partyMax) break;
+    if (!canJoin(state, id, handler.id).ok) continue;
+    leaveParty(state, id);
+    const c = state.creatures[id];
+    if (!c) continue;
+    c.role = "field";
+    c.trainerId = handler.id;
+    c.gymId = null;
+    taken.push(id);
+  }
+  handler.party = taken;
+
+  state.expeditions.push({
+    crewId,
     routeId,
-    trainerId,
-    role,
+    objective,
+    towardId: objective === "explore" ? towardId : null,
+    kit: { ...kit },
+    bought: { ...kit },
+    spent: check.cost,
+    party: taken,
     progress: 0,
     caught: 0,
     earned: 0,
-    beaten: 0,
-    resting: false,
-    // A Ranger works a shift and comes home; a Handler stays until recalled.
-    // Expeditions that ran forever meant the whole system was one decision made
-    // once, and the route screen never asked anything of the player again.
-    endsAt: role === "ranger" ? state.time + RANGER.shiftSeconds : null,
+    hurt: 0,
+    log: [],
+    pending: null,
+    startedAt: state.time,
   });
   return { ok: true };
 }
 
-/**
- * Let a field trainer go.
- *
- * Their crew goes back to the box — those creatures are yours, and always were.
- * What you lose is the person and everything they had learned: a Ranger's skill
- * is earned by catching, so dismissing a veteran and hiring a replacement is a
- * real step backwards, not a sideways move.
- */
-export function dismiss(
-  state: LeagueState,
-  trainerId: string,
-): { ok: true } | { ok: false; reason: string } {
-  const trainer = state.trainers[trainerId];
-  if (!trainer || (trainer.kind !== "ranger" && trainer.kind !== "handler")) {
-    return { ok: false, reason: "Not field staff" };
-  }
-
-  recall(state, trainerId);
-  for (const id of [...trainer.party]) removeFromCrew(state, id);
-
-  delete state.trainers[trainerId];
-  log(state, "quit", `${trainer.name} has been let go.`);
-  return { ok: true };
-}
-
-/** Whether they take themselves back out when a shift ends. */
-export function setAutoWork(state: LeagueState, trainerId: string, on: boolean): void {
-  const trainer = state.trainers[trainerId];
-  if (trainer) trainer.autoWork = on;
-}
-
-/**
- * Put idle staff who asked for it back to work.
- *
- * Field staff draw wages whether or not they are on a route, so a Ranger
- * standing about between shifts is money going out for nothing. The player is
- * still choosing *what kind* of work — a Ranger only ever takes ground holding
- * their own type, a Handler the hardest they can stand on — so this removes the
- * chore of re-posting without removing the decision of who to employ.
- */
-function repostIdle(state: LeagueState): void {
-  const open = eligibleRoutes(state);
-
-  for (const trainer of Object.values(state.trainers)) {
-    if (trainer.kind !== "ranger" && trainer.kind !== "handler") continue;
-    if (!trainer.autoWork) continue;
-    if (postingFor(state, trainer.id)) continue;
-
-    const ranked =
-      trainer.kind === "ranger"
-        ? [...open]
-            .filter((r) => suppliesType(r, trainer.affinity))
-            // Richest ground for their type first, then the best they can reach.
-            .sort(
-              (a, b) =>
-                (b.supply[trainer.affinity] ?? 0) - (a.supply[trainer.affinity] ?? 0) ||
-                b.levelMax - a.levelMax,
-            )
-        : // A Handler works the *lowest* ground that still has something to
-          // teach somebody. Finishing a route before moving up is the whole
-          // shape of training: bring everyone to ten on the 5–10, then go on.
-          [...open].sort((a, b) => a.levelMax - b.levelMax);
-
-    for (const route of ranked) {
-      if (trainer.kind === "handler" && !anyoneToTeach(state, trainer, route)) continue;
-      if (canPost(state, route.id, trainer.id).ok) {
-        post(state, route.id, trainer.id);
-        break;
-      }
-    }
-  }
-}
-
-/** Whether this trainer could bring anybody to this route's ceiling. */
-function anyoneToTeach(state: LeagueState, trainer: Trainer, route: Route): boolean {
-  if (crewOf(state, trainer.id).some((c) => c.level < route.levelMax)) return true;
-  return trainableFor(state, trainer, route).length > 0;
-}
-
-/**
- * Creatures this Handler could take to this route, best first.
- *
- * "Best" is the strongest that still has something to gain here — the point of
- * a training run is to raise what you will actually field, so a Handler works
- * on the creature that will matter most, not the one that needs it most.
- *
- * Includes creatures currently serving a gym: those are usually the ones worth
- * raising, and a Leader's creature that could never be trained again was stuck
- * at whatever level it happened to be cast at.
- */
-export function trainableFor(
-  state: LeagueState,
-  trainer: Trainer,
-  route: Route,
-  /**
-   * Whether creatures currently defending a gym are on the table.
-   *
-   * True for the player choosing by hand — taking a Leader's creature away to
-   * raise it is exactly what a Handler is for. False for automation: left to
-   * itself it stripped gyms down to three of six while it trained their
-   * defenders, and pulling a gym apart is a decision, not a chore.
-   */
-  includeServing = false,
-): Creature[] {
-  return candidatesFor(state, trainer.id, includeServing)
-    .filter((o) => o.ok && o.creature.level < route.levelMax)
-    .map((o) => o.creature)
-    .sort((a, b) => b.power - a.power);
-}
-
-/**
- * Keep auto-managed Handlers working on whoever benefits most.
- *
- * Three rules, and they are the ones a player would follow by hand:
- *
- *   - a creature that has hit the route's ceiling has learned all it can here,
- *     so it goes home and its slot opens;
- *   - empty slots take the strongest creature that can still gain, because the
- *     point of training is to raise what you will field;
- *   - when nobody on this route has anything left to learn, move up.
- *
- * This is an idle game. The player decides who they employ and whether staff
- * manage themselves; they should not have to hand-shuffle four creatures every
- * time one of them hits ten.
- */
-function reviewCrews(state: LeagueState, dt: number): void {
-  state.crewReviewIn -= dt;
-  if (state.crewReviewIn > 0) return;
-  state.crewReviewIn = HANDLER.reviewSeconds;
-
-  for (const posting of [...state.postings]) {
-    if (posting.role !== "handler") continue;
-    const trainer = state.trainers[posting.trainerId];
-    if (!trainer?.autoWork) continue;
-    const route = routeById(posting.routeId);
-    if (!route) continue;
-
-    // Send home anyone who has learned all this ground can teach.
-    for (const c of crewOf(state, trainer.id)) {
-      if (c.level >= route.levelMax) removeFromCrew(state, c.id);
-    }
-
-    // Fill the space with whoever gains most from being here — but leave the
-    // gyms something to draw on. Training costs you availability; it must not
-    // cost you the gym.
-    const room = () => trainer.partyCap - crewOf(state, trainer.id).length;
-    const spare = trainableFor(state, trainer, route);
-    const takeable = Math.max(0, spare.length - HANDLER.leaveInBox);
-    for (const c of spare.slice(0, takeable)) {
-      if (room() <= 0) break;
-      addToCrew(state, c.id, trainer.id);
-    }
-
-    // Nothing left to teach on this ground: go and find harder ground.
-    if (crewOf(state, trainer.id).length === 0) recall(state, trainer.id);
-  }
-}
-
-/** End a posting. The crew stays together — you built that team. */
-export function recall(state: LeagueState, trainerId: string): void {
-  state.postings = state.postings.filter((p) => p.trainerId !== trainerId);
+/** Bring a crew home early. They keep what they found; the kit is refunded. */
+export function recall(state: LeagueState, crewId: string): void {
+  const trip = expeditionOf(state, crewId);
+  if (!trip) return;
+  finish(state, trip, "recalled");
 }
 
 // ---------------------------------------------------------------------------
-// The work
+// Out on the ground
 // ---------------------------------------------------------------------------
 
-/** How far through the route's band this crew has come, 0..1. */
-export function throughBand(state: LeagueState, posting: Posting): number {
-  const route = routeById(posting.routeId);
-  if (!route) return 0;
-  // A Ranger has no crew to have outgrown the ground; they work it at a steady
-  // pace and go home when the shift is up.
-  if (posting.role === "ranger") return 0;
-  const band = Math.max(1, route.levelMax - route.levelMin);
-  return clamp01((crewLevel(state, posting.trainerId) - route.levelMin) / band);
+/** Sim-seconds per round of work for this trip. */
+export function roundSeconds(state: LeagueState, trip: Expedition): number {
+  const route = routeById(trip.routeId);
+  const crew = crewById(state, trip.crewId);
+  if (!route || !crew) return Infinity;
+
+  const base = FIELD.baseRoundSeconds + route.levelMax * FIELD.secondsPerRouteLevel;
+  // A crew that knows the ground wastes less time on it.
+  return base / (1 + competence(crew, route.id) * 0.6);
 }
 
-/** Sim-seconds this posting needs per round. */
-export function roundSeconds(state: LeagueState, posting: Posting): number {
-  const route = routeById(posting.routeId);
-  if (!route) return Infinity;
+/**
+ * How dangerous this trip is, 0..1.
+ *
+ * The route's own peril, raised by how far the party is out of its depth and
+ * lowered by knowing the ground. This is the single risk dial: the Handler's
+ * old "stretch" multiplier folded into it, so pushing a young party onto hard
+ * ground shows up as *more happening, and more of it going wrong* rather than as
+ * a separate number nobody could see.
+ */
+export function danger(state: LeagueState, trip: Expedition): number {
+  const route = routeById(trip.routeId);
+  const crew = crewById(state, trip.crewId);
+  if (!route || !crew) return 0;
 
-  const base =
-    posting.role === "ranger"
-      ? RANGER.baseCatchSeconds + route.levelMax * RANGER.secondsPerRouteLevel
-      : HANDLER.baseRoundSeconds + route.levelMax * HANDLER.secondsPerRouteLevel;
+  const party = trip.party
+    .map((id) => state.creatures[id])
+    .filter((c): c is Creature => c !== undefined);
+  const level = party.length > 0 ? Math.min(...party.map((c) => c.level)) : route.levelMin;
+  const outOfDepth = Math.max(0, route.levelMin - level) / 20;
 
-  // A crew that has outgrown the ground works it fast — and is telling you to
-  // move them on.
-  return base / (1 + throughBand(state, posting) * RANGER.partnerSpeedBonus);
+  const known = competence(crew, route.id);
+  return clamp01((route.peril + outOfDepth) * (1 - known * 0.4) * TRAITS[crew.trait].peril);
 }
 
-/** Fatigue this posting costs its crew per sim-second. */
-export function fatigueRate(state: LeagueState, posting: Posting): number {
-  const through = throughBand(state, posting);
-  if (posting.role === "ranger") {
-    return (
-      RANGER.fatiguePerSecondAtFloor *
-      (1 - through * (1 - RANGER.fatigueAtCeiling))
-    );
-  }
-  const stretch = stretchOf(state, posting);
-  return (
-    HANDLER.fatiguePerSecondAtFloor *
-    (1 - through * (1 - HANDLER.fatigueAtCeiling)) *
-    (1 + stretch * HANDLER.fatiguePerStretch)
-  );
-}
-
-/** The level a crew can reach working this route, and no further. */
-export function ceilingFor(routeId: string): number {
-  return routeById(routeId)?.levelMax ?? 0;
+export function reserveCeiling(state: LeagueState): number {
+  return FIELD.reserveCeilingBase + state.gymOrder.length * FIELD.reserveCeilingPerGym;
 }
 
 export function reserveCount(state: LeagueState): number {
   let n = 0;
-  for (const c of Object.values(state.creatures)) {
-    if (c.role === "reserve") n += 1;
-  }
+  for (const c of Object.values(state.creatures)) if (c.role === "reserve") n += 1;
   return n;
 }
 
-export function reserveCeiling(state: LeagueState): number {
-  return (
-    RANGER.reserveCeilingBase + state.gymOrder.length * RANGER.reserveCeilingPerGym
-  );
-}
-
-/** Types some trainer on the board could actually field. */
+/** Types some trainer on the board could field. */
 function fieldableTypes(state: LeagueState): Set<string> {
   const types = new Set<string>();
   for (const t of Object.values(state.trainers)) {
@@ -651,14 +455,6 @@ function fieldableTypes(state: LeagueState): Set<string> {
   return types;
 }
 
-/**
- * Idle creatures the league could actually put in a party.
- *
- * The ceiling counts *these*, not everything in the box. Counting everything
- * deadlocked the game: work a Fire route with a Bug board and the box fills with
- * creatures no gym can field, which stops the only thing that could have brought
- * in the ones you needed.
- */
 export function usableReserve(state: LeagueState): number {
   const types = fieldableTypes(state);
   let n = 0;
@@ -669,77 +465,53 @@ export function usableReserve(state: LeagueState): number {
   return n;
 }
 
-/**
- * Let go of spillover once the box is genuinely overrun.
- *
- * A hard backstop so an unattended league cannot grow a roster of hundreds. Only
- * ever releases a creature nobody has invested anything in.
- */
-function releaseSpillover(state: LeagueState, report: TickReport): void {
-  const hard = reserveCeiling(state) * RANGER.hardCeilingFactor;
-  if (reserveCount(state) <= hard) return;
+/** Species a crew has been told to leave alone on this route. */
+export function bannedOn(state: LeagueState, routeId: string): string[] {
+  return state.bans[routeId] ?? [];
+}
 
-  const types = fieldableTypes(state);
-  const spare = Object.values(state.creatures)
-    .filter(
-      (c) =>
-        c.role === "reserve" &&
-        !c.pinned &&
-        c.bond <= 0 &&
-        c.wins === 0 &&
-        !c.types.some((t) => types.has(t)),
-    )
-    .sort((a, b) => a.level - b.level);
-
-  let over = reserveCount(state) - hard;
-  for (const c of spare) {
-    if (over <= 0) break;
-    delete state.creatures[c.id];
-    report.released.push(displayName(c));
-    over -= 1;
-  }
+export function toggleBan(state: LeagueState, routeId: string, speciesId: string): void {
+  const list = state.bans[routeId] ?? [];
+  state.bans[routeId] = list.includes(speciesId)
+    ? list.filter((s) => s !== speciesId)
+    : [...list, speciesId];
 }
 
 /**
- * Draw one creature from a route's supply distribution.
+ * What could turn up here for this Ranger.
  *
- * The route decides which *type* turns up, the encounter rules decide which
- * species within it. That is what keeps starters and legendaries out of the
- * wild and fully evolved forms rare.
+ * Their own type and nothing else — a Grass Ranger is only worth what your Grass
+ * gym is worth — filtered by whatever the player has told them to leave alone.
  */
-export function drawFrom(
+export function catchPool(
   state: LeagueState,
   route: Route,
-  /** The Ranger walking it. Their type decides what they bring back. */
-  ranger?: Trainer,
+  type: TypeId,
+  ceiling: number,
+) {
+  const banned = new Set(bannedOn(state, route.id));
+  return catalog
+    .wildByType(type)
+    .filter((s) => minLevelFor(s) <= ceiling && !banned.has(s.slug));
+}
+
+/** Draw one creature, at this crew's competence and with this much greed. */
+function drawOne(
+  state: LeagueState,
+  route: Route,
+  type: TypeId,
+  known: number,
+  tilt: number,
 ): Creature | null {
-  // A Ranger catches their own type and nothing else. It is what makes hiring
-  // one a decision rather than a purchase: a Grass Ranger is only worth what
-  // your Grass gym is worth, and the ground you send them to has to hold Grass
-  // in the first place.
-  const type = ranger
-    ? ranger.affinity
-    : (weighted(state.rng, route.supply) as TypeId);
-
-  const skill = ranger ? skillOf(ranger) : 0;
-  // Skill does not make creatures stronger; it finds the ones a rookie walks
-  // past. A seasoned Ranger reaches a little above the route's own ceiling.
-  const ceiling = route.levelMax + Math.round(skill * RANGER.skillLevelBonus);
-
-  const pool = catalog.wildByType(type).filter((s) => minLevelFor(s) <= ceiling);
+  const ceiling = route.levelMax + Math.round(known * FIELD.skillLevelBonus);
+  const pool = catchPool(state, route, type, ceiling);
   if (pool.length === 0) return null;
 
   const weights: Record<string, number> = {};
   for (const species of pool) {
-    // Encounter weight falls off sharply with evolution stage, so skill is
-    // applied as an exponent: common things stay common, and rare things stop
-    // being nearly impossible.
-    const base = encounterWeight(species);
-    weights[species.slug] = Math.pow(base, 1 - skill * RANGER.rarityTilt);
+    weights[species.slug] = Math.pow(encounterWeight(species), 1 - tilt);
   }
-
-  const slug = weighted(state.rng, weights);
-  const species = catalog.get(slug);
+  const species = catalog.get(weighted(state.rng, weights));
   if (!species) return null;
 
   return makeCreature(state, species, "reserve", {
@@ -747,202 +519,396 @@ export function drawFrom(
   });
 }
 
-/**
- * How good a Ranger has got at the job, 0..1.
- *
- * Earned by catching, so it is a record of work done rather than of time on the
- * payroll — and it is why firing a veteran costs you something a replacement
- * cannot make up on their first day.
- */
-export function skillOf(trainer: Trainer): number {
-  return clamp01(trainer.experience / RANGER.catchesToMaster);
-}
-
-/** Whether this ground holds anything a Ranger of this type would find. */
-export function suppliesType(route: Route, type: TypeId): boolean {
-  return (route.supply[type] ?? 0) > 0;
-}
-
 export function tickField(state: LeagueState, dt: number, report: TickReport): void {
-  reviewCrews(state, dt);
-  repostIdle(state);
-  if (state.postings.length === 0) return;
+  if (state.crewOffer.length === 0) rollCrewOffer(state);
+  if (state.expeditions.length === 0) return;
 
-  releaseSpillover(state, report);
-  // The ceiling is absolute. Exempting "somebody is short-handed" was tried and
-  // is a trap: a gym can be short of a type *no open route supplies*, so the
-  // exemption never resolves and the roster ran to thirteen hundred creatures.
-  //
-  // A gym starved of its own type is a supply problem, and the game already has
-  // the answer to it — the Trade Desk, which exists to turn the types you have
-  // into the type you need.
   const boxFull = usableReserve(state) >= reserveCeiling(state);
 
-  for (const posting of [...state.postings]) {
-    const trainer = state.trainers[posting.trainerId];
-    const crew = crewOf(state, posting.trainerId);
-    if (!trainer || (posting.role === "handler" && crew.length === 0)) {
-      state.postings = state.postings.filter((p) => p !== posting);
-      continue;
-    }
-    if (isSuspended(state, trainer)) continue;
-
-    // The shift ends and they come home, whatever they were in the middle of.
-    if (posting.endsAt !== null && state.time >= posting.endsAt) {
-      state.postings = state.postings.filter((p) => p !== posting);
-      report.returned.push({ name: trainer.name, caught: posting.caught });
-      log(
-        state,
-        "catch",
-        `${trainer.name} is back from ${routeById(posting.routeId)?.name ?? "the field"} with ${posting.caught}.`,
-      );
+  for (const trip of [...state.expeditions]) {
+    const crew = crewById(state, trip.crewId);
+    const route = routeById(trip.routeId);
+    if (!crew || !route) {
+      state.expeditions = state.expeditions.filter((e) => e !== trip);
       continue;
     }
 
-    // Only a Handler has anyone to wear out. A Ranger's shift is its own limit.
-    if (posting.role === "handler") {
-      const worst = Math.max(...crew.map((c) => c.fatigue));
-      // A shift, then a break. The hysteresis is what makes this a duty cycle
-      // rather than a stall.
-      if (posting.resting) {
-        if (worst <= HANDLER.rested) posting.resting = false;
-        continue;
-      }
-      if (worst >= HANDLER.tiredAt) {
-        posting.resting = true;
-        continue;
-      }
-    }
-    // Rangers with nowhere to put anyone idle; an Handler is still training.
-    if (posting.role === "ranger" && boxFull) continue;
-
-    posting.progress += dt;
-    if (posting.role === "handler") {
-      const wear = fatigueRate(state, posting) * dt;
-      for (const c of crew) c.fatigue = clamp01(c.fatigue + wear);
+    // A held choice does not stop the work; it just waits, and then the crew
+    // decides for themselves.
+    if (trip.pending && state.time >= trip.pending.decidesAt) {
+      resolveInCharacter(state, trip, crew.trait);
     }
 
-    const needed = roundSeconds(state, posting);
+    const { ranger, handler } = crewMembers(state, crew);
+    if (!ranger || !handler) {
+      finish(state, trip, "returned");
+      continue;
+    }
+    if (isSuspended(state, ranger) || isSuspended(state, handler)) continue;
+
+    trip.progress += dt;
+    const needed = roundSeconds(state, trip);
     let guard = 0;
-    while (posting.progress >= needed && guard < 8) {
-      posting.progress -= needed;
-      guard += 1;
-      const route = routeById(posting.routeId);
-      if (!route) break;
 
-      if (posting.role === "ranger") {
-        workCatch(state, posting, route, trainer, report);
-      } else {
-        workTraining(state, posting, route, trainer, crew, report);
-      }
+    while (trip.progress >= needed && guard < 8) {
+      trip.progress -= needed;
+      guard += 1;
+      workRound(state, trip, crew, route, boxFull, report);
+      if (!state.expeditions.includes(trip)) break;
     }
   }
 }
 
-/**
- * A Ranger's round: something turns up, or it does not.
- *
- * Deliberately no experience. Rangers and Handlers used to both level their
- * crews, which left no reason to run a Handler at all — catching taught you
- * *and* paid you in creatures. Collecting and training are now genuinely
- * different jobs with genuinely different rewards.
- */
-function workCatch(
+/** One round of work: pay, training, a chance of a find, a chance of an event. */
+function workRound(
   state: LeagueState,
-  posting: Posting,
+  trip: Expedition,
+  crew: Crew,
   route: Route,
-  ranger: Trainer,
+  boxFull: boolean,
   report: TickReport,
 ): void {
-  const caught = drawFrom(state, route, ranger);
-  if (caught) {
-    posting.caught += 1;
-    ranger.experience += 1;
-    report.caught.push(caught.id);
-  }
-}
+  const known = competence(crew, route.id);
+  const trait = TRAITS[crew.trait];
 
-/**
- * A training round.
- *
- * Pay and experience both rise with the stretch — how far under the route's
- * floor the crew is standing — and so does the chance of being beaten. That is
- * the whole decision: push a young party onto ground it cannot really hold,
- * and it grows fast until the day it does not come back clean.
- */
-function workTraining(
-  state: LeagueState,
-  posting: Posting,
-  route: Route,
-  trainer: Trainer,
-  crew: Creature[],
-  report: TickReport,
-): void {
-  const stretch = stretchOf(state, posting);
-
+  // Pay.
   const pay =
-    (HANDLER.payBase + route.levelMax * HANDLER.payPerRouteLevel) *
-    (1 + stretch * HANDLER.payPerStretch);
+    (FIELD.payBase + route.levelMax * FIELD.payPerRouteLevel) *
+    trait.pay *
+    (route.landmark.effect === "lucrative" && isOpen(state, route.id) ? 1.25 : 1);
   state.money += pay;
-  posting.earned += pay;
+  trip.earned += pay;
   report.earned += pay;
 
-  const xp = HANDLER.xpPerRound * (1 + stretch * HANDLER.xpPerStretch);
-  teach(state, posting, route, crew, xp, report);
-
-  if (stretch > 0 && chance(state.rng, stretch * HANDLER.beatenChancePerStretch)) {
-    posting.beaten += 1;
-    for (const c of crew) c.fatigue = clamp01(c.fatigue + HANDLER.beatenFatigue);
-    trainer.morale = Math.max(0, trainer.morale - HANDLER.beatenMorale);
-    report.beaten.push(trainer.name);
-    log(state, "wave", `${trainer.name}'s party came back beaten from ${route.name}.`);
-  }
-}
-
-/** Route work levels a crew only as far as the route goes. */
-function teach(
-  state: LeagueState,
-  posting: Posting,
-  route: Route,
-  crew: Creature[],
-  xp: number,
-  report: TickReport,
-): void {
-  const ceiling = ceilingFor(posting.routeId);
-  for (const c of crew) {
-    if (c.level >= ceiling) continue;
-    const became = gainXp(state, c, xp);
+  // Training. The route caps what it can teach, as it always has.
+  for (const id of trip.party) {
+    const c = state.creatures[id];
+    if (!c || c.level >= route.levelMax) continue;
+    const became = gainXp(state, c, FIELD.xpPerRound);
     if (became) {
       report.evolutions.push(became);
       log(state, "evolve", `${became} evolved out on ${route.name}.`);
     }
   }
+
+  // A find, if the Ranger has a ball for it and there is room in the box.
+  const findChance =
+    (FIELD.findChanceGreen + (FIELD.findChanceSeasoned - FIELD.findChanceGreen) * known) *
+    trait.find;
+
+  if (trip.kit.balls > 0 && !boxFull && chance(state.rng, findChance)) {
+    const spendLure = trip.kit.lures > 0 && chance(state.rng, 0.35);
+    if (spendLure) trip.kit.lures -= 1;
+
+    const tilt = Math.min(
+      0.9,
+      known * FIELD.rarityTilt * trait.rarity + (spendLure ? FIELD.lureTilt : 0),
+    );
+    const ranger = state.trainers[crew.rangerId];
+    const caught = ranger ? drawOne(state, route, ranger.affinity, known, tilt) : null;
+
+    if (caught) {
+      trip.kit.balls -= 1;
+      trip.caught += 1;
+      ranger && (ranger.experience += 1);
+      report.caught.push(caught.id);
+    }
+  }
+
+  // Sheltered ground lets them recover between rounds.
+  if (route.landmark.effect === "sheltered") {
+    trip.hurt = clamp01(trip.hurt - FIELD.shelteredRecovery);
+  }
+
+  if (chance(state.rng, FIELD.eventChance)) {
+    fireEvent(state, trip, crew, route, report);
+    if (!state.expeditions.includes(trip)) return;
+  }
+
+  // They come home when the balls run out or they cannot carry on.
+  if (trip.kit.balls <= 0 || trip.hurt >= 1) {
+    finish(state, trip, trip.hurt >= 1 ? "beaten" : "returned");
+  }
 }
 
+export { FIELD, KIT };
+
 // ---------------------------------------------------------------------------
-// Opening position
+// Events
 // ---------------------------------------------------------------------------
 
 /**
- * The creatures a league opens with.
+ * Something happens.
  *
- * Drawn from the starting routes, so the opening bench is made of the same
- * things a Ranger would actually bring back.
+ * Five kinds, and each answers to exactly one line of the kit — which is what
+ * makes outfitting an allocation rather than a slider. Cut the Potions and
+ * hazards start costing you the trip.
+ *
+ * Most resolve themselves and get reported. A few hold a real choice, and if the
+ * player never answers, the crew decides in character. That default has to be
+ * defensible: an idle game that punishes you for sleeping is punishing you for
+ * playing it the way it is built.
  */
-export function seedBench(state: LeagueState): void {
-  const starters = routesUpTo(0);
-  for (let i = 0; i < SCOUTING.startingBench; i++) {
-    const route = starters[i % Math.max(1, starters.length)];
-    if (!route) break;
-    drawFrom(state, route);
+function fireEvent(
+  state: LeagueState,
+  trip: Expedition,
+  crew: Crew,
+  route: Route,
+  report: TickReport,
+): void {
+  const risk = danger(state, trip);
+  const roll = range(state.rng, 0, 1);
+
+  // The more dangerous the ground, the more of what happens is trouble.
+  if (roll < risk * 0.45) return trouble(state, trip, crew, route, report);
+  if (roll < risk * 0.9) return hazard(state, trip, route);
+  if (roll < risk * 0.9 + 0.25) return windfall(state, trip, route);
+  if (trip.objective === "explore" && chance(state.rng, 0.35)) {
+    return discovery(state, trip);
   }
-  rollFieldOffer(state, "ranger");
-  rollFieldOffer(state, "handler");
+  return encounter(state, trip, crew, route);
 }
 
-/** Every route the league knows about, for the intel screen. */
-export function knownRoutes(state: LeagueState): Route[] {
-  return ROUTES.filter((r) => hasIntel(state, r.id));
+function note(trip: Expedition, kind: FieldEventKind, text: string, at: number): void {
+  trip.log.push({ kind, text, at });
+  if (trip.log.length > 24) trip.log.shift();
 }
 
-export { partyCapOf, pick };
+type FieldEventKind = Expedition["log"][number]["kind"];
+
+/** The ground hurts them. Potions are what it costs, if they brought any. */
+function hazard(state: LeagueState, trip: Expedition, route: Route): void {
+  if (trip.kit.potions > 0) {
+    trip.kit.potions -= 1;
+    trip.hurt = clamp01(trip.hurt + FIELD.hazardHurtSalved);
+    note(trip, "hazard", `Rough going on ${route.name}. A Potion covered it.`, state.time);
+    return;
+  }
+  trip.hurt = clamp01(trip.hurt + FIELD.hazardHurt);
+  note(trip, "hazard", `Rough going on ${route.name}, and nothing left to treat it.`, state.time);
+}
+
+/** Something fights back. A Revive is the difference between a scare and a trip ended. */
+function trouble(
+  state: LeagueState,
+  trip: Expedition,
+  crew: Crew,
+  route: Route,
+  report: TickReport,
+): void {
+  if (trip.kit.revives > 0) {
+    trip.kit.revives -= 1;
+    trip.hurt = clamp01(trip.hurt + 0.1);
+    note(trip, "trouble", `Something came at them on ${route.name}. A Revive saved it.`, state.time);
+    return;
+  }
+  trip.hurt = clamp01(trip.hurt + FIELD.troubleHurt);
+  note(trip, "trouble", `Badly handled on ${route.name}, and no Revives left.`, state.time);
+  report.beaten.push(crewName(state, crew));
+}
+
+/** A cache, a haul, a favour returned. */
+function windfall(state: LeagueState, trip: Expedition, route: Route): void {
+  const purse = Math.round(range(state.rng, 400, 1400) * (1 + route.levelMax / 20));
+  state.money += purse;
+  trip.earned += purse;
+  note(trip, "windfall", `Found something worth ₱${purse.toLocaleString()} on ${route.name}.`, state.time);
+}
+
+/**
+ * Something notable is here — and taking it costs balls they may not have.
+ *
+ * This is the event that most wants a choice, and it is the clearest case for
+ * the trait as a default: a Reckless crew spends the last of the kit on it, a
+ * Meticulous one leaves it and comes home with what they have.
+ */
+function encounter(
+  state: LeagueState,
+  trip: Expedition,
+  crew: Crew,
+  route: Route,
+): void {
+  const ranger = state.trainers[crew.rangerId];
+  if (!ranger) return;
+
+  const known = competence(crew, route.id);
+  const found = drawOne(state, route, ranger.affinity, known, 0.85);
+  if (!found) return;
+
+  const cost = Math.min(trip.kit.balls, int(state.rng, 2, 5));
+  if (cost <= 0) {
+    note(trip, "encounter", `A ${displayName(found)} on ${route.name}, and nothing to catch it with.`, state.time);
+    delete state.creatures[found.id];
+    return;
+  }
+
+  trip.pending = {
+    id: `enc_${found.id}`,
+    prompt: `A ${displayName(found)} on ${route.name}. Taking it will cost ${cost} Poké Balls.`,
+    options: [
+      { id: `take:${found.id}:${cost}`, label: `Spend ${cost} and take it` },
+      { id: "leave", label: "Leave it" },
+    ],
+    decidesAt: state.time + FIELD.choiceWindow,
+  };
+  note(trip, "encounter", `A ${displayName(found)} on ${route.name}.`, state.time);
+}
+
+/** Progress toward the ground beyond. */
+function discovery(state: LeagueState, trip: Expedition): void {
+  const toward = trip.towardId ? routeById(trip.towardId) : undefined;
+  if (!toward) return;
+  note(trip, "discovery", `A way through toward ${toward.name}.`, state.time);
+  trip.progress += roundSeconds(state, trip) * 2;
+}
+
+/** Answer a held choice. */
+export function decide(
+  state: LeagueState,
+  crewId: string,
+  optionId: string,
+): { ok: true } | { ok: false; reason: string } {
+  const trip = expeditionOf(state, crewId);
+  if (!trip?.pending) return { ok: false, reason: "Nothing waiting" };
+  apply(state, trip, optionId);
+  trip.pending = null;
+  return { ok: true };
+}
+
+/** What the crew does when nobody answers. */
+function resolveInCharacter(state: LeagueState, trip: Expedition, trait: CrewTrait): void {
+  const pending = trip.pending;
+  if (!pending) return;
+  const bold = TRAITS[trait].decides === "bold";
+  const choice = bold ? pending.options[0] : pending.options[pending.options.length - 1];
+  apply(state, trip, choice?.id ?? "leave");
+  trip.pending = null;
+}
+
+function apply(state: LeagueState, trip: Expedition, optionId: string): void {
+  if (!optionId.startsWith("take:")) {
+    const id = trip.pending?.id.replace("enc_", "");
+    if (id && state.creatures[id]) delete state.creatures[id];
+    return;
+  }
+  const [, creatureId, costText] = optionId.split(":");
+  const cost = Number(costText ?? 0);
+  if (!creatureId || !state.creatures[creatureId]) return;
+
+  if (trip.kit.balls < cost) {
+    delete state.creatures[creatureId];
+    note(trip, "encounter", "Not enough left to take it.", state.time);
+    return;
+  }
+  trip.kit.balls -= cost;
+  trip.caught += 1;
+  note(trip, "encounter", `Took it. ${cost} Poké Balls gone.`, state.time);
+}
+
+// ---------------------------------------------------------------------------
+// Coming home
+// ---------------------------------------------------------------------------
+
+/**
+ * The trip ends.
+ *
+ * Whatever is left of the kit is sold on, the crew's competence on this ground
+ * grows, and if they were pushing onward the way is open. The party comes home
+ * to the box — training a creature should never cost you the creature.
+ */
+function finish(
+  state: LeagueState,
+  trip: Expedition,
+  how: "returned" | "beaten" | "recalled",
+): void {
+  const crew = crewById(state, trip.crewId);
+  const route = routeById(trip.routeId);
+  state.expeditions = state.expeditions.filter((e) => e !== trip);
+
+  const refund = refundFor(trip.kit);
+  if (refund > 0) state.money += refund;
+
+  const handler = crew ? state.trainers[crew.handlerId] : undefined;
+  if (handler) {
+    for (const id of handler.party) {
+      const c = state.creatures[id];
+      if (c) {
+        c.role = "reserve";
+        c.trainerId = null;
+      }
+    }
+    handler.party = [];
+  }
+
+  if (!crew || !route) return;
+
+  // A trip that ran its course teaches the crew this ground. One cut short
+  // teaches them less, which is what makes recalling them a real cost.
+  const learned =
+    how === "returned"
+      ? FIELD.competencePerTrip
+      : FIELD.competencePerTrip * (how === "beaten" ? 0.5 : 0.25);
+  crew.familiar[route.id] = clamp01(competence(crew, route.id) + learned);
+
+  if (how === "returned") {
+    state.known[route.id] = (state.known[route.id] ?? 0) + 1;
+    if (route.landmark.effect === "mapped") {
+      state.known[route.id] = (state.known[route.id] ?? 0) + 1;
+    }
+  }
+
+  if (how === "returned" && trip.objective === "explore" && trip.towardId) {
+    open(state, trip.towardId);
+  }
+
+  log(
+    state,
+    "catch",
+    how === "beaten"
+      ? `${crewName(state, crew)} came back beaten from ${route.name}.`
+      : `${crewName(state, crew)} are back from ${route.name} with ${trip.caught}.`,
+  );
+}
+
+/** Reach a new place. Its resident and its landmark come with it. */
+export function open(state: LeagueState, routeId: string): void {
+  if (state.explored.includes(routeId)) return;
+  const route = routeById(routeId);
+  if (!route) return;
+
+  state.explored.push(routeId);
+  const species = catalog.get(route.resident);
+  log(
+    state,
+    "scout",
+    `${route.name} is on the map. ${route.landmark.name}: ${route.landmark.blurb}` +
+      (species ? ` And ${species.name} lives here.` : ""),
+  );
+}
+
+/** The ground a league starts knowing. */
+export function seedMap(state: LeagueState): void {
+  for (const route of startingRoutes()) open(state, route.id);
+  rollCrewOffer(state);
+
+  // A thin opening bench, drawn from the ground they already know.
+  const open3 = openRoutes(state);
+  for (let i = 0; i < SCOUTING.startingBench; i++) {
+    const route = open3[i % Math.max(1, open3.length)];
+    if (!route) break;
+    const type = weighted(state.rng, route.supply) as TypeId;
+    const pool = catchPool(state, route, type, route.levelMax);
+    if (pool.length === 0) continue;
+    makeCreature(state, pick(state.rng, pool), "reserve", {
+      level: int(state.rng, route.levelMin, route.levelMax),
+    });
+  }
+}
+
+/** Creatures a Handler could take out, best first. */
+export function trainableFor(state: LeagueState, crew: Crew, route: Route): Creature[] {
+  return candidatesFor(state, crew.handlerId, true)
+    .filter((o) => o.ok && o.creature.level < route.levelMax)
+    .map((o) => o.creature)
+    .sort((a, b) => b.power - a.power);
+}

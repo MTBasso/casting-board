@@ -239,7 +239,12 @@ export function promote(
   state.renown = 0;
   state.peakRenown = 0;
   state.tier = tier;
-  state.postings = [];
+  state.crews = [];
+  state.expeditions = [];
+  state.crewOffer = [];
+  state.explored = [];
+  state.known = {};
+  state.bans = {};
   state.routeIntel = {};
   state.nextIds = {};
   state.facilities = {};

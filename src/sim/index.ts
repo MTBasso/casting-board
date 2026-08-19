@@ -19,51 +19,7 @@ export * from "./rng.js";
 export * from "./devtools.js";
 export * from "./systems/desk.js";
 
-export {
-  addToCrew,
-  buyIntel,
-  canCrew,
-  canHire,
-  canPost,
-  rangers,
-  ceilingFor,
-  crewLevel,
-  crewOf,
-  dismiss,
-  drawFrom,
-  eligibleRoutes,
-  handlers,
-  fatigueRate,
-  fieldOffer,
-  fieldStaff,
-  hasIntel,
-  hire,
-  hireCost as fieldHireCost,
-  intelCost,
-  knownRoutes,
-  passOnOffer,
-  post,
-  postingFor,
-  postingOnRoute,
-  postingsOnRoute,
-  recall,
-  removeFromCrew,
-  reserveCeiling,
-  reserveCount,
-  rollFieldOffer,
-  roundSeconds,
-  seedBench,
-  slotsAvailable,
-  setAutoWork,
-  skillOf,
-  stretchOf,
-  suppliesType,
-  takesCrew,
-  trainableFor,
-  throughBand,
-  tickField,
-  usableReserve,
-} from "./systems/field.js";
+export * from "./systems/field.js";
 export * from "./systems/challenge.js";
 export {
   baseFormOf,
@@ -100,7 +56,7 @@ export {
   bondSpeed,
   canUpgrade,
   careerLength,
-  rangerSlots,
+  catcherSlots,
   expandGymTrainers,
   gymTrainerSlotCost,
   hasSurvey,
@@ -122,7 +78,14 @@ export * from "./systems/title.js";
 export * from "./systems/trade.js";
 export * from "./systems/wave.js";
 
-export { offerWeight, routeById, routePower, ROUTES, routesUpTo } from "../data/routes.js";
+export {
+  neighboursOf,
+  offerWeight,
+  routeById,
+  routePower,
+  ROUTES,
+  startingRoutes,
+} from "../data/routes.js";
 export { FACILITIES, facilityDef } from "../data/facilities.js";
 export {
   catalog,

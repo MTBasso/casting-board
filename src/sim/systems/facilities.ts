@@ -59,7 +59,7 @@ export function upgrade(
  * exactly, and it is a cleaner unlock: another slot is another route worked by
  * another pair of people, not a number quietly going up.
  */
-export function rangerSlots(state: LeagueState): number {
+export function catcherSlots(state: LeagueState): number {
   return level(state, "scouting_office");
 }
 

@@ -1,4 +1,4 @@
-import { RANGER, FATIGUE, STAFF } from "../constants.js";
+import { FATIGUE, FIELD, STAFF } from "../constants.js";
 import { isSuspended } from "./morale.js";
 
 import { recoverySpeed } from "./facilities.js";
@@ -111,16 +111,16 @@ export function resign(
  */
 export function recover(state: LeagueState, dt: number): void {
   const amount = FATIGUE.recoveryPerSecond * dt * recoverySpeed(state);
+  // Creatures out with a crew are working, not resting, so they recover slowly.
   const working = new Set<string>();
-  for (const posting of state.postings) {
-    if (posting.resting) continue;
-    for (const id of state.trainers[posting.trainerId]?.party ?? []) working.add(id);
+  for (const trip of state.expeditions) {
+    for (const id of trip.party) working.add(id);
   }
   for (const c of Object.values(state.creatures)) {
     if (c.fatigue <= 0) continue;
     // Only a partner actually on the route recovers slowly. One sitting the
     // shift out rests like anyone else, which is what lets the posting resume.
-    const rate = working.has(c.id) ? amount * RANGER.restWhilePosted : amount;
+    const rate = working.has(c.id) ? amount * FIELD.restWhilePosted : amount;
     c.fatigue = Math.max(0, c.fatigue - rate);
   }
 }

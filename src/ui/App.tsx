@@ -1,19 +1,14 @@
 import { useState } from "react";
 import { useGame } from "../engine/store.js";
-import {
-  doctrineUnlocked,
-  handlers,
-  pendingDecisions,
-  postingFor,
-  rangers,
-} from "../sim/index.js";
+import { ROUTES, doctrineUnlocked, expeditionOf, pendingDecisions } from "../sim/index.js";
 import { LeagueMap } from "./components/LeagueMap.js";
 import { GymPanel } from "./components/GymPanel.js";
 import { EventLog } from "./components/EventLog.js";
 import { GymOffer } from "./components/GymOffer.js";
 import { LeaderOffer } from "./components/LeaderOffer.js";
 import { DevBar } from "./components/DevBar.js";
-import { FieldWork } from "./components/FieldWork.js";
+import { FieldMap, RouteDetail } from "./components/FieldMap.js";
+import { Crews } from "./components/Crews.js";
 import { ReplayDriver } from "./components/BattleFeed.js";
 import { HallOfFame } from "./components/HallOfFame.js";
 import { Desk } from "./components/Desk.js";
@@ -23,6 +18,37 @@ import { DayCare } from "./components/DayCare.js";
 import { RivalWatch } from "./components/RivalWatch.js";
 import { Tabs, type TabId } from "./components/Tabs.js";
 import { PcBox } from "./components/PcBox.js";
+
+/**
+ * The Field: the map on one side, the crews on the other.
+ *
+ * Staffing and going somewhere are one decision — you hire *because* there is
+ * ground you want worked — and the two used to sit on separate lists.
+ */
+function FieldScreen() {
+  const state = useGame((s) => s.state);
+  const [route, setRoute] = useState<string | null>(null);
+  const selected = route ?? state.explored[0] ?? null;
+
+  return (
+    <div className="field-screen">
+      <section className="map-pane">
+        <h2 className="col-title">
+          The map
+          <span className="counter">
+            {state.explored.length}/{ROUTES.length} reached
+          </span>
+        </h2>
+        <FieldMap selected={selected} onSelect={setRoute} />
+        {selected && <RouteDetail routeId={selected} />}
+      </section>
+
+      <aside className="crew-pane">
+        <Crews />
+      </aside>
+    </div>
+  );
+}
 
 export function App() {
   // Subscribing to `revision` is what re-renders the tree; the sim mutates its
@@ -42,11 +68,9 @@ export function App() {
   const open = pendingDecisions(state);
   const urgent = open.filter((d) => d.urgency === "urgent").length;
   if (open.length > 0) badges.desk = urgent > 0 ? String(urgent) : "•";
-  // Field staff off a route are money going out with nothing coming back.
-  const unposted = [...rangers(state), ...handlers(state)].filter(
-    (t) => !postingFor(state, t.id),
-  ).length;
-  if (unposted > 0) badges.field = String(unposted);
+  // Crews between trips draw wages for nothing.
+  const idle = state.crews.filter((c) => !expeditionOf(state, c.id)).length;
+  if (idle > 0) badges.field = String(idle);
   if (doctrineUnlocked(state) && state.elite.some((s) => s.trainerId === null)) {
     badges.staff = "!";
   }
@@ -117,7 +141,7 @@ export function App() {
 
         {tab === "field" && (
           <div className="full-screen">
-            <FieldWork />
+            <FieldScreen />
           </div>
         )}
 

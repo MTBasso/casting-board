@@ -1,21 +1,24 @@
 import { createInitialState, tick, constants } from "../src/sim/index.js";
 import {
+  ROUTES,
+  canHireCrew,
+  crewName,
+  crewSlots,
+  canPushOnFrom,
+  crewOffer,
+  expeditionOf,
+  expeditionOn,
+  hireCrew,
+  isOpen,
+  openRoutes,
+  send,
+  trainableFor,
   acceptGymOffer,
   chooseLeader,
   checkGymUnlock,
   autoFillAll,
   partyOf,
   partyCapOf,
-  canHire,
-  fieldOffer,
-  fieldStaff,
-  hire,
-  addToCrew,
-  crewOf,
-  canPost,
-  post,
-  postingFor,
-  eligibleRoutes,
   canUpgrade,
   upgrade,
   allFacilities,
@@ -25,7 +28,6 @@ import {
   staffSeat,
   ensureSeats,
   eliteUnlocked,
-  setAutoWork,
   readiness,
   TYPES,
 } from "../src/sim/index.js";
@@ -71,47 +73,47 @@ function play(state: LeagueState): void {
 
   autoFillAll(state);
 
-  // What the board is short of, worst first — a Ranger only brings back their
-  // own type now, so hiring is how you answer a starved gym.
-  const needed = new Map<string, number>();
-  for (const t of Object.values(state.trainers)) {
-    if (t.kind === "candidate" || t.kind === "ranger" || t.kind === "handler") continue;
-    const gap = partyCapOf(t, state) - t.party.length;
-    if (gap > 0) needed.set(t.affinity, (needed.get(t.affinity) ?? 0) + gap);
+  // Field: keep every crew slot filled and every crew out on ground that suits
+  // them. A Ranger brings back only their own type, so hiring is how a starved
+  // gym gets answered — and a trip is a real spend, outfitted up front.
+  const wanted = new Set(state.gymOrder.map((id) => state.gyms[id]?.type));
+  while (canHireCrew(state).ok) {
+    const offers = crewOffer(state);
+    const useful = offers.find((o) => wanted.has(o.rangerType)) ?? offers[0];
+    if (!useful) break;
+    if (!hireCrew(state, useful.id).ok) break;
   }
 
-  for (const role of ["ranger", "handler"] as const) {
-    while (canHire(state, role).ok) {
-      const offer = fieldOffer(state, role);
-      if (offer.length === 0) break;
-      const useful =
-        offer.slice().sort((a, b) => (needed.get(b) ?? 0) - (needed.get(a) ?? 0))[0] ??
-        offer[0];
-      if (!useful) break;
-      const hired = hire(state, role, useful);
-      // Keep them working: idle staff draw wages for nothing.
-      if (hired.ok) setAutoWork(state, hired.trainerId, true);
-    }
-    for (const trainer of fieldStaff(state, role)) {
-      if (postingFor(state, trainer.id)) continue;
-      // Rangers work alone; only a Handler needs anyone with them.
-      if (role === "handler") {
-        const bench = Object.values(state.creatures)
-          .filter((c) => c.role === "reserve" && c.owned)
-          .sort((a, b) => a.level - b.level);
-        for (const c of bench.slice(0, Math.max(0, bench.length - 6))) {
-          if (crewOf(state, trainer.id).length >= trainer.partyCap) break;
-          addToCrew(state, c.id, trainer.id);
-        }
-        if (crewOf(state, trainer.id).length === 0) continue;
-      }
-      for (const route of [...eligibleRoutes(state)].sort((a, b) => b.levelMax - a.levelMax)) {
-        if (canPost(state, route.id, trainer.id).ok) {
-          post(state, route.id, trainer.id);
-          break;
-        }
-      }
-    }
+  for (const crew of state.crews) {
+    if (expeditionOf(state, crew.id)) continue;
+
+    const ranger = state.trainers[crew.rangerId];
+    const free = openRoutes(state).filter((r) => !expeditionOn(state, r.id));
+    if (!ranger || free.length === 0) continue;
+
+    const route = [...free].sort(
+      (a, b) => (b.supply[ranger.affinity] ?? 0) - (a.supply[ranger.affinity] ?? 0),
+    )[0];
+    if (!route) continue;
+
+    // Push on when the ground is known and there is somewhere new beyond it.
+    const onward = canPushOnFrom(state, route.id)
+      ? route.neighbours.find((n) => !isOpen(state, n))
+      : undefined;
+
+    const party = trainableFor(state, crew, route)
+      .slice(0, 4)
+      .map((c) => c.id);
+
+    send(
+      state,
+      crew.id,
+      route.id,
+      onward ? "explore" : "work",
+      onward ?? null,
+      { balls: 12, potions: 6, revives: 2, lures: 2 },
+      party,
+    );
   }
 }
 
@@ -262,6 +264,24 @@ for (const id of state.gymOrder) {
     .map((c) => `${c.bond.toFixed(2)}/${c.wins}w`)
     .join(" ");
   console.log(`  ${gym.type.padEnd(9)} mean ${avg.toFixed(2)}  ${each}`);
+}
+
+console.log("\n  ── The field ──────────────────────────────────────────────");
+row("Crews", `${state.crews.length}/${crewSlots(state)}`);
+row("Out now", state.expeditions.length);
+row("Map reached", `${state.explored.length}/${ROUTES.length}`);
+for (const crew of state.crews) {
+  const best = Object.entries(crew.familiar).sort((a, b) => b[1] - a[1])[0];
+  const trip = expeditionOf(state, crew.id);
+  console.log(
+    `    ${crewName(state, crew).padEnd(22)} ${crew.trait.padEnd(11)} ` +
+      `${best ? `${best[0]} ${Math.round(best[1] * 100)}%` : "green"}` +
+      `${trip ? ` · out on ${trip.routeId} (${trip.kit.balls} balls left)` : " · in"}`,
+  );
+}
+{
+  const open = ROUTES.filter((r) => state.explored.includes(r.id));
+  console.log(`    reached: ${open.map((r) => r.name).join(", ")}`);
 }
 
 console.log("\n  ── Short-handed ───────────────────────────────────────────");

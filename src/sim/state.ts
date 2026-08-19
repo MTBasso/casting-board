@@ -1,7 +1,7 @@
 
 import { uniformTally } from "../data/typechart.js";
 import { META, SCOUTING } from "./constants.js";
-import { seedBench } from "./systems/field.js";
+import { seedMap } from "./systems/field.js";
 import { checkGymUnlock } from "./systems/league.js";
 import type { LeagueState } from "./types.js";
 
@@ -11,7 +11,7 @@ import type { LeagueState } from "./types.js";
  * it, which let stale saves through the version check and crashed the app on
  * load — hence v2 and the defensive normalize pass.
  */
-export const SAVE_VERSION = 24;
+export const SAVE_VERSION = 25;
 
 /**
  * The first hour, per the design doc: one trainer, one signature creature,
@@ -52,9 +52,12 @@ export function createInitialState(seed = 1): LeagueState {
     usurperId: null,
     titleLost: false,
     grudges: [],
-    postings: [],
-    crewReviewIn: 0,
-    fieldOffer: { ranger: [], handler: [] },
+    crews: [],
+    expeditions: [],
+    crewOffer: [],
+    explored: [],
+    known: {},
+    bans: {},
     lastSeenAt: 0,
     dayCare: [],
     eggProgress: 0,
@@ -85,7 +88,7 @@ export function foundLeague(state: LeagueState): void {
   //
   // It also begins with a handful of creatures. Rangers have to be hired and
   // posted, and a league with nobody to post would open on a dead screen.
-  seedBench(state);
+  seedMap(state);
   // A league opens able to make its first move. Rangers are the only source of
   // creatures now, so the money to hire one is part of the opening position.
   state.money = Math.max(state.money, SCOUTING.startingMoney);

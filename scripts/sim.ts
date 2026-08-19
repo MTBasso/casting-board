@@ -9,6 +9,20 @@
  *   npm run sim -- --hours 50 --seed 7 --every 2
  */
 import {
+  ROUTES,
+  canHireCrew,
+  partyCapOf,
+  reserveCeiling,
+  usableReserve,
+  canPushOnFrom,
+  crewOffer,
+  expeditionOf,
+  expeditionOn,
+  hireCrew,
+  isOpen,
+  openRoutes,
+  send,
+  trainableFor,
   levelFor,
   partySizeFor,
   revivesFor,
@@ -19,23 +33,6 @@ import {
   hireGymTrainer,
   createInitialState,
   allFacilities,
-  addToCrew,
-  canHire,
-  crewOf,
-  fieldOffer,
-  fieldStaff,
-  canPost,
-  rangers,
-  handlers,
-  stretchOf,
-  eligibleRoutes,
-  hire,
-  setAutoWork,
-  post,
-  partyCapOf,
-  postingFor,
-  reserveCeiling,
-  usableReserve,
   canTrade,
   canStaff,
   canUpgrade,
@@ -178,67 +175,48 @@ function greedyPolicy(
     }
   }
 
-  // Prefer ground that supplies the types this board actually staffs. Route
-  // supply is by type and parties only accept their trainer's type, so working
-  // the hardest route regardless of what lives there fills the box with
-  // creatures no gym can field — the league starves with a full box.
+  // Field: keep every crew slot filled and every crew out on ground that suits
+  // them. A Ranger brings back only their own type, so hiring is how a starved
+  // gym gets answered — and a trip is a real spend, outfitted up front.
   const wanted = new Set(state.gymOrder.map((id) => state.gyms[id]?.type));
-
-  // Gyms first. Field crews draw from the same box, and a policy that crews
-  // greedily leaves every Leader short-handed while sixteen creatures stand on
-  // routes — which is a real trap for the player too, not just the runner.
-  autoFillAll(state);
-
-  for (const role of ["ranger", "handler"] as const) {
-    // Hiring is an offer now, so the policy takes whatever type turns up that
-    // the board could use, and passes otherwise.
-    let guard = 0;
-    while (canHire(state, role).ok && guard < 12) {
-      guard += 1;
-      const offer = fieldOffer(state, role);
-      const useful = offer.find((t) => wanted.has(t)) ?? offer[0];
-      if (!useful) break;
-      const hired = hire(state, role, useful);
-      // Keep them working: idle field staff draw wages for nothing.
-      if (hired.ok) setAutoWork(state, hired.trainerId, true);
-    }
-
-    for (const trainer of fieldStaff(state, role)) {
-      if (postingFor(state, trainer.id)) continue;
-
-      // Crew from the box, on-type — the same rule a gym obeys.
-      // Only from genuine surplus, so casting the board always wins the tie.
-      // Rangers work alone; only a Handler needs anyone with them.
-      if (role === "handler") {
-        const bench = Object.values(state.creatures)
-          .filter((c) => c.role === "reserve" && c.owned)
-          .sort((a, b) => a.level - b.level);
-        for (const c of bench.slice(0, Math.max(0, bench.length - 6))) {
-          if (crewOf(state, trainer.id).length >= trainer.partyCap) break;
-          addToCrew(state, c.id, trainer.id);
-        }
-        if (crewOf(state, trainer.id).length === 0) continue;
-      }
-
-      const routes = [...eligibleRoutes(state)].sort((a, b) => {
-        if (role === "ranger") {
-          const fit = (r: typeof a) =>
-            [...wanted].reduce((sum, t) => sum + (t ? r.supply[t] : 0), 0);
-          return fit(b) - fit(a) || b.levelMax - a.levelMax;
-        }
-        // Handlers want the hardest ground they are allowed to stand on.
-        return b.levelMax - a.levelMax;
-      });
-
-      for (const route of routes) {
-        if (canPost(state, route.id, trainer.id).ok) {
-          post(state, route.id, trainer.id);
-          break;
-        }
-      }
-    }
+  while (canHireCrew(state).ok) {
+    const offers = crewOffer(state);
+    const useful = offers.find((o) => wanted.has(o.rangerType)) ?? offers[0];
+    if (!useful) break;
+    if (!hireCrew(state, useful.id).ok) break;
   }
 
+  for (const crew of state.crews) {
+    if (expeditionOf(state, crew.id)) continue;
+
+    const ranger = state.trainers[crew.rangerId];
+    const free = openRoutes(state).filter((r) => !expeditionOn(state, r.id));
+    if (!ranger || free.length === 0) continue;
+
+    const route = [...free].sort(
+      (a, b) => (b.supply[ranger.affinity] ?? 0) - (a.supply[ranger.affinity] ?? 0),
+    )[0];
+    if (!route) continue;
+
+    // Push on when the ground is known and there is somewhere new beyond it.
+    const onward = canPushOnFrom(state, route.id)
+      ? route.neighbours.find((n) => !isOpen(state, n))
+      : undefined;
+
+    const party = trainableFor(state, crew, route)
+      .slice(0, 4)
+      .map((c) => c.id);
+
+    send(
+      state,
+      crew.id,
+      route.id,
+      onward ? "explore" : "work",
+      onward ?? null,
+      { balls: 12, potions: 6, revives: 2, lures: 2 },
+      party,
+    );
+  }
   autoFillAll(state);
 }
 
@@ -296,7 +274,7 @@ function run(): void {
   let resignations = 0;
   let gauntlets = 0;
   let caught = 0;
-  let shifts = 0;
+  let trips = 0;
   let suspensions = 0;
   let evolutions = 0;
   let hatched = 0;
@@ -327,7 +305,7 @@ function run(): void {
     resignations += report.resignations.length;
     gauntlets += report.gauntlets.length;
     caught += report.caught.length;
-    shifts += report.returned.length;
+    trips += report.returned.length;
     suspensions += report.suspended.length;
     evolutions += report.evolutions.length;
     hatched += report.hatched.length;
@@ -383,19 +361,20 @@ function run(): void {
   );
   console.log(`  Suspensions      ${suspensions}`);
   console.log(
-    `  Rangers         ${rangers(state).length} hired · ${state.postings.filter((p) => p.role === "ranger").length} posted · ${caught} caught over ${shifts} shifts`,
+    `  Crews            ${state.crews.length} employed · ${state.expeditions.length} out · ${caught} caught over ${trips} trips`,
   );
   {
-    const posts = state.postings.filter((p) => p.role === "handler");
-    const earned = posts.reduce((a, p) => a + p.earned, 0);
-    const beaten = posts.reduce((a, p) => a + p.beaten, 0);
-    const stretch = posts.map((p) => stretchOf(state, p));
-    console.log(
-      `  Handlers         ${handlers(state).length} hired · ${posts.length} posted · \u20b1${Math.round(earned).toLocaleString()} earned · ${beaten} beaten · stretch [${stretch.join(",")}]`,
-    );
+    const known = ROUTES.filter((r) => state.explored.includes(r.id)).length;
+    const best = [...state.crews]
+      .map((c) => {
+        const top = Object.entries(c.familiar).sort((a, b) => b[1] - a[1])[0];
+        return top ? `${c.trait} ${Math.round(top[1] * 100)}%` : c.trait;
+      })
+      .join(", ");
+    console.log(`  Map              ${known}/${ROUTES.length} reached · crews [${best}]`);
   }
   console.log(
-    `  Box              ${usableReserve(state)}/${reserveCeiling(state)} usable · ${state.postings.filter((p) => p.resting).length} resting · routes ${state.postings.map((p) => p.routeId).join(",")}`,
+    `  Box              ${usableReserve(state)}/${reserveCeiling(state)} usable · out on ${state.expeditions.map((e) => e.routeId).join(",") || "nothing"}`,
   );
   {
     const short = state.gymOrder.flatMap((id) => {

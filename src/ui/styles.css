@@ -2434,208 +2434,6 @@ body { padding-bottom: 3rem; }
 }
 .on-route .worked-by { flex: none; }
 
-/* -- The Field: routes, and the people working them ------------------------ */
-
-.field { display: flex; flex-direction: column; gap: 0.7rem; min-width: 0; }
-
-/*
- * Desktop is two panes: the payroll on the left, the ground on the right.
- *
- * Staffing and posting are one decision — you hire *because* a route needs
- * working — and the single stacked column made the player scroll between the
- * two halves of it. This is the reason the tab read as a phone screen on a
- * desktop: not that it was too narrow, but that it was one column of cards.
- */
-.field-layout { display: grid; gap: 0.8rem; min-width: 0; }
-
-@media (min-width: 62rem) {
-  .field-layout {
-    grid-template-columns: minmax(0, 20rem) minmax(0, 1fr);
-    align-items: start;
-  }
-  .field-rail { position: sticky; top: 7rem; }
-}
-
-.field-rail { display: grid; gap: 0.6rem; align-content: start; min-width: 0; }
-
-.staff-list {
-  padding: 0.6rem 0.7rem;
-  background: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-}
-.staff-list h3 { margin: 0 0 0.4rem; font-size: 0.8rem; }
-.staff-list ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.25rem; }
-.staff-list li {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.25rem 0.3rem;
-  border-radius: var(--radius);
-  border-left: 2px solid transparent;
-  background: var(--sunken);
-  min-width: 0;
-}
-.staff-list li.is-working { border-left-color: var(--accent); }
-.staff-list li.is-idle { border-left-color: var(--warn); }
-
-.staff-id { display: grid; gap: 0.05rem; min-width: 0; flex: 1; }
-.staff-name {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.78rem;
-  font-weight: 600;
-  min-width: 0;
-}
-.staff-name > :first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.staff-id .dim { font-size: 0.65rem; }
-
-.staff-acts { display: flex; align-items: center; gap: 0.4rem; flex: none; }
-.toggle.sm {
-  display: flex;
-  align-items: center;
-  gap: 0.2rem;
-  font-family: var(--mono);
-  font-size: 0.55rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-  cursor: pointer;
-}
-.toggle.sm input { margin: 0; }
-.linky.danger { color: var(--danger); }
-.linky.danger:hover { color: var(--ink); }
-
-.hire-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
-  gap: 0.6rem;
-}
-.hire-card {
-  display: grid;
-  gap: 0.35rem;
-  align-content: start;
-  padding: 0.6rem 0.7rem;
-  background: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-}
-.hire-card.is-full { opacity: 0.7; }
-.hire-head { display: flex; justify-content: space-between; align-items: baseline; }
-.hire-card .hint { margin: 0; font-size: 0.72rem; }
-.hire-foot { display: flex; justify-content: space-between; align-items: baseline; }
-
-.route-row {
-  display: grid;
-  gap: 0.4rem;
-  min-width: 0;
-  align-content: start;
-  padding: 0.65rem 0.75rem;
-  background: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-}
-/*
- * Two slots side by side where there is room, stacked where there is not.
- *
- * `auto-fit` with a 15rem floor sounds responsive and is not: inside a grid
- * track that is itself narrower than 15rem the column overflows rather than
- * wrapping, which is how a phone ended up scrolling this screen sideways. The
- * explicit stack below the breakpoint is the part that actually holds.
- */
-.route-slots {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.4rem;
-}
-/* One card per row means each slot has the whole width; stack them there. */
-@media (max-width: 78rem) {
-  .route-slots { grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr)); }
-}
-@media (max-width: 40rem) {
-  .route-slots { grid-template-columns: minmax(0, 1fr); }
-}
-
-/* A slot is either the work happening in it, or the way to start some. */
-.slot {
-  display: grid;
-  gap: 0.25rem;
-  align-content: start;
-  padding: 0.4rem 0.45rem;
-  background: var(--sunken);
-  border: 1px dashed var(--rule);
-  border-radius: var(--radius);
-  min-width: 0;
-}
-.slot.is-working { border-style: solid; border-left: 3px solid var(--accent); }
-.slot-handler.is-working { border-left-color: var(--warn); }
-.slot-role {
-  font-family: var(--mono);
-  font-size: 0.5rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.slot-who { display: flex; align-items: center; gap: 0.3rem; font-size: 0.76rem; min-width: 0; }
-.slot-who strong { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.slot-stat {
-  font-family: var(--mono);
-  font-size: 0.625rem;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-.slot .warn { margin: 0; font-size: 0.68rem; color: var(--warn); }
-.slot .dim { font-size: 0.72rem; }
-
-.slot-picks { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.2rem; }
-.slot-picks li.is-blocked { opacity: 0.5; }
-.slot-pick {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.25rem 0.3rem;
-  background: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  color: inherit;
-  font: inherit;
-  font-size: 0.75rem;
-  text-align: left;
-  cursor: pointer;
-}
-button.slot-pick:hover { border-color: var(--accent); }
-.slot-pick .dim { margin-left: auto; font-size: 0.65rem; white-space: nowrap; }
-.slot-pick > span:not(.dim) {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-@media (max-width: 40rem) {
-  .field { gap: 0.5rem; }
-  .route-row { padding: 0.5rem 0.55rem; }
-  .route-slots { grid-template-columns: minmax(0, 1fr); }
-  .hire-row { grid-template-columns: minmax(0, 1fr); }
-  .slot-pick .dim { white-space: normal; }
-}
-
-.crew-add {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  background: none;
-  border: 1px dashed var(--rule);
-  border-radius: var(--radius);
-  color: var(--muted);
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-.crew-add:hover { border-color: var(--accent); color: var(--ink); }
-
 /* -- Trainer portraits ----------------------------------------------------- */
 
 .portrait {
@@ -2819,3 +2617,230 @@ button.slot-pick:hover { border-color: var(--accent); }
 .decision-detail { grid-column: 1; font-size: 0.75rem; color: var(--muted); }
 .decision-go { grid-row: 1 / span 2; color: var(--muted); font-size: 1rem; }
 .decision button:hover .decision-go { color: var(--accent); }
+
+/* -- The Field: the map, and the crews ------------------------------------- */
+
+.field-screen { display: grid; gap: 0.9rem; min-width: 0; }
+@media (min-width: 68rem) {
+  .field-screen {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+.map-pane, .crew-pane { display: flex; flex-direction: column; gap: 0.6rem; min-width: 0; }
+
+/*
+ * The map itself.
+ *
+ * An SVG for the paths and absolutely positioned buttons for the places — the
+ * nodes need to be real focusable controls with text in them, and text in SVG
+ * is a fight nobody wins.
+ */
+.fieldmap {
+  position: relative;
+  aspect-ratio: 100 / 92;
+  background:
+    radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 60%),
+    var(--sunken);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.fieldmap svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.path { stroke: var(--rule); stroke-width: 0.5; }
+.path.is-known { stroke: var(--muted); stroke-width: 0.6; }
+.path.is-rumour { stroke-dasharray: 1.5 1.5; opacity: 0.5; }
+
+.node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: grid;
+  justify-items: center;
+  gap: 0.1rem;
+  padding: 0.2rem;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  max-width: 7rem;
+}
+.node-dot {
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 2px solid var(--rule);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.node.is-open .node-dot { border-color: var(--muted); }
+.node.is-rumour .node-dot { border-style: dashed; }
+.node.is-selected .node-dot { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent); }
+.node.is-busy .node-dot { border-color: var(--warn); }
+.node-dot .type-badge { font-size: 0; padding: 0; width: 0.75rem; height: 0.75rem; border-radius: 999px; }
+
+.node-name {
+  font-size: 0.6rem;
+  line-height: 1.1;
+  text-align: center;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.node.is-open .node-name { color: var(--ink); }
+.node-known {
+  display: block;
+  width: 2.2rem;
+  height: 2px;
+  background: var(--rule);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.node-known span { display: block; height: 100%; background: var(--accent); }
+.node-crew { font-size: 0.5rem; color: var(--warn); }
+
+/* What is known about a place. */
+.route-detail {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.65rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+.route-detail.is-rumour { border-style: dashed; }
+.route-detail header { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
+.route-detail h3 { margin: 0; font-size: 0.95rem; }
+.route-supply { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.35rem; }
+.route-type { display: inline-flex; align-items: center; gap: 0.2rem; }
+.route-type b { font-family: var(--mono); font-size: 0.5625rem; font-weight: 500; color: var(--muted); }
+
+.landmark { display: flex; gap: 0.5rem; align-items: flex-start; }
+.landmark p { margin: 0.1rem 0; font-size: 0.75rem; color: var(--muted); }
+.landmark strong { font-size: 0.82rem; }
+.route-known { display: grid; gap: 0.2rem; font-size: 0.72rem; }
+
+/* Crews. */
+.crews { display: flex; flex-direction: column; gap: 0.6rem; min-width: 0; }
+.crew-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.crew-row {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.6rem 0.7rem;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--rule);
+  border-radius: var(--radius);
+}
+.crew-row.is-out { border-left-color: var(--accent); }
+.crew-head { display: flex; align-items: center; gap: 0.35rem; }
+.crew-id { display: grid; gap: 0.1rem; flex: 1; min-width: 0; }
+.crew-name { font-size: 0.85rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crew-types { display: flex; align-items: center; gap: 0.25rem; flex-wrap: wrap; }
+
+.trait {
+  font-family: var(--mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.05rem 0.3rem;
+  border-radius: 999px;
+  background: var(--sunken);
+  border: 1px solid var(--rule);
+  color: var(--muted);
+}
+.trait-reckless { color: var(--danger); border-color: var(--danger); }
+.trait-meticulous { color: var(--accent); border-color: var(--accent); }
+.trait-lucky { color: var(--warn); border-color: var(--warn); }
+
+.crew-known { display: flex; flex-wrap: wrap; gap: 0.4rem; font-size: 0.68rem; color: var(--muted); }
+.crew-known b { color: var(--ink); margin-left: 0.2rem; font-variant-numeric: tabular-nums; }
+
+.offer-crews { list-style: none; margin: 0.4rem 0; padding: 0; display: grid; gap: 0.3rem; }
+.offer-crew {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.45rem;
+  background: var(--sunken);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.offer-crew:hover:not(:disabled) { border-color: var(--accent); }
+.offer-crew:disabled { opacity: 0.5; cursor: not-allowed; }
+.offer-faces { display: flex; }
+.offer-faces .portrait:last-child { margin-left: -0.5rem; }
+.offer-name { flex: 1; min-width: 0; font-size: 0.78rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.offer-types { display: flex; gap: 0.15rem; }
+
+/* Out on the ground. */
+.on-ground { display: grid; gap: 0.35rem; }
+.on-ground-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; font-size: 0.8rem; }
+.kit-left { display: flex; flex-wrap: wrap; gap: 0.5rem; font-family: var(--mono); font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.kit-left b { color: var(--ink); margin-left: 0.2rem; font-variant-numeric: tabular-nums; }
+.kit-left .is-out b { color: var(--danger); }
+
+.choice {
+  padding: 0.5rem 0.6rem;
+  background: var(--warn-soft);
+  border-left: 3px solid var(--warn);
+  border-radius: var(--radius);
+}
+.choice p { margin: 0 0 0.35rem; font-size: 0.8rem; }
+.choice-options { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.25rem; }
+.choice .dim { font-size: 0.68rem; }
+
+.trip-log { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.1rem; font-size: 0.7rem; color: var(--muted); }
+.trip-log .ev-trouble { color: var(--danger); }
+.trip-log .ev-windfall { color: var(--accent); }
+.trip-log .ev-discovery { color: var(--warn); }
+
+/* Outfitting. */
+.outfit { display: grid; gap: 0.45rem; }
+.kit-buy { display: grid; gap: 0.2rem; }
+.kit-line {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr) 2rem auto;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.kit-line b { color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+.kit-line input { width: 100%; }
+
+.take-party ul { list-style: none; margin: 0.25rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.take {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.35rem 0.15rem 0.15rem;
+  background: var(--sunken);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  color: inherit;
+  font: inherit;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+.take.is-on { border-color: var(--accent); background: var(--surface); }
+
+.outfit-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--rule);
+  font-size: 0.78rem;
+}

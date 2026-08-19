@@ -2,6 +2,7 @@ import { GYM_TRAINERS, META } from "./constants.js";
 import { emptyThreatReport, pickLook } from "./factory.js";
 import { uniformTally } from "../data/typechart.js";
 import { catalog } from "../data/catalog.js";
+import { seedMap } from "./systems/field.js";
 import { refreshPower } from "./systems/growth.js";
 import { SAVE_VERSION } from "./state.js";
 import type { LeagueState } from "./types.js";
@@ -179,32 +180,99 @@ export function normalize(raw: unknown): LeagueState | null {
 
   // A posting whose trainer or partner no longer exists is a ghost that would
   // tick forever against nothing.
-  // Postings became role-aware and crew-based: a Ranger's single partner is
-  // now just the first member of their party, exactly like an Handler's four.
-  for (const p of state.postings) {
-    p.resting ??= false;
-    // Catchers became Rangers and Evolvers became Handlers.
-    const legacyRole = (p as unknown as { role?: string }).role;
-    if (legacyRole === "catcher") p.role = "ranger";
-    else if (legacyRole === "evolver") p.role = "handler";
-    p.role ??= "ranger";
-    p.endsAt ??= null;
-    p.earned ??= 0;
-    p.beaten ??= 0;
-    const legacy = (p as unknown as { partnerId?: string }).partnerId;
-    const trainer = legacy ? state.trainers[p.trainerId] : undefined;
-    if (legacy && trainer && !trainer.party.includes(legacy)) trainer.party = [legacy];
-    delete (p as unknown as { partnerId?: string }).partnerId;
+  // The Field became crews, a map, and outfitted expeditions. Old postings and
+  // separate Ranger/Handler payrolls have no equivalent, so they are cleared and
+  // the league starts the new system from its opening ground — the alternative
+  // is inventing a crew for two people who never worked together.
+  state.crews ??= [];
+  state.expeditions ??= [];
+  state.crewOffer ??= [];
+  state.explored ??= [];
+  state.known ??= {};
+  state.bans ??= {};
+  delete (state as unknown as { postings?: unknown }).postings;
+  delete (state as unknown as { fieldOffer?: unknown }).fieldOffer;
+  delete (state as unknown as { crewReviewIn?: unknown }).crewReviewIn;
+  delete (state as unknown as { routeIntel?: unknown }).routeIntel;
+  for (const trainer of Object.values(state.trainers)) {
+    const kind = trainer.kind as unknown as string;
+    if (kind === "ranger" || kind === "handler") delete state.trainers[trainer.id];
   }
-  state.postings = state.postings.filter(
-    (p) => (state.trainers[p.trainerId]?.party.length ?? 0) > 0,
-  );
-  {
-    const offer = state.fieldOffer as unknown as Record<string, LeagueState["fieldOffer"]["ranger"]> | undefined;
-    state.fieldOffer = {
-      ranger: offer?.ranger ?? offer?.catcher ?? [],
-      handler: offer?.handler ?? offer?.evolver ?? [],
-    };
+  if (state.explored.length === 0) seedMap(state);
+  state.lastSeenAt ??= 0;
+  state.dayCare ??= [];
+  state.eggProgress ??= 0;
+
+  // Trainers gained parties and a kind when every defender became a trainer.
+  for (const trainer of Object.values(state.trainers)) {
+    if (!trainer) continue;
+    const kind = trainer.kind as unknown as string | undefined;
+    if (kind === "catcher") trainer.kind = "ranger";
+    else if (kind === "evolver") trainer.kind = "handler";
+    trainer.kind ??= "leader";
+    trainer.partyCap ??= 6;
+    trainer.party ??= trainer.signatureId ? [trainer.signatureId] : [];
+    trainer.party = trainer.party
+      .filter((id) => state.creatures[id] !== undefined)
+      .slice(0, 6);
+
+    // The morale staircase. Existing staff start on a clean record.
+    trainer.standing ??= 1;
+    trainer.strain ??= 0;
+    trainer.suspensions ??= 0;
+    trainer.suspendedUntil ??= null;
+    trainer.demotionLockedUntil ??= null;
+    trainer.origin ??= "hired";
+    trainer.leadIndex ??= 0;
+    trainer.look ||= pickLook(state.rng, trainer.affinity, trainer.kind);
+    trainer.experience ??= 0;
+    trainer.handover ??= 0;
+    trainer.autoWork ??= false;
+  }
+
+  for (const gym of Object.values(state.gyms)) {
+    if (!gym) continue;
+    gym.trainerIds ??= [];
+    gym.trainerSlots ??= GYM_TRAINERS.startingSlots;
+    gym.waveCooldown ??= 0;
+    gym.everBonded ??= false;
+    gym.threat ??= emptyThreatReport();
+    gym.threat.distribution ??= emptyThreatReport().distribution;
+  }
+
+  for (const creature of Object.values(state.creatures)) {
+    if (!creature) continue;
+    // Pre-Block-2 saves nicknamed every wild catch; that is still a valid value.
+    if (creature.nickname === undefined) creature.nickname = null;
+    creature.types ??= [];
+    creature.wins ??= 0;
+    creature.losses ??= 0;
+    creature.parents ??= null;
+    creature.generation ??= 0;
+    creature.pinned ??= false;
+    creature.benched ??= false;
+    creature.owned ??= true;
+
+    // Roles collapsed to party/reserve/retired when everything became a
+    // trainer's party. Old roles map onto the nearest survivor.
+    const role = creature.role as string;
+    if (role === "bonded" || role === "signature" || role === "elite") {
+      creature.role = "party";
+    } else if (role === "undercard") {
+      creature.role = "reserve";
+    }
+
+    // Levels arrived in Block 4. Pre-level creatures start at 1 with the power
+    // they already had, so nobody is nerfed by the upgrade.
+    creature.level ??= 1;
+    creature.xp ??= 0;
+    if (creature.powerRoll === undefined) {
+      const species = catalog.get(creature.speciesId);
+      creature.powerRoll = species && species.power > 0
+        ? creature.power / species.power
+        : 1;
+    }
+    refreshPower(creature);
   }
 
   // Drop gym ids that no longer resolve, so the board cannot render a hole.
@@ -275,6 +343,8 @@ const STEPS: Record<number, (state: LeagueState) => LeagueState> = {
   22: (state) => state,
   // v23 → v24: the Hall of Fame, a ratcheting promotion gate, and handover.
   23: (state) => state,
+  // v24 → v25: crews, the map, and outfitted expeditions.
+  24: (state) => state,
 };
 
 export function migrateState(

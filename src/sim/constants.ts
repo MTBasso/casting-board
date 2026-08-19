@@ -355,237 +355,106 @@ export const PARTY = {
  */
 
 /**
- * Rangers.
+ * Crews, expeditions, and the kit they go out with.
  *
- * Scouting used to be a purchase: spend a charge and some money, creatures
- * appear. It was the least characterful system in the game — the one place a
- * league about people acquired creatures from nowhere.
- *
- * Now you staff a route. A Ranger and a **field partner** work it continuously,
- * and creatures arrive because somebody went and got them. That is what turns a
- * box of four hundred into an org chart: the fortieth Zubat is not inventory,
- * it is somebody's working partner.
- *
- * Route work costs **fatigue, never career**. Routes are the safe posting, and
- * the box has a job that never kills anyone.
- */
-export const RANGER = {
-  /** Sim-seconds for one catch before the route's difficulty is applied. */
-  baseCatchSeconds: 70,
-  /** Added per point of the route's top level. Better ground is slower ground. */
-  secondsPerRouteLevel: 5,
-  /**
-   * Speed a partner adds at the top of the route's level band, versus the
-   * bottom. A partner who has outgrown a route works it quickly — which is the
-   * signal to move them somewhere harder.
-   */
-  partnerSpeedBonus: 0.7,
-  /**
-   * Fatigue a partner takes per sim-second worked, at the very bottom of the
-   * route's level band.
-   *
-   * Fatigue is charged for *time on the ground*, not per catch, and it scales
-   * down as the partner grows into the route. Charging per catch had it exactly
-   * backwards: harder routes are slower, so they yielded fewer catches and
-   * therefore tired the partner *less*.
-   *
-   * Tuned so a partner working at the route's floor wears out in about half an
-   * hour, and one at the top of the band never does. That is the whole shape of
-   * the system in one number — hard ground you have not grown into is a
-   * rotation, and ground you have outgrown is a standing posting.
-   */
-  fatiguePerSecondAtFloor: 0.0009,
-  /** How much of that a partner still takes once they top the route's band. */
-  fatigueAtCeiling: 0.3,
-  /**
-   * Rest a posted partner gets *while working*, as a fraction of normal
-   * recovery. Working is not resting, but a route is not a battle either.
-   */
-  restWhilePosted: 0.35,
-  /** Fatigue at which a partner stops working and sits down. */
-  tiredAt: 0.9,
-  /**
-   * Fatigue they must come back down to before working again.
-   *
-   * The gap between this and `tiredAt` is what makes a posting a duty cycle
-   * rather than a stall. Without it a tired partner recovered a hair, worked one
-   * second, and tired out again — postings ran at a trickle forever and the
-   * league starved with Rangers apparently hard at work.
-   */
-  rested: 0.3,
-  /**
-   * How long a Ranger's shift runs before they come home.
-   *
-   * A posting that never ended made the whole screen one decision, made once —
-   * staff every route and never look at it again. A shift means the Field tab
-   * asks something of the player on a rhythm, and it is the difference between a
-   * system and a switch.
-   */
-  shiftSeconds: 45 * 60,
-  /**
-   * Postings stall once this many creatures sit idle in the box.
-   *
-   * Automation without a ceiling quietly recreated the hoarding problem once
-   * before — the roster hit 720 and the runner slowed six-fold. Rangers stop
-   * when there is nowhere to put anyone.
-   */
-  reserveCeilingBase: 24,
-  /**
-   * Extra idle creatures tolerated per gym on the board.
-   *
-   * A flat ceiling starved the league. Route supply is by *type*, and a party
-   * only accepts its trainer's type, so an idle box is mostly creatures this
-   * league cannot field — a fixed cap therefore fills with the wrong types and
-   * stops every posting while gyms still stand short-handed. The ceiling has to
-   * grow with how many types the board is actually trying to staff.
-   */
-  reserveCeilingPerGym: 14,
-  /**
-   * Multiple of the ceiling at which spillover starts being released.
-   *
-   * A hard backstop, not a design lever: it exists so an unattended league can
-   * never grow the roster of hundreds that once slowed the balance runner
-   * six-fold. It only ever touches creatures nobody has invested in.
-   */
-  hardCeilingFactor: 3,
-  /** Rangers are paid less than Leaders; they are not holding the board. */
-  salaryFactor: 0.45,
-  hireCostBase: 700,
-  hireCostGrowth: 1.4,
-  /** Postings available before the Scouting Office is upgraded. */
-  baseSlots: 3,
-  /** Further postings per level of the Scouting Office. */
-  slotsPerOfficeLevel: 1,
-  /** Level field staff arrive at, per thousand peak renown. */
-  levelPerThousandRenown: 5,
-  /**
-   * Catches a Ranger must make to count as fully seasoned.
-   *
-   * Skill is the whole reason a Ranger is a *person* rather than a route
-   * upgrade: a veteran walks the same ground and comes back with things a rookie
-   * never sees. Below, `skillOf` turns catches into a 0..1 figure that widens
-   * what they can find in two ways at once.
-   */
-  catchesToMaster: 400,
-  /**
-   * Levels above a route's own ceiling a fully seasoned Ranger can find.
-   *
-   * They are not making the creatures stronger; they are finding the ones that
-   * were always out there and a rookie walked past.
-   */
-  skillLevelBonus: 6,
-  /**
-   * How far a seasoned Ranger tilts the draw toward rare species.
-   *
-   * Encounter weight already falls off sharply with evolution stage, so this is
-   * applied as an exponent: at full skill the common things stay common and the
-   * rare things stop being nearly impossible.
-   */
-  rarityTilt: 0.55,
-  /** Cost of a survey, as a multiple of the route's old scouting fee. */
-  intelCostFactor: 2.5,
-} as const;
-
-/**
- * Field staff, and why you do not get to pick their type.
- *
- * Hiring offers a handful of types drawn at random; take one and the offer
- * redraws. Picking freely made a Ranger a component you bought — you already
- * knew which type you wanted, so the only question was whether you could afford
- * it, and there was no decision in it at all.
- *
- * Drawing them means the roster you end up with is partly the roster you were
- * *offered*, which is how staffing works everywhere else in this game: the
- * Leader offer, the gym type offer. You take the good Water trainer when they
- * turn up, not when you feel like it.
+ * The Field used to be two payrolls, two lists and a progress bar. A crew is one
+ * hire; an expedition is one decision, priced up front; and what ends a trip is
+ * something the player chose rather than a timer.
  */
 export const FIELD = {
-  /** Types on offer at once, per role. */
+  /** Crews on offer at once. Take one, or pass and see more. */
   offerSize: 3,
-} as const;
+  /** Crews employable before the Scouting Office is upgraded. */
+  baseSlots: 2,
+  /** Further crews per level of the Scouting Office. */
+  slotsPerOfficeLevel: 1,
 
-/**
- * Handlers.
- *
- * Named to stay clear of Gym Trainers, and named for what they do: they take a
- * party out onto a route and bring it back stronger. This is the training half
- * of field work, opposite the Rangers' collecting half.
- *
- * The mechanic that makes it a decision is the **stretch**. A Ranger refuses
- * ground its partner could not handle; an Handler may be posted *below* a
- * route's level band on purpose. The further under, the more they earn and the
- * faster the party levels — and the more likely they come back beaten.
- *
- * It is also the answer to a measured problem: creature levels only ever rose
- * through gym waves, while challenger scaling rose with renown, so the Elite
- * tier fielded level 6 creatures against a league in the twenties. Training has
- * to be a thing the player can *do*, not a thing that happens to them.
- */
-export const HANDLER = {
-  /** Postings before the Training Grounds are upgraded. */
-  baseSlots: 3,
-  /** Further postings per level of the Training Grounds. */
-  slotsPerFacilityLevel: 1,
-  /** An Handler's party. Smaller than a gym's — they travel light. */
+  hireCostBase: 1600,
+  hireCostGrowth: 1.45,
+  /** Each of the two draws a wage. */
+  salaryFactor: 0.5,
+
+  /** Creatures a Handler can take out to train. */
   partyMax: 4,
 
-  hireCostBase: 1100,
-  hireCostGrowth: 1.4,
-  salaryFactor: 0.6,
-
-  /** Sim-seconds per training round, before the route's difficulty. */
+  /** Sim-seconds per round of work, before the route's difficulty. */
   baseRoundSeconds: 55,
   secondsPerRouteLevel: 4,
 
+  /** Chance a round turns up something worth a ball, at zero competence. */
+  findChanceGreen: 0.35,
+  /** And at full competence. Knowing the ground is most of the job. */
+  findChanceSeasoned: 0.8,
+  /** Competence gained per completed expedition on a route. */
+  competencePerTrip: 0.16,
+  /** Expeditions on a route before the league can push on from it. */
+  tripsToPushOn: 3,
+
   /** Experience each party member takes from a round. */
   xpPerRound: 30,
-  /**
-   * Pokéyen a round pays, before route scaling.
-   *
-   * Halved from the first pass, where six postings out-earned two thirds of the
-   * league's gate receipts and training became the whole economy. It should be a
-   * second income axis — one that scales with headcount rather than renown, and
-   * so cannot be equilibrated away — not the primary one.
-   */
+  /** Pokéyen a round pays, before route scaling. */
   payBase: 38,
   payPerRouteLevel: 9,
 
-  /** Fatigue per sim-second at the bottom of the route's band. */
-  fatiguePerSecondAtFloor: 0.0011,
-  /** How much of that remains once the party tops the band. */
-  fatigueAtCeiling: 0.35,
-  tiredAt: 0.9,
-  rested: 0.3,
+  /** Chance per round that something happens beyond the ordinary. */
+  eventChance: 0.16,
+  /** Wear a hazard costs when no Potion is spent. */
+  hazardHurt: 0.18,
+  /** Wear absorbed instead when one is. */
+  hazardHurtSalved: 0.05,
+  /** Wear from trouble the crew has no Revive for. */
+  troubleHurt: 0.4,
+  /** Wear recovered per round on sheltered ground. */
+  shelteredRecovery: 0.02,
+
+  /** Sim-seconds a held choice waits before the crew acts in character. */
+  choiceWindow: 20 * 60,
+
+  /** Levels above a route's band a seasoned crew can find. */
+  skillLevelBonus: 6,
+  /** How far competence tilts the draw toward rarity. */
+  rarityTilt: 0.5,
+  /** And how far a Lure does, when one is spent. */
+  lureTilt: 0.35,
+
+  /** Rest a creature out with a crew still gets, against resting at home. */
+  restWhilePosted: 0.35,
+  /** Fraction of unused kit that comes back as money. They sold it on. */
+  refund: 0.5,
 
   /**
-   * Sim-seconds between reviews of an auto-managed Handler's crew.
+   * Idle creatures the box will hold before crews stop bringing more.
    *
-   * Not every tick: the review reads the whole box against every Handler, and at
-   * eight Handlers and three hundred creatures that is thousands of comparisons
-   * a second for a decision that changes about once an hour.
+   * Absolute: exempting "somebody is short-handed" was tried twice and both
+   * times the roster ran past a thousand, because a gym can be short of a type
+   * no open route supplies and the exemption never resolves.
    */
-  reviewSeconds: 60,
-  /**
-   * On-type creatures an auto-managed Handler leaves in the box.
-   *
-   * Left unchecked they take the strongest of a type into training — which are
-   * exactly the ones the gyms of that type want — and eight Handlers holding
-   * four each emptied the board's supply. Training has to cost you availability;
-   * it must not cost you the gym.
-   */
-  leaveInBox: 3,
-  /** Levels below a route's floor a party may be pushed. */
-  maxStretch: 14,
-  /** Extra pay and experience per level of stretch. */
-  payPerStretch: 0.07,
-  xpPerStretch: 0.06,
-  /** Extra fatigue per level of stretch. */
-  fatiguePerStretch: 0.09,
-  /** Chance per round, per level of stretch, that the party is beaten. */
-  beatenChancePerStretch: 0.022,
-  /** What being beaten costs: fatigue on everyone, and their trainer's heart. */
-  beatenFatigue: 0.3,
-  beatenMorale: 0.05,
+  reserveCeilingBase: 24,
+  reserveCeilingPerGym: 14,
+  hardCeilingFactor: 3,
+} as const;
+
+/** What each item costs, and what it is for. */
+export const KIT = {
+  balls: { cost: 90, max: 60 },
+  potions: { cost: 140, max: 30 },
+  revives: { cost: 400, max: 10 },
+  lures: { cost: 260, max: 20 },
+} as const;
+
+/**
+ * What each trait does.
+ *
+ * `find` and `pay` bias the ordinary work; `peril` shifts how often events fire;
+ * `rarity` tilts the draw. `decides` is the one that matters most — it is how a
+ * held choice resolves for a player who is asleep, and it is why the trait is a
+ * character rather than a stat block.
+ */
+export const TRAITS = {
+  meticulous: { find: 0.85, pay: 1, peril: 0.7, rarity: 1.35, decides: "cautious" },
+  reckless:   { find: 1.2, pay: 1.15, peril: 1.5, rarity: 1.1, decides: "bold" },
+  patient:    { find: 1, pay: 0.9, peril: 0.85, rarity: 1, decides: "cautious" },
+  lucky:      { find: 1.05, pay: 1.1, peril: 1, rarity: 1.2, decides: "bold" },
 } as const;
 
 export const SCOUTING = {

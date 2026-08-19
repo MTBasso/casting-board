@@ -1,18 +1,20 @@
 import { catalog } from "../data/catalog.js";
-import { RANGER, ELITE, MORALE } from "./constants.js";
+import { ROUTES } from "../data/routes.js";
+import { ELITE, MORALE } from "./constants.js";
 import { pick } from "./rng.js";
 import { makeCreature } from "./factory.js";
 import {
-  addToCrew,
-  canHire,
-  canPost,
-  crewOf,
-  eligibleRoutes,
-  fieldOffer,
-  fieldStaff,
-  hire,
-  post,
-  postingFor,
+  canHireCrew,
+  canPushOnFrom,
+  crewOffer,
+  expeditionOf,
+  expeditionOn,
+  hireCrew,
+  isOpen,
+  open as openRoute,
+  openRoutes,
+  send,
+  trainableFor,
 } from "./systems/field.js";
 import { canStaff, ensureSeats, eliteUnlocked, runGauntlet } from "./systems/elite.js";
 import { staffSeat } from "./systems/elite.js";
@@ -73,50 +75,45 @@ export function staffEverything(state: LeagueState): void {
     if (type) staffSeat(state, seat.rank, type);
   }
 
-  fillFieldStaff(state);
-  postEveryone(state);
+  staffField(state);
   autoFillAll(state);
 }
 
-/** Hire up to every field slot, taking whatever the offer happens to show. */
-function fillFieldStaff(state: LeagueState): void {
-  for (const role of ["ranger", "handler"] as const) {
-    let guard = 0;
-    while (canHire(state, role).ok && guard < 12) {
-      const type = fieldOffer(state, role)[0];
-      if (!type) break;
-      hire(state, role, type);
-      guard += 1;
-    }
+/** Hire up to every crew slot and send them all somewhere useful. */
+function staffField(state: LeagueState): void {
+  let guard = 0;
+  while (canHireCrew(state).ok && guard < 12) {
+    const offer = crewOffer(state)[0];
+    if (!offer || !hireCrew(state, offer.id).ok) break;
+    guard += 1;
+  }
+
+  for (const crew of state.crews) {
+    if (expeditionOf(state, crew.id)) continue;
+    const route = openRoutes(state).find((r) => !expeditionOn(state, r.id));
+    if (!route) continue;
+
+    const onward = canPushOnFrom(state, route.id)
+      ? route.neighbours.find((n) => !isOpen(state, n))
+      : undefined;
+
+    send(
+      state,
+      crew.id,
+      route.id,
+      onward ? "explore" : "work",
+      onward ?? null,
+      { balls: 16, potions: 8, revives: 3, lures: 3 },
+      trainableFor(state, crew, route).slice(0, 4).map((c) => c.id),
+    );
   }
 }
 
-/** Crew and post every idle field trainer on the best ground they can hold. */
-function postEveryone(state: LeagueState): void {
-  const routes = [...eligibleRoutes(state)].sort((a, b) => b.levelMax - a.levelMax);
-
-  for (const role of ["ranger", "handler"] as const) {
-    for (const trainer of fieldStaff(state, role)) {
-      if (postingFor(state, trainer.id)) continue;
-
-      // Rangers work alone; only a Handler needs anyone with them.
-      if (role === "handler") {
-        const bench = Object.values(state.creatures)
-          .filter((c) => c.role === "reserve" && c.owned)
-          .sort((a, b) => b.level - a.level);
-        for (const c of bench) {
-          if (crewOf(state, trainer.id).length >= trainer.partyCap) break;
-          addToCrew(state, c.id, trainer.id);
-        }
-      }
-
-      for (const route of routes) {
-        if (canPost(state, route.id, trainer.id).ok) {
-          post(state, route.id, trainer.id);
-          break;
-        }
-      }
-    }
+/** Put the whole map on the table, for testing the far end. */
+export function revealMap(state: LeagueState): void {
+  for (const route of ROUTES) {
+    openRoute(state, route.id);
+    state.known[route.id] = 99;
   }
 }
 
@@ -177,8 +174,6 @@ export function grindMorale(state: LeagueState): void {
 }
 
 /** Fatigue every posted partner, to watch a duty cycle turn over. */
-export function tireCrews(state: LeagueState): void {
-  for (const posting of state.postings) {
-    for (const c of crewOf(state, posting.trainerId)) c.fatigue = RANGER.tiredAt;
-  }
+export function wearCrews(state: LeagueState): void {
+  for (const trip of state.expeditions) trip.hurt = 0.9;
 }

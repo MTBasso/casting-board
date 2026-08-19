@@ -1,7 +1,7 @@
 import { DESK, MORALE, PROMOTION } from "../constants.js";
 import { built as dayCareBuilt, freeSlots } from "./daycare.js";
 import { eliteUnlocked } from "./elite.js";
-import { fieldStaff, postingFor, reserveCeiling, usableReserve } from "./field.js";
+import { expeditionOf, reserveCeiling, usableReserve } from "./field.js";
 import { isSuspended } from "./morale.js";
 import { partyCapOf } from "./party.js";
 import { readiness } from "./promotion.js";
@@ -117,15 +117,24 @@ export function pendingDecisions(state: LeagueState): Decision[] {
     }
   }
 
-  const idle = [...fieldStaff(state, "ranger"), ...fieldStaff(state, "handler")].filter(
-    (t) => !postingFor(state, t.id),
-  );
+  const idle = state.crews.filter((c) => !expeditionOf(state, c.id));
   if (idle.length > 0) {
     out.push({
-      id: "idle-field",
+      id: "idle-crews",
       urgency: "idle",
-      title: `${idle.length} field staff on the payroll and not working`,
-      detail: `${idle.map((t) => t.name).join(", ")} draw wages either way.`,
+      title: `${idle.length} crew${idle.length === 1 ? "" : "s"} in from the field`,
+      detail: "They draw wages between trips. Outfit them and send them somewhere.",
+      where: "field",
+    });
+  }
+
+  for (const trip of state.expeditions) {
+    if (!trip.pending) continue;
+    out.push({
+      id: `choice-${trip.crewId}`,
+      urgency: "urgent",
+      title: "A crew is waiting on you",
+      detail: trip.pending.prompt,
       where: "field",
     });
   }

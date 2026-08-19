@@ -13,21 +13,21 @@ const rows = ROUTES.map((r) => ({
   name: r.name,
   power: routePower(r),
   weight: offerWeight(r),
-  unlock: r.unlockAt,
-  cost: r.cost,
+  reaches: r.neighbours.length,
+  peril: r.peril,
 }));
 
 const total = rows.reduce((a, r) => a + r.weight, 0);
 
-console.log("\n  ROUTE              POWER   WEIGHT   SHARE   UNLOCK   COST");
+console.log("\n  ROUTE              POWER   WEIGHT   SHARE   PATHS   PERIL");
 console.log("  " + "-".repeat(58));
 for (const r of [...rows].sort((a, b) => b.weight - a.weight)) {
   console.log(
     `  ${r.name.padEnd(18)} ${r.power.toFixed(1).padStart(5)}   ${r.weight
       .toFixed(2)
       .padStart(6)}  ${((r.weight / total) * 100).toFixed(1).padStart(5)}%   ${String(
-      r.unlock,
-    ).padStart(6)}  ${String(r.cost).padStart(5)}`,
+      r.reaches,
+    ).padStart(6)}  ${String(r.peril).padStart(5)}`,
   );
 }
 console.log();

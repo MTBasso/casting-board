@@ -679,6 +679,9 @@ export const en = {
   "welcome.idle": "It keeps running while you are away. Come back and see what happened.",
   "welcome.begin": "Take the post",
   "gymOffer.noRoute": "nowhere you have reached",
+  "facility.operations_office.name": "Operations Office",
+  "facility.operations_office.blurb": "Keeps the league running properly when you are not here. Without one it coasts; with one it works. How content the staff are decides the rest.",
+  "facility.operations_office.effect": "{n}% of full output while you are away",
 } as const;
 
 export type Key = keyof typeof en;
@@ -1258,4 +1261,7 @@ export const pt: Dict = {
   "welcome.idle": "Continua rodando enquanto você está fora. Volte e veja o que aconteceu.",
   "welcome.begin": "Assumir o cargo",
   "gymOffer.noRoute": "nenhum lugar que você alcançou",
+  "facility.operations_office.name": "Escritório de Operações",
+  "facility.operations_office.blurb": "Mantém a liga funcionando direito quando você não está. Sem ele, ela fica no piloto automático; com ele, ela trabalha. O quanto a equipe está satisfeita decide o resto.",
+  "facility.operations_office.effect": "{n}% do rendimento total enquanto você está fora",
 };

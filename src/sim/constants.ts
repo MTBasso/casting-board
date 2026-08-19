@@ -20,15 +20,52 @@ export const TICK_SECONDS = 1;
  * constants changes when it moves, which is why it is a single knob rather than
  * a rebalance.
  */
-export const TIME_SCALE = 40;
+export const TIME_SCALE = 25;
 
-export const OFFLINE_CAP_SECONDS = 12 * 60 * 60;
+/**
+ * How long an absence pays for, in **real** hours.
+ *
+ * Expressed in real time and scaled by the clock, because the two are different
+ * questions and conflating them broke this once already: the cap was twelve
+ * hours of *league* time, which at 40× was reached after eighteen real minutes.
+ * A night's sleep and stepping out for coffee credited exactly the same.
+ *
+ * Eight rather than twelve so that returning once a day still leaves something
+ * on the table, and there is a reason to look before bed.
+ */
+/**
+ * How well the league runs itself while nobody is watching.
+ *
+ * Offline used to be a flat 0.85 of par — a penalty the player could neither
+ * see nor do anything about. It is now a floor you raise: the Operations Office
+ * buys the bulk of it, and how content the staff are decides the last of it.
+ *
+ * Never reaches 1. Playing has to beat not playing, or the optimal move is to
+ * close the app.
+ */
+export const AWAY = {
+  /** With no Operations Office and a miserable staff. */
+  base: 0.55,
+  /** Four levels take it to 0.85. */
+  perLevel: 0.075,
+  /** What a fully content staff adds on top. */
+  moraleBonus: 0.05,
+  max: 0.9,
+} as const;
+
+export const OFFLINE_CAP_REAL_HOURS = 8;
+
+export const OFFLINE_CAP_SECONDS = OFFLINE_CAP_REAL_HOURS * 60 * 60 * TIME_SCALE;
 
 /**
  * Above this much elapsed time, the loader resolves offline analytically
  * instead of stepping ticks. Keeps app-open instant.
+ *
+ * Also scaled, and for the same reason: this is "two real minutes of stepping",
+ * which is a statement about how long a freeze the player will tolerate — not
+ * about league time. Below it the real sim runs and the result is exact.
  */
-export const OFFLINE_ANALYTIC_THRESHOLD_SECONDS = 120;
+export const OFFLINE_ANALYTIC_THRESHOLD_SECONDS = 2 * 60 * TIME_SCALE;
 
 /**
  * Challenges.
@@ -377,6 +414,13 @@ export const PARTY = {
 export const FIELD = {
   /** Crews on offer at once. Take one, or pass and see more. */
   offerSize: 3,
+  /**
+   * How often a middle slot draws from types the league already fields.
+   *
+   * The first slot is guaranteed relevant and the last is deliberately wild;
+   * this is the lean applied to everything between them.
+   */
+  offerRelevance: 0.7,
   /** Crews employable before the Scouting Office is upgraded. */
   baseSlots: 2,
   /** Further crews per level of the Scouting Office. */
@@ -718,7 +762,22 @@ export const LEAGUE = {
   /** Prototype scope: three gyms is enough to make casting a real decision. */
   maxGyms: 8,
   /** Peak renown needed before gym N+1 is offered. */
-  gymUnlockRenown: [0, 120, 350, 700, 1100, 1600, 2200, 3000],
+  /**
+   * Peak renown each gym opens at.
+   *
+   * Fitted against a measured curve rather than guessed: an attentive league
+   * reaches ~1,100 peak by fifteen real minutes, ~4,800 by an hour, ~8,800 by
+   * two hours, and then flattens — renown equilibrates where inflow meets
+   * decay, and 24 hours only reaches ~10,500. The last gym therefore has to sit
+   * below ~9,000 or it is unreachable, which caps how far this axis can stretch
+   * pacing at all.
+   *
+   * That ceiling is the argument for moving these gates onto counts that time
+   * cannot inflate — badges defended, routes reached, careers completed. Until
+   * then this spreads the eight gyms across roughly two hours instead of fifty
+   * minutes.
+   */
+  gymUnlockRenown: [0, 250, 700, 1400, 2400, 3800, 5800, 8500],
   /** Building an available gym costs this — unlocking is a timing decision. */
   gymCostBase: 5200,
   gymCostGrowth: 2.1,

@@ -1,5 +1,5 @@
 import { FACILITIES, facilityDef } from "../../data/facilities.js";
-import { GYM_TRAINERS } from "../constants.js";
+import { AWAY, GYM_TRAINERS } from "../constants.js";
 import type { FacilityId, LeagueState } from "../types.js";
 
 /**
@@ -128,4 +128,25 @@ export function expandGymTrainers(
 
 export function allFacilities() {
   return FACILITIES;
+}
+
+/**
+ * How much of full output the league manages while nobody is watching.
+ *
+ * The Operations Office is the floor and staff morale is the last of it, which
+ * is deliberate: a facility alone would be a flat purchase, and morale alone
+ * would be invisible to a new player with nothing to buy yet.
+ *
+ * Capped below 1 on purpose. Offline must never match playing.
+ */
+export function awayRate(state: LeagueState): number {
+  const built = level(state, "operations_office");
+
+  const staff = Object.values(state.trainers).filter((t) => t.kind !== "candidate");
+  // An empty payroll is not a happy one; it is simply nobody to run the place.
+  const morale = staff.length
+    ? staff.reduce((sum, t) => sum + t.morale, 0) / staff.length
+    : 0;
+
+  return Math.min(AWAY.max, AWAY.base + built * AWAY.perLevel + morale * AWAY.moraleBonus);
 }

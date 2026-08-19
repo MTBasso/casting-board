@@ -11,6 +11,7 @@ import {
 } from "./constants.js";
 import { levelFor, partySizeFor } from "./systems/challenge.js";
 import { runGauntlet } from "./systems/elite.js";
+import { awayRate } from "./systems/facilities.js";
 import { tierMultiplier } from "./systems/promotion.js";
 import { driftMeta } from "./systems/meta.js";
 import { tickField } from "./systems/field.js";
@@ -124,8 +125,9 @@ function stepExact(state: LeagueState, elapsed: number): TickReport {
   return total;
 }
 
-/** Pessimism factor applied to all offline earnings. */
-const OFFLINE_EFFICIENCY = 0.85;
+// The flat 0.85 that used to live here is now `awayRate` — a floor the player
+// raises with the Operations Office and their staff's morale, rather than a
+// penalty they could neither see nor do anything about.
 
 /**
  * Long absences, resolved in one pass.
@@ -138,6 +140,7 @@ const OFFLINE_EFFICIENCY = 0.85;
  */
 function stepAnalytic(state: LeagueState, elapsed: number): TickReport {
   const report = emptyReport();
+  const away = awayRate(state);
 
   for (const gymId of state.gymOrder) {
     const gym = state.gyms[gymId];
@@ -193,12 +196,12 @@ function stepAnalytic(state: LeagueState, elapsed: number): TickReport {
       (CHALLENGE_GATE.base + cleared * CHALLENGE_GATE.perTrainerCleared) *
       (1 + state.renown * WAVE.receiptsPerRenown) *
       tierMultiplier(state.tier) *
-      OFFLINE_EFFICIENCY;
+      away;
 
     state.money += gate;
     state.renown = Math.max(
       0,
-      state.renown + held * RENOWN.perChallengeHeld - lost * RENOWN.perBadgeLost,
+      state.renown + held * RENOWN.perChallengeHeld * away - lost * RENOWN.perBadgeLost,
     );
 
     report.wavesResolved += challenges;

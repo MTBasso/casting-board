@@ -182,6 +182,20 @@ function boxFor(state: LeagueState, trainer: Trainer): Creature[] {
 }
 
 /**
+ * Is this trainer short-handed in a way the player could actually do something
+ * about?
+ *
+ * A party below capacity is only news if the box holds something that could
+ * take the slot. A Ghost Leader with two creatures and no third Ghost anywhere
+ * is not a pending decision — it is the supply situation, and pointing the
+ * player at the PC to look at nothing is how a Desk teaches them to ignore it.
+ */
+export function couldFill(state: LeagueState, trainer: Trainer): boolean {
+  if (partyFull(trainer, state)) return false;
+  return boxFor(state, trainer).some((c) => canJoin(state, c.id, trainer.id).ok);
+}
+
+/**
  * Keep one trainer's party stocked.
  *
  * Three rules:

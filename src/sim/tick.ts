@@ -191,8 +191,6 @@ export function tick(state: LeagueState, dt: number = TICK_SECONDS): TickReport 
   // The promotion gate ratchets, so the moment a gym reaches the standard has
   // to be caught while it is happening.
   markBondedGyms(state);
-  // Objectives count against history, which nothing else was keeping.
-  tallyTick(state, report.wavesWon, report.caught.length, report.returned.length);
   recover(state, dt);
   checkGymUnlock(state);
 
@@ -274,6 +272,14 @@ export function tick(state: LeagueState, dt: number = TICK_SECONDS): TickReport 
   for (const name of report.resignations) {
     log(state, "quit", "log.resigned", { name });
   }
+
+  // Objectives count against history, which nothing else was keeping. This has
+  // to come *last*: the report is built up across the tick, and tallying it
+  // half-way through counts only the systems that had run by then. It sat above
+  // `tickField` for a long time, which meant `caught` and `returned` were read
+  // before anything wrote them — so two of the twelve measures could only ever
+  // be zero, and the objective spine dead-ended at "Send them out".
+  tallyTick(state, report.wavesWon, report.caught.length, report.returned.length);
 
   return report;
 }

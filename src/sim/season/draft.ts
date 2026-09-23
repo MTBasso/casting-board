@@ -15,6 +15,16 @@ export const DRAFT_OFFER_SIZE = 3;
 export const DRAFT_BENCH_SIZE = 4;
 
 /**
+ * How many species the interactive opening draft actually asks the player to
+ * pick, settled 2026-09-23 (see REDESIGN.md): a single starter, mainline-style
+ * — the rest of DRAFT_BENCH_SIZE fills in during Ante 1+ through the growth
+ * pipelines (growth.ts: catches, egg offers, trades) that already exist.
+ * `runDraft`'s headless full-bench behavior is unchanged — it backs the
+ * balance runner and tests, not the interactive screen.
+ */
+export const STARTER_PICK_COUNT = 1;
+
+/**
  * A Mentor-backed species shows up this many times as likely as a plain one.
  *
  * Scaled up from 3 when the roster grew 100 → 223 species (evolution-line

@@ -169,6 +169,19 @@ export function resolveTurn(battle: BattleState, rng: RngState): BattleState {
   return { playerParty, activeIndex, gymParty, gymIndex, result };
 }
 
+/**
+ * The player forfeits the Ante outright — the coach-call escape hatch for a
+ * matchup that can't resolve (e.g. a mutual-immunity stall, like Normal vs
+ * Ghost: 0x both directions, so neither side can ever bring the other's HP
+ * down). `autoResolveBattle` has MAX_TURNS as its own safety net for headless
+ * runs; the interactive path has no turn loop to cap, so it needs an explicit
+ * way out instead.
+ */
+export function retreatBattle(battle: BattleState): BattleState {
+  if (battle.result !== "ongoing") return battle;
+  return { ...battle, result: "lost" };
+}
+
 /** Switches to the best type matchup on the bench, ignoring fatigue — see file header for why. */
 export function typeAwarePolicy(battle: BattleState): number | null {
   const active = activeOf(battle);

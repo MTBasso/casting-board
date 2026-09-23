@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { draftOffer, starterOffer, DRAFT_BENCH_SIZE } from "../../sim/season/draft.js";
+import { draftOffer, starterOffer, STARTER_PICK_COUNT } from "../../sim/season/draft.js";
 import {
   applyAnteResult,
   createRun,
@@ -26,6 +26,7 @@ import {
   makeFighter,
   primaryType,
   resolveTurn,
+  retreatBattle,
   switchActive,
   type BattleState,
 } from "../../sim/season/battle.js";
@@ -68,6 +69,7 @@ interface SeasonStore {
   beginSeason: () => void;
   switchTo: (index: number) => void;
   advanceTurn: () => void;
+  retreat: () => void;
   continueAfterReprieve: () => void;
   resolveTradeOffer: (accept: boolean) => void;
   resolveEggOffer: (accept: boolean) => void;
@@ -173,100 +175,9 @@ function skipToNextAnte(run: RunState): { run: RunState; battle: BattleState } {
   return openAnteBattle(advanced);
 }
 
-export const useSeason = create<SeasonStore>((set, get) => ({
-  run: createRun(Date.now() & 0x7fffffff),
-  offer: [],
-  excluded: [],
-  battle: null,
-  log: [],
-  shopOffer: [],
-  growthPhase: null,
-  tradeCandidate: null,
-  eggCandidate: null,
-  evolutionOffer: [],
-  career: createCareer(),
-  justInducted: [],
-  reprieve: null,
-
-  newRun: (seed = Date.now() & 0x7fffffff) => {
-    const fresh = createRun(seed);
-    const mentorSlugs = get().career.mentors.map((m) => m.slug);
-    const { run, offer } = initialOffer(fresh, mentorSlugs);
-    set({
-      run,
-      offer,
-      excluded: [],
-      battle: null,
-      log: [],
-      shopOffer: [],
-      growthPhase: null,
-      tradeCandidate: null,
-      eggCandidate: null,
-      evolutionOffer: [],
-      justInducted: [],
-      reprieve: null,
-    });
-  },
-
-  pickDraft: (slug) => {
-    const { run, offer, excluded, career } = get();
-    const choice = offer.find((s) => s.slug === slug);
-    if (!choice || run.status !== "draft") return;
-    const party = [...run.party, makeFighter(choice)];
-    const nextExcluded = [...excluded, slug];
-    if (party.length >= DRAFT_BENCH_SIZE) {
-      set({ run: { ...run, party }, offer: [], excluded: nextExcluded });
-      return;
-    }
-    const mentorSlugs = career.mentors.map((m) => m.slug);
-    const rng = { seed: run.rng.seed };
-    const nextOffer = draftOffer(rng, nextExcluded, mentorSlugs);
-    set({ run: { ...run, party, rng }, offer: nextOffer, excluded: nextExcluded });
-  },
-
-  beginSeason: () => {
-    const started = startRun(get().run);
-    const { run, battle } = openAnteBattle(started);
-    set({ run, battle, log: [logLine(`Ante ${run.ante} — ${run.party.length} on the bench.`)] });
-  },
-
-  switchTo: (index) => {
-    const { battle, log } = get();
-    if (!battle || !canSwitchTo(battle, index)) return;
-    const incoming = battle.playerParty[index];
-    set({
-      battle: switchActive(battle, index),
-      log: incoming ? [...log, logLine(`Coach call: ${incoming.name} switches in.`)] : log,
-    });
-  },
-
-  advanceTurn: () => {
-    const { run, battle, log } = get();
-    if (!battle || battle.result !== "ongoing") return;
-
-    const before = battle.playerParty[battle.activeIndex];
-    const beforeOpp = battle.gymParty[battle.gymIndex];
-    const rng = { seed: run.rng.seed };
-    const nextBattle = resolveTurn(battle, rng);
-    const runWithRng = { ...run, rng };
-
-    const lines: BattleLogLine[] = [...log];
-    if (before && beforeOpp) {
-      const mult = effectivenessAgainst(primaryType(before), beforeOpp.types);
-      const tag = mult > 1 ? "super effective" : mult < 1 ? "not very effective" : null;
-      lines.push(logLine(`${before.name} clashes with ${beforeOpp.name}${tag ? ` — ${tag}!` : "."}`));
-    }
-    const faintedOpp = nextBattle.gymIndex !== battle.gymIndex || nextBattle.result === "won";
-    if (faintedOpp && beforeOpp) lines.push(logLine(`${beforeOpp.name} is out.`));
-    const faintedMine = nextBattle.activeIndex !== battle.activeIndex && nextBattle.result === "ongoing";
-    if (faintedMine && before) lines.push(logLine(`${before.name} is out. Auto-sent the next ready mon.`));
-
-    if (nextBattle.result === "ongoing") {
-      set({ run: runWithRng, battle: nextBattle, log: lines });
-      return;
-    }
-
-    lines.push(logLine(nextBattle.result === "won" ? "Ante cleared." : "The party went down."));
+export const useSeason = create<SeasonStore>((set, get) => {
+  /** Shared tail of advanceTurn and retreatBattle: once a battle stops being "ongoing", the Ante's outcome (reprieve, win/loss, or the growth/shop step) is resolved the same way regardless of how it stopped. */
+  function resolveBattleOutcome(nextBattle: BattleState, runWithRng: RunState, lines: BattleLogLine[]) {
     const resolved = applyAnteResult(runWithRng, nextBattle);
     if (resolved.status === "active") {
       // A Sacrifice/extra-life reprieve — same Ante, rested party, fresh battle,
@@ -316,6 +227,117 @@ export const useSeason = create<SeasonStore>((set, get) => ({
       return;
     }
     set({ run: resolved, battle: nextBattle, log: lines });
+  }
+
+  return {
+  run: createRun(Date.now() & 0x7fffffff),
+  offer: [],
+  excluded: [],
+  battle: null,
+  log: [],
+  shopOffer: [],
+  growthPhase: null,
+  tradeCandidate: null,
+  eggCandidate: null,
+  evolutionOffer: [],
+  career: createCareer(),
+  justInducted: [],
+  reprieve: null,
+
+  newRun: (seed = Date.now() & 0x7fffffff) => {
+    const fresh = createRun(seed);
+    const mentorSlugs = get().career.mentors.map((m) => m.slug);
+    const { run, offer } = initialOffer(fresh, mentorSlugs);
+    set({
+      run,
+      offer,
+      excluded: [],
+      battle: null,
+      log: [],
+      shopOffer: [],
+      growthPhase: null,
+      tradeCandidate: null,
+      eggCandidate: null,
+      evolutionOffer: [],
+      justInducted: [],
+      reprieve: null,
+    });
+  },
+
+  pickDraft: (slug) => {
+    const { run, offer, excluded, career } = get();
+    const choice = offer.find((s) => s.slug === slug);
+    if (!choice || run.status !== "draft") return;
+    const party = [...run.party, makeFighter(choice)];
+    const nextExcluded = [...excluded, slug];
+    if (party.length >= STARTER_PICK_COUNT) {
+      set({ run: { ...run, party }, offer: [], excluded: nextExcluded });
+      return;
+    }
+    const mentorSlugs = career.mentors.map((m) => m.slug);
+    const rng = { seed: run.rng.seed };
+    const nextOffer = draftOffer(rng, nextExcluded, mentorSlugs);
+    set({ run: { ...run, party, rng }, offer: nextOffer, excluded: nextExcluded });
+  },
+
+  beginSeason: () => {
+    const started = startRun(get().run);
+    const { run, battle } = openAnteBattle(started);
+    set({ run, battle, log: [logLine(`Ante ${run.ante} — ${run.party.length} on the bench.`)] });
+  },
+
+  switchTo: (index) => {
+    const { battle, log } = get();
+    if (!battle || !canSwitchTo(battle, index)) return;
+    const incoming = battle.playerParty[index];
+    set({
+      battle: switchActive(battle, index),
+      log: incoming ? [...log, logLine(`Coach call: ${incoming.name} switches in.`)] : log,
+    });
+  },
+
+  advanceTurn: () => {
+    const { run, battle, log } = get();
+    if (!battle || battle.result !== "ongoing") return;
+
+    const before = battle.playerParty[battle.activeIndex];
+    const beforeOpp = battle.gymParty[battle.gymIndex];
+    const rng = { seed: run.rng.seed };
+    const nextBattle = resolveTurn(battle, rng);
+    const runWithRng = { ...run, rng };
+
+    const lines: BattleLogLine[] = [...log];
+    if (before && beforeOpp) {
+      const mult = effectivenessAgainst(primaryType(before), beforeOpp.types);
+      const tag = mult > 1 ? "super effective" : mult === 0 ? "no effect" : mult < 1 ? "not very effective" : null;
+      lines.push(logLine(`${before.name} clashes with ${beforeOpp.name}${tag ? ` — ${tag}!` : "."}`));
+    }
+    const faintedOpp = nextBattle.gymIndex !== battle.gymIndex || nextBattle.result === "won";
+    if (faintedOpp && beforeOpp) lines.push(logLine(`${beforeOpp.name} is out.`));
+    const faintedMine = nextBattle.activeIndex !== battle.activeIndex && nextBattle.result === "ongoing";
+    if (faintedMine && before) lines.push(logLine(`${before.name} is out. Auto-sent the next ready mon.`));
+
+    if (nextBattle.result === "ongoing") {
+      set({ run: runWithRng, battle: nextBattle, log: lines });
+      return;
+    }
+
+    lines.push(logLine(nextBattle.result === "won" ? "Ante cleared." : "The party went down."));
+    resolveBattleOutcome(nextBattle, runWithRng, lines);
+  },
+
+  /**
+   * Coach's escape hatch: forfeit the Ante outright. Exists for matchups that
+   * cannot resolve on their own — a Normal-type active mon against an
+   * all-Ghost gym party, for instance, is 0x both directions forever — and
+   * doubles as a general "I'd rather retreat than grind this out" option.
+   */
+  retreat: () => {
+    const { run, battle, log } = get();
+    if (!battle || battle.result !== "ongoing") return;
+    const nextBattle = retreatBattle(battle);
+    const lines = [...log, logLine("Coach call: retreat. The party pulls out.")];
+    resolveBattleOutcome(nextBattle, run, lines);
   },
 
   continueAfterReprieve: () => {
@@ -447,4 +469,5 @@ export const useSeason = create<SeasonStore>((set, get) => ({
       log: [logLine(`Took ${doctrine.name}. Ante ${nextRun.ante} — the shop's behind you.`)],
     });
   },
-}));
+  };
+});

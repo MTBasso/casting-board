@@ -1,4 +1,4 @@
-import { DRAFT_BENCH_SIZE } from "../../sim/season/draft.js";
+import { STARTER_PICK_COUNT } from "../../sim/season/draft.js";
 import { rarityOf } from "../../sim/season/roster.js";
 import { TYPE_COLORS, needsDarkText } from "../typeColors.js";
 import { spriteUrl } from "../sprites.js";
@@ -16,17 +16,17 @@ export function DraftScreen() {
   const pickDraft = useSeason((s) => s.pickDraft);
   const beginSeason = useSeason((s) => s.beginSeason);
 
-  const full = run.party.length >= DRAFT_BENCH_SIZE;
+  const full = run.party.length >= STARTER_PICK_COUNT;
 
   return (
     <div className="season-root">
       <div className="sn-header">
         <div>
           <div className="sn-eyebrow">Season 1 // Ante 0 // Draft</div>
-          <h1 className="sn-title sn-display">Draft Your Opening Party</h1>
+          <h1 className="sn-title sn-display">Choose Your Starter</h1>
         </div>
         <div className="sn-meta">
-          {run.party.length}/{DRAFT_BENCH_SIZE} drafted
+          {run.party.length}/{STARTER_PICK_COUNT} chosen
         </div>
       </div>
 
@@ -60,9 +60,9 @@ export function DraftScreen() {
       </div>
 
       <div className="sn-footer">
-        <span className="sn-label">Party</span>
+        <span className="sn-label">Starter</span>
         <div className="sn-slots">
-          {Array.from({ length: DRAFT_BENCH_SIZE }, (_, i) => {
+          {Array.from({ length: STARTER_PICK_COUNT }, (_, i) => {
             const mon = run.party[i];
             const sprite = mon ? spriteUrl(mon.slug) : null;
             return (

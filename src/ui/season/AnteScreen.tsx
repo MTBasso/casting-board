@@ -64,6 +64,7 @@ export function AnteScreen() {
   const log = useSeason((s) => s.log);
   const switchTo = useSeason((s) => s.switchTo);
   const advanceTurn = useSeason((s) => s.advanceTurn);
+  const retreat = useSeason((s) => s.retreat);
   const logRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -86,7 +87,7 @@ export function AnteScreen() {
       <div className="sn-header">
         <div>
           <div className="sn-eyebrow">
-            Ante {run.ante} // Gym {battle.gymIndex + 1} of {battle.gymParty.length}
+            Ante {run.ante} // Leader's mon {battle.gymIndex + 1} of {battle.gymParty.length}
           </div>
           <h1 className="sn-title sn-display">Coach Call</h1>
         </div>
@@ -117,6 +118,29 @@ export function AnteScreen() {
           slug={gymActive.slug}
         />
       </div>
+
+      {battle.gymParty.length > battle.gymIndex + 1 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <span className="sn-label">Leader's remaining team</span>
+          <div className="sn-bench-list">
+            {battle.gymParty.map((mon, i) => {
+              if (i <= battle.gymIndex) return null;
+              const type = mon.types[0] ?? "normal";
+              const color = TYPE_COLORS[type];
+              return (
+                <div key={i} className="sn-bench-card" style={{ "--sn-card-accent": color } as Record<string, string>}>
+                  <div className="sn-bench-portrait">
+                    {spriteUrl(mon.slug) && <img src={spriteUrl(mon.slug) ?? ""} alt="" />}
+                  </div>
+                  <div className="sn-bench-body">
+                    <span className="sn-bench-name">{mon.name}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="sn-log" ref={logRef}>
         {log.slice(-6).map((line) => (
@@ -158,9 +182,14 @@ export function AnteScreen() {
         </div>
       </div>
 
-      <button className="sn-btn is-primary" onClick={advanceTurn}>
-        Fight Turn →
-      </button>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button className="sn-btn" onClick={retreat}>
+          Retreat
+        </button>
+        <button className="sn-btn is-primary" style={{ flex: 1 }} onClick={advanceTurn}>
+          Fight Turn →
+        </button>
+      </div>
     </div>
   );
 }

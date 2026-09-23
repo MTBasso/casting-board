@@ -1,7 +1,5 @@
 import { DRAFT_BENCH_SIZE } from "../../sim/season/draft.js";
 import { rarityOf } from "../../sim/season/roster.js";
-import { TYPE_COLORS, needsDarkText } from "../typeColors.js";
-import { spriteUrl } from "../sprites.js";
 import { useSeason } from "./store.js";
 
 const RARITY_COLOR: Record<string, string> = {
@@ -18,8 +16,11 @@ export function EggScreen() {
 
   if (!eggCandidate) return null;
   const rarity = rarityOf(eggCandidate);
-  const type = eggCandidate.types[0] ?? "normal";
-  const color = TYPE_COLORS[type];
+  // The species stays hidden until it hatches — REDESIGN.md "Egg payoff" is a
+  // gamble on rarity, and knowing the species up front spoils the reveal
+  // that's the whole point of an egg. Rarity is shown because it's what the
+  // gamble is actually weighed against.
+  const color = "var(--sn-text-dim)";
   const full = run.party.length >= DRAFT_BENCH_SIZE;
   const weakest = full
     ? [...run.party].filter((f) => f.hp > 0 && !f.isEgg).reduce((a, b) => (b.power < a.power ? b : a))
@@ -40,14 +41,9 @@ export function EggScreen() {
             <span className="sn-tag" style={{ color: RARITY_COLOR[rarity] }}>
               {rarity} egg
             </span>
-            <span className="sn-badge" style={{ background: color, color: needsDarkText(type) ? "#1c1c14" : "#fff" }}>
-              {type}
-            </span>
           </div>
-          <div className="sn-portrait">
-            {spriteUrl(eggCandidate.slug) && <img src={spriteUrl(eggCandidate.slug) ?? ""} alt="" />}
-          </div>
-          <div className="sn-name sn-display">{eggCandidate.name}</div>
+          <div className="sn-portrait" style={{ fontSize: 40, opacity: 0.6 }}>?</div>
+          <div className="sn-name sn-display">???</div>
         </div>
       </div>
 

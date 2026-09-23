@@ -1,5 +1,5 @@
 /**
- * Generates the species table (Gens 1-3) and downloads its animated sprites.
+ * Generates the species table (Gens 1-5) and downloads its animated sprites.
  *
  *   npx tsx scripts/fetch-dex.ts
  *
@@ -10,7 +10,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-const DEX_COUNT = 386;
+const DEX_COUNT = 649;
 const OUT_TS = resolve("src/data/species.dex.ts");
 const SPRITE_DIR = resolve("public/sprites");
 const ICON_DIR = resolve("public/icons");
@@ -23,6 +23,8 @@ const STARTER_IDS = new Set([
   1, 2, 3, 4, 5, 6, 7, 8, 9, // Kanto
   152, 153, 154, 155, 156, 157, 158, 159, 160, // Johto
   252, 253, 254, 255, 256, 257, 258, 259, 260, // Hoenn
+  387, 388, 389, 390, 391, 392, 393, 394, 395, // Sinnoh
+  495, 496, 497, 498, 499, 500, 501, 502, 503, // Unova
 ]);
 
 interface ApiType { slot: number; type: { name: string } }
@@ -114,9 +116,9 @@ async function getJson<T>(url: string, attempt = 0): Promise<T> {
 /**
  * Gen 5 animated sprites, with the static ones as a fallback.
  *
- * Black/White animated GIFs exist for every Pokémon up to Gen 5, so all 151 are
- * covered — and a creature that breathes reads as a character rather than an
- * icon, which matters in a game about getting attached to them.
+ * Black/White animated GIFs exist for every Pokémon up to Gen 5, so the whole
+ * dex is covered — and a creature that breathes reads as a character rather
+ * than an icon, which matters in a game about getting attached to them.
  */
 const ANIMATED =
   "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated";

@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./ui/App.js";
+import { SeasonApp } from "./ui/season/SeasonApp.js";
 import { startLoop } from "./engine/loop.js";
 import { getState, useGame } from "./engine/store.js";
 import {
@@ -19,6 +20,20 @@ import "./ui/styles.css";
  * sim as a span of sim-seconds, and never mention clocks again.
  */
 async function boot(): Promise<void> {
+  // The redesign's roguelike season, played standalone, behind a hash flag —
+  // REDESIGN.md's new game coexists with the old league-manager App until
+  // enough slices land to make the switch (see src/sim/season/types.ts).
+  if (window.location.hash === "#season") {
+    const root = document.getElementById("root");
+    if (!root) throw new Error("#root missing from index.html");
+    createRoot(root).render(
+      <StrictMode>
+        <SeasonApp />
+      </StrictMode>,
+    );
+    return;
+  }
+
   // A save that cannot be restored must never take the app down with it. The
   // league is set aside rather than deleted, and play continues from a fresh
   // one — a white screen tells the player nothing and loses them anyway.

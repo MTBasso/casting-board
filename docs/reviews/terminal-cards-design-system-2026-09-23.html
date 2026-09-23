@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Judge UI — Terminal Cards</title>
+<style>
+  :root {
+    --sn-bg: #0a0e12; --sn-bg-glow: #12232a; --sn-panel: #12161c; --sn-panel-2: #101418;
+    --sn-border: #1c232a; --sn-text: #d7dbe0; --sn-text-dim: #6b7480; --sn-heading: #f2f4f6;
+    --sn-accent: #4fe0c5; --sn-gold: #d9b45f; --sn-danger: #ff5c5c;
+  }
+  body { margin: 0; background: radial-gradient(ellipse at 50% -10%, var(--sn-bg-glow) 0%, var(--sn-bg) 55%);
+    color: var(--sn-text); font-family: "SF Mono","Courier New",monospace; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 48px 32px 96px; }
+  h1 { font-family: Georgia, serif; color: var(--sn-heading); font-size: 34px; margin: 0 0 6px; }
+  .sub { color: var(--sn-text-dim); font-size: 13px; line-height: 1.6; max-width: 720px; }
+  .notice { font-size: 11px; color: var(--sn-gold); letter-spacing: 1px; text-transform: uppercase; margin-top: 18px; }
+  .contract { background: var(--sn-panel); border: 1px solid var(--sn-border); border-radius: 12px; padding: 20px 24px; margin: 28px 0 44px; }
+  .contract h2 { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: var(--sn-accent); margin: 0 0 12px; }
+  .contract dl { display: grid; grid-template-columns: 140px 1fr; gap: 8px 16px; font-size: 13px; margin: 0; }
+  .contract dt { color: var(--sn-text-dim); }
+  .finding { border: 1px solid var(--sn-border); border-radius: 14px; margin-bottom: 32px; overflow: hidden; }
+  .f-head { padding: 18px 24px; border-bottom: 1px solid var(--sn-border); display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+  .f-title { font-family: Georgia, serif; font-size: 20px; color: var(--sn-heading); margin: 0; }
+  .sev { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding: 4px 10px; border-radius: 20px; white-space: nowrap; }
+  .sev.high { background: #2a1315; color: var(--sn-danger); border: 1px solid color-mix(in srgb, var(--sn-danger) 40%, transparent); }
+  .sev.medium { background: #241d0d; color: var(--sn-gold); border: 1px solid color-mix(in srgb, var(--sn-gold) 40%, transparent); }
+  .sev.low { background: var(--sn-panel-2); color: var(--sn-text-dim); border: 1px solid var(--sn-border); }
+  .f-body { padding: 20px 24px; }
+  .evidence { background: var(--sn-panel-2); border: 1px solid var(--sn-border); border-radius: 8px; padding: 10px 14px; font-size: 12px; margin: 10px 0 16px; }
+  .evidence code { color: var(--sn-gold); }
+  .why { font-size: 13px; color: var(--sn-text); line-height: 1.6; margin: 0 0 18px; }
+  .opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .opt { border: 2px solid var(--sn-border); border-radius: 12px; padding: 14px; cursor: pointer; transition: border-color .12s ease; }
+  .opt:hover { border-color: var(--sn-text-dim); }
+  .opt input { display: none; }
+  .opt input:checked + .opt-body { }
+  .opt.picked, .opt:has(input:checked) { border-color: var(--sn-accent); box-shadow: 0 0 16px color-mix(in srgb, var(--sn-accent) 25%, transparent); }
+  .opt-label { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--sn-accent); }
+  .opt-desc { font-size: 12px; color: var(--sn-text); margin-top: 6px; line-height: 1.5; }
+  .opt-trade { font-size: 11px; color: var(--sn-text-dim); margin-top: 8px; line-height: 1.5; }
+  .recon-tag { font-size: 10px; color: var(--sn-danger); text-transform: uppercase; letter-spacing: 1px; margin-top: 8px; }
+  .send-bar { position: sticky; bottom: 0; background: var(--sn-panel); border: 1px solid var(--sn-border); border-radius: 12px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; margin-top: 32px; }
+  .sn-btn { cursor: pointer; border: none; font-family: inherit; padding: 10px 22px; border-radius: 8px; background: var(--sn-accent); color: var(--sn-bg); font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
+  #picksOut { font-size: 11px; color: var(--sn-text-dim); white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Judging: Terminal Cards design system</h1>
+  <p class="sub">
+    Area: the "Terminal Cards" reference doc (published as the reviewed artifact) against its
+    live source, <code>src/ui/season/season.css</code>, and the six screens that ship it
+    (<code>src/ui/season/*.tsx</code>). Nothing was run or screenshotted — this is a read of the
+    CSS, the TSX, and the reference doc's own claim to be verbatim.
+  </p>
+  <p class="notice">Every card below is a reconstruction from source, not a screenshot.</p>
+
+  <div class="contract">
+    <h2>Contract (from the tokens + doc)</h2>
+    <dl>
+      <dt>Fonts</dt><dd>SF Mono/Courier New for HUD/labels/log; Georgia for names, titles, end-states (the "cold readout vs. warm name" split, stated by the doc itself).</dd>
+      <dt>Color roles</dt><dd>Dark-only (no light mode). Accent teal (<code>--sn-accent</code>) reserved for the one forward action + HP; gold (<code>--sn-gold</code>) for fatigue/legendary/rarity; red (<code>--sn-danger</code>) reserved for "this fight punishes you" + lost states.</dd>
+      <dt>Radii</dt><dd>14px cards, 8–12px controls, pill badges/tags.</dd>
+      <dt>States</dt><dd>Cards: hover lift + <code>.is-picked</code> glow. Buttons: default / <code>.is-primary</code> / <code>:disabled</code>. Bench cards: <code>.is-active</code>.</dd>
+      <dt>Never</dt><dd>HP bar color never doubles as a warning (the number does); accent never fills more than one surface at a time.</dd>
+    </dl>
+  </div>
+
+  <!-- F1 -->
+  <div class="finding">
+    <div class="f-head"><h3 class="f-title">F1 — Dim text fails contrast at the sizes it's actually used</h3><span class="sev high">high</span></div>
+    <div class="f-body">
+      <div class="evidence">Computed WCAG contrast, <code>--sn-text-dim #6b7480</code> on its two backgrounds: 3.91:1 on <code>--sn-panel-2</code>, 4.09:1 on <code>--sn-bg</code> — both below the 4.5:1 floor for text under 24px. It's applied at 9–11px in <code>.sn-meta</code>, <code>.sn-label</code>, <code>.sn-bar-row</code>, <code>.sn-eyebrow</code>-adjacent copy (<code>src/ui/season/season.css:44,58,183,237</code>).</div>
+      <p class="why">These are exactly the labels carrying game state — fatigue %, HP %, "Switch in — bench" — on the smallest type in the system. A player skimming mid-fight is the one who needs this text most legible.</p>
+      <div class="opts">
+        <label class="opt"><input type="radio" name="f1" value="a" checked><div class="opt-body"><div class="opt-label">a · Now</div><div class="opt-desc">Leave <code>--sn-text-dim</code> as is.</div><div class="opt-trade">Trade-off: stays under 4.5:1 wherever it's used below 24px.</div></div></label>
+        <label class="opt"><input type="radio" name="f1" value="b"><div class="opt-body"><div class="opt-label">b · Lighten the token</div><div class="opt-desc">Bump <code>--sn-text-dim</code> to <code>#8891 9c</code>-range (~4.6:1 on both backgrounds).</div><div class="opt-trade">Trade-off: one token change fixes every use site at once; slightly less "dim" contrast against <code>--sn-text</code> itself.</div></div></label>
+        <label class="opt"><input type="radio" name="f1" value="c"><div class="opt-body"><div class="opt-label">c · Size-gate it</div><div class="opt-desc">Keep the token, but require ≥12px anywhere it's used, or add a second darker-safe variant for sub-12px labels.</div><div class="opt-trade">Trade-off: no re-tuning existing "it reads fine at 13px" spots, but two dim tokens to remember instead of one.</div></div></label>
+      </div>
+    </div>
+  </div>
+
+  <!-- F2 -->
+  <div class="finding">
+    <div class="f-head"><h3 class="f-title">F2 — No focus style is defined for a dark, borderless UI</h3><span class="sev high">high</span></div>
+    <div class="f-body">
+      <div class="evidence"><code>grep -n focus src/ui/season/season.css</code> returns nothing across all 428 lines — no <code>:focus</code> or <code>:focus-visible</code> rule anywhere, on <code>.sn-btn</code>, <code>.sn-card</code>, or <code>.sn-bench-card</code> (all real <code>&lt;button&gt;</code> elements, confirmed in <code>AnteScreen.tsx:139-150</code>).</div>
+      <p class="why">Every interactive surface here is a borderless or dark-bordered rounded rect on a near-black background — exactly where a browser's default focus ring is easiest to lose. Keyboard users get whatever the browser ships, unstyled to the system.</p>
+      <div class="opts">
+        <label class="opt"><input type="radio" name="f2" value="a" checked><div class="opt-body"><div class="opt-label">a · Now</div><div class="opt-desc">Rely on the browser default outline.</div><div class="opt-trade">Trade-off: zero cost, but the ring's color/contrast on this palette is unverified and unowned by the system.</div></div></label>
+        <label class="opt"><input type="radio" name="f2" value="b"><div class="opt-body"><div class="opt-label">b · One focus rule, reused</div><div class="opt-desc">Add <code>:focus-visible { outline: 2px solid var(--sn-accent); outline-offset: 2px; }</code> once, scoped to <code>.sn-btn, .sn-card, .sn-bench-card</code>.</div><div class="opt-trade">Trade-off: matches the "accent = the thing that moves you forward" rule the doc already states; one line, every control.</div></div></label>
+        <label class="opt"><input type="radio" name="f2" value="c"><div class="opt-body"><div class="opt-label">c · Per-component glow</div><div class="opt-desc">Reuse the existing <code>.is-picked</code> glow shadow as the focus treatment instead of an outline.</div><div class="opt-trade">Trade-off: visually consistent with "selected" elsewhere, but overloads one visual language for two different states (selected vs. focused).</div></div></label>
+      </div>
+    </div>
+  </div>
+
+  <!-- F3 -->
+  <div class="finding">
+    <div class="f-head"><h3 class="f-title">F3 — Primary buttons sit well under a comfortable tap target</h3><span class="sev medium">medium</span></div>
+    <div class="f-body">
+      <div class="evidence"><code>.sn-btn { padding: 9px 0; font-size: 12px; }</code> with no explicit <code>line-height</code> (<code>season.css:144-152</code>) — resolved height is roughly 32-34px. The top-level CLAUDE.md describes increMon as an idle <strong>PWA</strong>, implying phone-width play, not desktop-only.</div>
+      <p class="why">Bench cards and shop buttons are the exact controls a player taps repeatedly mid-run; a sub-44px target on a phone screen is the classic mis-tap source, worse under a chunky drop-shadow card that visually reads bigger than its hit area.</p>
+      <div class="opts">
+        <label class="opt"><input type="radio" name="f3" value="a" checked><div class="opt-body"><div class="opt-label">a · Now</div><div class="opt-desc">Keep the current padding.</div><div class="opt-trade">Trade-off: denser rows, more buttons visible per screen.</div></div></label>
+        <label class="opt"><input type="radio" name="f3" value="b"><div class="opt-body"><div class="opt-label">b · Raise the floor</div><div class="opt-desc">Set <code>min-height: 44px</code> on <code>.sn-btn</code>, keep the font size, let padding absorb the difference.</div><div class="opt-trade">Trade-off: standard, no visual redesign, but every screen using tight button rows gets slightly taller.</div></div></label>
+        <label class="opt"><input type="radio" name="f3" value="c"><div class="opt-body"><div class="opt-label">c · Expand the hit area only</div><div class="opt-desc">Keep the visual button as-is, add invisible padding via a pseudo-element or <code>::before</code> hit-slop.</div><div class="opt-trade">Trade-off: no layout shift at all, but a hack to maintain and easy to forget on a new button variant.</div></div></label>
+      </div>
+    </div>
+  </div>
+
+  <!-- F4 -->
+  <div class="finding">
+    <div class="f-head"><h3 class="f-title">F4 — The system has no documented empty, loading, or error state</h3><span class="sev medium">medium</span></div>
+    <div class="f-body">
+      <div class="evidence">All 7 sections of the reference doc cover color, type, buttons, badges, cards, meters, and log/end-states. <code>grep -rin "loading\|error\|empty" src/ui/season/*.tsx</code> finds nothing but an <code>&lt;img loading="lazy"&gt;</code> attribute in <code>DraftScreen.tsx</code> — no <code>.sn-empty</code>, no error-state class in <code>season.css</code>.</div>
+      <p class="why">A bench with a free slot, a shop that rolled nothing you can afford, a draft pool that's run dry — these are real reachable states in the roguelike-run structure (REDESIGN.md), and none of them has a system answer yet, only whatever each screen improvises.</p>
+      <div class="opts">
+        <label class="opt"><input type="radio" name="f4" value="a" checked><div class="opt-body"><div class="opt-label">a · Now</div><div class="opt-desc">Leave empty/loading/error un-systemized; each screen keeps improvising.</div><div class="opt-trade">Trade-off: no new tokens or classes needed today.</div></div></label>
+        <label class="opt"><input type="radio" name="f4" value="b"><div class="opt-body"><div class="opt-label">b · One empty-state pattern</div><div class="opt-desc">Add a single <code>.sn-empty</code> (dashed border, dim label, reuses <code>.sn-slot</code>'s existing dashed-box language) for "nothing here."</div><div class="opt-trade">Trade-off: covers the bench/shop/draft-dry cases cheaply by reusing an existing visual, but doesn't address loading or error.</div></div></label>
+        <label class="opt"><input type="radio" name="f4" value="c"><div class="opt-body"><div class="opt-label">c · Full state set in the doc</div><div class="opt-desc">Add an "08 — States" section: empty, loading (the sim ticks locally, so this may be near-unreachable), and error.</div><div class="opt-trade">Trade-off: most complete, but risks documenting a loading state that this local-sim game may never actually need — check before building it.</div></div></label>
+      </div>
+    </div>
+  </div>
+
+  <!-- F5 -->
+  <div class="finding">
+    <div class="f-head"><h3 class="f-title">F5 — The reference doc is missing the layout class that makes the fight screen work</h3><span class="sev low">low</span></div>
+    <div class="f-body">
+      <div class="evidence"><code>season.css:217-222</code> defines <code>.sn-matchup { display: grid; grid-template-columns: 1fr auto 1fr; gap: 18px; }</code> — the wrapper that actually places the two <code>.sn-fighter</code> panels either side of <code>.sn-vs</code>. The doc's "07 — Log &amp; End States" and its fighter-adjacent classes never show this class or the composed row.</div>
+      <p class="why">The doc calls itself "verbatim" from the CSS, but a future screen author copying classes out of it has no way to see how the VS layout is actually assembled — they'd have to go read the CSS anyway, defeating the doc's stated purpose.</p>
+      <div class="opts">
+        <label class="opt"><input type="radio" name="f5" value="a" checked><div class="opt-body"><div class="opt-label">a · Now</div><div class="opt-desc">Leave the doc as-is; <code>.sn-matchup</code> stays undocumented.</div><div class="opt-trade">Trade-off: doc stays shorter.</div></div></label>
+        <label class="opt"><input type="radio" name="f5" value="b"><div class="opt-body"><div class="opt-label">b · Add the composed row</div><div class="opt-desc">In section 06 or 07, show two <code>.sn-fighter</code> panels inside an actual <code>.sn-matchup</code> grid, matching what Coach Call ships.</div><div class="opt-trade">Trade-off: closes the gap the doc claims not to have; small addition.</div></div></label>
+        <label class="opt"><input type="radio" name="f5" value="c"><div class="opt-body"><div class="opt-label">c · Audit for other gaps</div><div class="opt-desc">Diff the full class list in <code>season.css</code> against the doc once, fix all misses together (also missing: <code>.sn-bench-list</code>, image-fit rules).</div><div class="opt-trade">Trade-off: more thorough, more upfront effort for a doc that's easy to patch incrementally instead.</div></div></label>
+      </div>
+    </div>
+  </div>
+
+  <div class="send-bar">
+    <div id="picksOut">Picks default to "a · Now" (no change) until you choose otherwise.</div>
+    <button class="sn-btn" onclick="sendPicks()">Send my picks</button>
+  </div>
+</div>
+<script>
+function sendPicks() {
+  const findings = ['f1','f2','f3','f4','f5'];
+  const titles = {
+    f1: 'Dim text contrast', f2: 'Focus style', f3: 'Button tap target',
+    f4: 'Empty/loading/error states', f5: 'Doc missing .sn-matchup'
+  };
+  const lines = findings.map(f => {
+    const picked = document.querySelector('input[name="'+f+'"]:checked').value;
+    return f.toUpperCase() + ' (' + titles[f] + '): option ' + picked;
+  });
+  const text = 'Judge UI picks — Terminal Cards design system:\n' + lines.join('\n');
+  document.getElementById('picksOut').textContent = text;
+  if (typeof sendPrompt === 'function') {
+    sendPrompt(text);
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(text);
+    document.getElementById('picksOut').textContent = text + '\n\n(copied — paste it back to Claude)';
+  }
+}
+</script>
+</body>
+</html>

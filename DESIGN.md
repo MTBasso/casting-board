@@ -1,5 +1,9 @@
 # The Casting Board — Design Document
 
+> **Archived.** This documents the old off-screen league-manager game, which
+> has been deleted from the codebase — see [REDESIGN.md](REDESIGN.md) for the
+> game as it actually exists now. Kept for historical record only.
+
 *Working title. A Pokémon League Manager idle game.*
 
 ---

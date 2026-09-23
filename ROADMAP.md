@@ -1,5 +1,10 @@
 # The Casting Board — Development Roadmap
 
+> **Archived.** This is the build log for the old off-screen league-manager
+> game, which has been deleted from the codebase — see
+> [REDESIGN.md](REDESIGN.md) for the game as it actually exists now. Kept for
+> historical record only.
+
 Blocks 2 through 7. Each block has a goal, a falsifiable question, and exit
 criteria. Build them in order; the dependencies are real.
 

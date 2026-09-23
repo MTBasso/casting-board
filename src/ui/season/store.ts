@@ -8,12 +8,15 @@ import {
 } from "../../sim/season/engine.js";
 import {
   acceptNewcomer,
+  applyEvolution,
   autoCatch,
   eggFighterFor,
   hatchEggs,
   rollEggOffer,
+  rollEvolutionOffer,
   tradeOffer,
   weakestOf,
+  type EvolutionCandidate,
 } from "../../sim/season/growth.js";
 import { offerDoctrines, pickDoctrine, restParty } from "../../sim/season/doctrines.js";
 import { createCareer, inductMentors, type Career } from "../../sim/season/career.js";
@@ -36,8 +39,8 @@ export interface BattleLogLine {
   text: string;
 }
 
-/** Which between-Ante growth decision (growth.ts) is currently in front of the player, if any — trade and egg offers precede the Doctrine shop. */
-export type GrowthPhase = "trade" | "egg" | "shop" | null;
+/** Which between-Ante growth decision (growth.ts) is currently in front of the player, if any — trade, egg and evolution offers precede the Doctrine shop. */
+export type GrowthPhase = "trade" | "egg" | "evolve" | "shop" | null;
 
 /** What kept the season alive on what would have been a fatal Ante loss — shown once before the retried battle opens. */
 export interface ReprieveNotice {
@@ -56,6 +59,7 @@ interface SeasonStore {
   growthPhase: GrowthPhase;
   tradeCandidate: Species | null;
   eggCandidate: Species | null;
+  evolutionOffer: EvolutionCandidate[];
   career: Career;
   justInducted: string[];
   reprieve: ReprieveNotice | null;
@@ -67,6 +71,7 @@ interface SeasonStore {
   continueAfterReprieve: () => void;
   resolveTradeOffer: (accept: boolean) => void;
   resolveEggOffer: (accept: boolean) => void;
+  resolveEvolutionOffer: (candidate: EvolutionCandidate | null) => void;
   pickShopDoctrine: (id: string) => void;
 }
 
@@ -101,6 +106,7 @@ interface GrowthStep {
   phase: GrowthPhase;
   tradeCandidate: Species | null;
   eggCandidate: Species | null;
+  evolutionOffer: EvolutionCandidate[];
   shopOffer: Doctrine[];
 }
 
@@ -117,6 +123,12 @@ function eggCandidateFor(run: RunState): { run: RunState; candidate: Species | n
   return { run: { ...run, rng }, candidate };
 }
 
+function evolveCandidateFor(run: RunState): { run: RunState; offer: EvolutionCandidate[] } {
+  const rng = { seed: run.rng.seed };
+  const offer = rollEvolutionOffer({ ...run, rng }) ?? [];
+  return { run: { ...run, rng }, offer };
+}
+
 /** Hatches any carried egg and resolves the ambient catch — the automatic half of a shop visit, run once on entry. */
 function startGrowth(run: RunState): RunState {
   const hatched = { ...run, party: hatchEggs(run.party) };
@@ -125,20 +137,34 @@ function startGrowth(run: RunState): RunState {
 }
 
 /** Advances through the remaining growth decisions until one needs the player, or the Doctrine shop is ready. */
-function advanceGrowth(run: RunState, opts: { skipTrade?: boolean; skipEgg?: boolean } = {}): GrowthStep {
+function advanceGrowth(
+  run: RunState,
+  opts: { skipTrade?: boolean; skipEgg?: boolean; skipEvolve?: boolean } = {},
+): GrowthStep {
   let next = run;
   if (!opts.skipTrade) {
     const { run: withRng, candidate } = tradeCandidateFor(next);
     next = withRng;
-    if (candidate) return { run: next, phase: "trade", tradeCandidate: candidate, eggCandidate: null, shopOffer: [] };
+    if (candidate) {
+      return { run: next, phase: "trade", tradeCandidate: candidate, eggCandidate: null, evolutionOffer: [], shopOffer: [] };
+    }
   }
   if (!opts.skipEgg) {
     const { run: withRng, candidate } = eggCandidateFor(next);
     next = withRng;
-    if (candidate) return { run: next, phase: "egg", tradeCandidate: null, eggCandidate: candidate, shopOffer: [] };
+    if (candidate) {
+      return { run: next, phase: "egg", tradeCandidate: null, eggCandidate: candidate, evolutionOffer: [], shopOffer: [] };
+    }
+  }
+  if (!opts.skipEvolve) {
+    const { run: withRng, offer } = evolveCandidateFor(next);
+    next = withRng;
+    if (offer.length > 0) {
+      return { run: next, phase: "evolve", tradeCandidate: null, eggCandidate: null, evolutionOffer: offer, shopOffer: [] };
+    }
   }
   const offer = offerDoctrines(next);
-  return { run: next, phase: "shop", tradeCandidate: null, eggCandidate: null, shopOffer: offer };
+  return { run: next, phase: "shop", tradeCandidate: null, eggCandidate: null, evolutionOffer: [], shopOffer: offer };
 }
 
 /** The Doctrine catalog exhausted — nothing to pick, same as the headless resolveShop: rest and open the next Ante directly. */
@@ -157,6 +183,7 @@ export const useSeason = create<SeasonStore>((set, get) => ({
   growthPhase: null,
   tradeCandidate: null,
   eggCandidate: null,
+  evolutionOffer: [],
   career: createCareer(),
   justInducted: [],
   reprieve: null,
@@ -175,6 +202,7 @@ export const useSeason = create<SeasonStore>((set, get) => ({
       growthPhase: null,
       tradeCandidate: null,
       eggCandidate: null,
+      evolutionOffer: [],
       justInducted: [],
       reprieve: null,
     });
@@ -282,6 +310,7 @@ export const useSeason = create<SeasonStore>((set, get) => ({
         growthPhase: step.phase,
         tradeCandidate: step.tradeCandidate,
         eggCandidate: step.eggCandidate,
+        evolutionOffer: step.evolutionOffer,
         shopOffer: step.shopOffer,
       });
       return;
@@ -330,6 +359,7 @@ export const useSeason = create<SeasonStore>((set, get) => ({
       growthPhase: step.phase,
       tradeCandidate: step.tradeCandidate,
       eggCandidate: step.eggCandidate,
+      evolutionOffer: step.evolutionOffer,
       shopOffer: step.shopOffer,
     });
   },
@@ -353,7 +383,7 @@ export const useSeason = create<SeasonStore>((set, get) => ({
       lines.push(logLine(`Skipped the egg — ${eggCandidate.name}, most likely.`));
     }
     const step = advanceGrowth(next, { skipTrade: true, skipEgg: true });
-    if (step.shopOffer.length === 0) {
+    if (step.phase === "shop" && step.shopOffer.length === 0) {
       const { run: nextRun, battle } = skipToNextAnte(step.run);
       set({ run: nextRun, battle, growthPhase: null, shopOffer: [], log: [...lines, logLine(`No Doctrines left to offer. Ante ${nextRun.ante} opens.`)] });
       return;
@@ -364,6 +394,35 @@ export const useSeason = create<SeasonStore>((set, get) => ({
       growthPhase: step.phase,
       tradeCandidate: step.tradeCandidate,
       eggCandidate: step.eggCandidate,
+      evolutionOffer: step.evolutionOffer,
+      shopOffer: step.shopOffer,
+    });
+  },
+
+  resolveEvolutionOffer: (candidate) => {
+    const { run, evolutionOffer, log } = get();
+    if (run.status !== "shopping" || evolutionOffer.length === 0) return;
+    let next = run;
+    const lines = [...log];
+    if (candidate) {
+      next = { ...run, party: applyEvolution(run.party, candidate.memberIndex, candidate.target) };
+      lines.push(logLine(`${candidate.memberSlug} evolved into ${candidate.target.name}!`));
+    } else {
+      lines.push(logLine("Skipped the Evolution Stone."));
+    }
+    const step = advanceGrowth(next, { skipTrade: true, skipEgg: true, skipEvolve: true });
+    if (step.phase === "shop" && step.shopOffer.length === 0) {
+      const { run: nextRun, battle } = skipToNextAnte(step.run);
+      set({ run: nextRun, battle, growthPhase: null, shopOffer: [], log: [...lines, logLine(`No Doctrines left to offer. Ante ${nextRun.ante} opens.`)] });
+      return;
+    }
+    set({
+      run: step.run,
+      log: lines,
+      growthPhase: step.phase,
+      tradeCandidate: step.tradeCandidate,
+      eggCandidate: step.eggCandidate,
+      evolutionOffer: step.evolutionOffer,
       shopOffer: step.shopOffer,
     });
   },

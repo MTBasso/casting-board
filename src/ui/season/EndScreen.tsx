@@ -8,6 +8,7 @@ export function EndScreen() {
   const career = useSeason((s) => s.career);
   const justInducted = useSeason((s) => s.justInducted);
   const newRun = useSeason((s) => s.newRun);
+  const setViewingDex = useSeason((s) => s.setViewingDex);
   const won = run.status === "won";
   const cleared = run.history.filter((o) => o.cleared).length;
 
@@ -36,9 +37,14 @@ export function EndScreen() {
           Hall of Fame: {career.mentors.length}/{MAX_MENTORS} Mentors carried forward.
         </p>
 
-        <button className="sn-btn is-primary" onClick={() => newRun()}>
-          New Season →
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="sn-btn" onClick={() => setViewingDex(true)}>
+            View Dex
+          </button>
+          <button className="sn-btn is-primary" onClick={() => newRun()}>
+            New Season →
+          </button>
+        </div>
       </div>
     </div>
   );

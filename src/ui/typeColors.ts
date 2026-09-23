@@ -1,4 +1,4 @@
-import type { TypeId } from "../sim/index.js";
+import type { TypeId } from "../sim/types.js";
 
 /**
  * The canonical type colours.

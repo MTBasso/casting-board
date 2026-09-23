@@ -22,18 +22,21 @@ verbatim. This plan turns the picked options into concrete edits.
 
 ## Status
 
-Not started.
+Done. All three steps landed on `main` (bundled into the
+`chore(season): catch up prior uncommitted redesign engine and UI` commit
+rather than their own feature branches) and the reference doc
+(https://claude.ai/artifact/UYuzCD8TZo6SZ5M1ffs6LN) was updated to match.
 
 ## Steps
 
-1. **Token + focus + button fixes** — `feat/terminal-cards-contrast-focus-target`
+1. **[Done]** **Token + focus + button fixes** — `feat/terminal-cards-contrast-focus-target`
    - Change `--sn-text-dim` to `#88919c` in `src/ui/season/season.css`.
    - Add the single `:focus-visible` rule scoped to `.sn-btn, .sn-card, .sn-bench-card`.
    - Add `min-height: 44px` to `.sn-btn`.
    - **Done when:** matches F1b/F2b/F3b in `docs/reviews/terminal-cards-design-system-2026-09-23.html`; `npm test` and `npx tsc --noEmit` pass; a manual check in the running app (`npm run dev`, Draft/Ante/Shop screens) shows no layout crowding from the taller buttons.
    - **Checked by:** `npm test`, `npx tsc --noEmit`, visual pass in dev.
 
-2. **States section (empty / error / loading)** — `feat/terminal-cards-states`
+2. **[Done]** **States section (empty / error / loading)** — `feat/terminal-cards-states`
    - Add `.sn-empty` to `season.css`, reusing `.sn-slot`'s dashed border/dim label language.
    - Add an error pattern (color: `--sn-danger`, same card shell as `.sn-log`).
    - Add a loading pattern (documented only — no screen wires it yet).
@@ -41,7 +44,7 @@ Not started.
    - **Done when:** matches F4c in the review page; new classes exist in `season.css` with no unused-selector lint warning if one is configured.
    - **Checked by:** visual pass of the doc/reference page; `npx tsc --noEmit`.
 
-3. **Doc audit for drift** — `feat/terminal-cards-doc-audit`
+3. **[Done]** **Doc audit for drift** — `feat/terminal-cards-doc-audit`
    - Diff every `.sn-*` selector in `season.css` against the reference doc's sections.
    - Add the composed `.sn-matchup` example (two `.sn-fighter` panels + `.sn-vs`, matching what `AnteScreen.tsx` ships).
    - Add `.sn-bench-list` and the `img` fit rules to whichever section they belong under.

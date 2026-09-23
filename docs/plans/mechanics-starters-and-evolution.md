@@ -46,8 +46,8 @@ Two gaps in `src/sim/season`, the roguelike-redesign engine `REDESIGN.md` descri
 ## Status
 
 1. Filter the first draft pick to valid starters (F1c): merged
-2. Evolution Stone: sim-side offer and apply logic (F2c): not started
-3. Wire the Evolution Stone into the shop-step UI: not started
+2. Evolution Stone: sim-side offer and apply logic (F2c): merged
+3. Wire the Evolution Stone into the shop-step UI: merged
 4. Measure whether lines actually finish evolving across a season: not started
 
 ## Steps

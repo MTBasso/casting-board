@@ -1,5 +1,10 @@
 # The Casting Board — Milestones
 
+> **Archived.** This tracks milestones for the old off-screen league-manager
+> game, which has been deleted from the codebase — see
+> [REDESIGN.md](REDESIGN.md) for the game as it actually exists now. Kept for
+> historical record only.
+
 ROADMAP.md is the log: what was built, what it measured, what that forced.
 This is the other half — **what state the game is in**, stated as things a
 player can do that they could not before.

@@ -45,7 +45,10 @@ Two gaps in `src/sim/season`, the roguelike-redesign engine `REDESIGN.md` descri
 
 ## Status
 
-Planned, not started (F1's roster-expansion prerequisite is already done — see "What and why" above).
+1. Filter the first draft pick to valid starters (F1c): built on `feat/starter-pick`
+2. Evolution Stone: sim-side offer and apply logic (F2c): not started
+3. Wire the Evolution Stone into the shop-step UI: not started
+4. Measure whether lines actually finish evolving across a season: not started
 
 ## Steps
 

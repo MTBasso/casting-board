@@ -23,10 +23,25 @@ export interface Mentor {
 export interface Career {
   mentors: readonly Mentor[];
   seasonsPlayed: number;
+  /** REDESIGN.md "Collection layer": every species slug seen across the whole career, tracked outside any single run. */
+  seenSpecies: readonly string[];
 }
 
 export function createCareer(): Career {
-  return { mentors: [], seasonsPlayed: 0 };
+  return { mentors: [], seasonsPlayed: 0, seenSpecies: [] };
+}
+
+/** Adds newly-seen species slugs to the Pokédex log, deduped — same shape as inductMentors. */
+export function recordSeen(career: Career, slugs: readonly string[]): Career {
+  const seen = new Set(career.seenSpecies);
+  let changed = false;
+  for (const slug of slugs) {
+    if (!seen.has(slug)) {
+      seen.add(slug);
+      changed = true;
+    }
+  }
+  return changed ? { ...career, seenSpecies: [...seen] } : career;
 }
 
 /**
@@ -45,7 +60,7 @@ export function inductMentors(career: Career, run: RunState): Career {
     if (mentors.some((m) => m.slug === f.slug)) continue;
     mentors.push({ slug: f.slug });
   }
-  return { mentors, seasonsPlayed: career.seasonsPlayed + 1 };
+  return { ...career, mentors, seasonsPlayed: career.seasonsPlayed + 1 };
 }
 
 /** Starts a fresh season, drafting a party weighted by the career's Mentors so far. */

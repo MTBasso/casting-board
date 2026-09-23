@@ -66,7 +66,7 @@ describe("Hall of Fame / Mentor meta-progression", () => {
     // the weighting actually gets it offered often enough to matter, rather
     // than being confounded by typeDiversePolicy's own unrelated preferences.
     const takeMentorIfOffered: DraftPolicy = (offer) => offer.find((s) => s.slug === "pikachu") ?? offer[0]!;
-    const career = { mentors: [{ slug: "pikachu" }], seasonsPlayed: 3 };
+    const career = { mentors: [{ slug: "pikachu" }], seasonsPlayed: 3, seenSpecies: [] };
     let sawMentor = false;
     for (let seed = 1; seed <= 100; seed++) {
       const run = startSeason(career, seed, undefined, takeMentorIfOffered);

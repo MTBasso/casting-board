@@ -1,5 +1,6 @@
 import { STARTER_PICK_COUNT } from "../../sim/season/draft.js";
 import { rarityOf } from "../../sim/season/roster.js";
+import { TYPES } from "../../sim/types.js";
 import { TYPE_COLORS, needsDarkText } from "../typeColors.js";
 import { spriteUrl } from "../sprites.js";
 import { useSeason } from "./store.js";
@@ -15,8 +16,10 @@ export function DraftScreen() {
   const offer = useSeason((s) => s.offer);
   const pickDraft = useSeason((s) => s.pickDraft);
   const beginSeason = useSeason((s) => s.beginSeason);
+  const setViewingDex = useSeason((s) => s.setViewingDex);
 
   const full = run.party.length >= STARTER_PICK_COUNT;
+  const liveTypes = new Set(run.charter.liveTypes);
 
   return (
     <div className="season-root">
@@ -25,8 +28,34 @@ export function DraftScreen() {
           <div className="sn-eyebrow">Season 1 // Ante 0 // Draft</div>
           <h1 className="sn-title sn-display">Choose Your Starter</h1>
         </div>
-        <div className="sn-meta">
-          {run.party.length}/{STARTER_PICK_COUNT} chosen
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div className="sn-meta">
+            {run.party.length}/{STARTER_PICK_COUNT} chosen
+          </div>
+          <button className="sn-btn" onClick={() => setViewingDex(true)}>
+            Dex
+          </button>
+        </div>
+      </div>
+
+      {/* REDESIGN.md "League Charter": which types are live this season, shown before drafting so it's part of the read, not a surprise discovered mid-run. */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <span className="sn-label">League Charter — live types this season</span>
+        <div className="sn-charter-row">
+          {TYPES.map((type) => {
+            const live = liveTypes.has(type);
+            const color = TYPE_COLORS[type];
+            const dark = needsDarkText(type);
+            return (
+              <span
+                key={type}
+                className={`sn-badge sn-charter-chip${live ? "" : " is-banned"}`}
+                style={live ? { background: color, color: dark ? "#1c1c14" : "#fff" } : undefined}
+              >
+                {type}
+              </span>
+            );
+          })}
         </div>
       </div>
 

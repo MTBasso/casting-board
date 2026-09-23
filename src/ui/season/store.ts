@@ -19,7 +19,8 @@ import {
   type EvolutionCandidate,
 } from "../../sim/season/growth.js";
 import { offerDoctrines, pickDoctrine, restParty } from "../../sim/season/doctrines.js";
-import { createCareer, inductMentors, type Career } from "../../sim/season/career.js";
+import { createCareer, inductMentors, recordSeen, type Career } from "../../sim/season/career.js";
+import { saveCareer } from "../../persist/seasonSave.js";
 import {
   canSwitchTo,
   initBattle,
@@ -64,6 +65,9 @@ interface SeasonStore {
   career: Career;
   justInducted: string[];
   reprieve: ReprieveNotice | null;
+  /** Pokédex overlay — pre-empts the status switch the same way `reprieve` does, but toggled by the player rather than the engine. */
+  viewingDex: boolean;
+  setViewingDex: (viewing: boolean) => void;
   newRun: (seed?: number) => void;
   pickDraft: (slug: string) => void;
   beginSeason: () => void;
@@ -80,6 +84,16 @@ interface SeasonStore {
 let nextLogId = 0;
 function logLine(text: string): BattleLogLine {
   return { id: nextLogId++, text };
+}
+
+/** Fire-and-forget autosave — Career changes are infrequent enough not to need debouncing. */
+function persistCareer(career: Career): void {
+  void saveCareer(career);
+}
+
+/** Non-egg party slugs — eggs stay hidden from the Pokédex until they hatch, matching EggScreen's "???" reveal. */
+function visibleSlugsOf(party: RunState["party"]): string[] {
+  return party.filter((f) => !f.isEgg).map((f) => f.slug);
 }
 
 /** Draws the season's first draft offer for a fresh run, weighted by the career's Mentors so far (REDESIGN.md "Draft/season start"). */
@@ -194,15 +208,19 @@ export const useSeason = create<SeasonStore>((set, get) => {
     }
     if (resolved.status === "won" || resolved.status === "lost") {
       const { career } = get();
-      const nextCareer = inductMentors(career, resolved);
+      const inducted = inductMentors(career, resolved);
+      const nextCareer = recordSeen(inducted, visibleSlugsOf(resolved.party));
       const justInducted = nextCareer.mentors
         .filter((m) => !career.mentors.some((old) => old.slug === m.slug))
         .map((m) => m.slug);
+      persistCareer(nextCareer);
       set({ run: resolved, battle: nextBattle, log: lines, career: nextCareer, justInducted });
       return;
     }
     if (resolved.status === "shopping") {
       const step = advanceGrowth(startGrowth(resolved));
+      const nextCareer = recordSeen(get().career, visibleSlugsOf(step.run.party));
+      persistCareer(nextCareer);
       if (step.phase === "shop" && step.shopOffer.length === 0) {
         const { run: nextRun, battle: nextAnteBattle } = skipToNextAnte(step.run);
         set({
@@ -210,6 +228,7 @@ export const useSeason = create<SeasonStore>((set, get) => {
           battle: nextAnteBattle,
           growthPhase: null,
           shopOffer: [],
+          career: nextCareer,
           log: [...lines, logLine(`No Doctrines left to offer. Ante ${nextRun.ante} opens.`)],
         });
         return;
@@ -218,6 +237,7 @@ export const useSeason = create<SeasonStore>((set, get) => {
         run: step.run,
         battle: nextBattle,
         log: lines,
+        career: nextCareer,
         growthPhase: step.phase,
         tradeCandidate: step.tradeCandidate,
         eggCandidate: step.eggCandidate,
@@ -243,6 +263,8 @@ export const useSeason = create<SeasonStore>((set, get) => {
   career: createCareer(),
   justInducted: [],
   reprieve: null,
+  viewingDex: false,
+  setViewingDex: (viewing) => set({ viewingDex: viewing }),
 
   newRun: (seed = Date.now() & 0x7fffffff) => {
     const fresh = createRun(seed);
@@ -270,14 +292,16 @@ export const useSeason = create<SeasonStore>((set, get) => {
     if (!choice || run.status !== "draft") return;
     const party = [...run.party, makeFighter(choice)];
     const nextExcluded = [...excluded, slug];
+    const nextCareer = recordSeen(career, [slug]);
+    persistCareer(nextCareer);
     if (party.length >= STARTER_PICK_COUNT) {
-      set({ run: { ...run, party }, offer: [], excluded: nextExcluded });
+      set({ run: { ...run, party }, offer: [], excluded: nextExcluded, career: nextCareer });
       return;
     }
     const mentorSlugs = career.mentors.map((m) => m.slug);
     const rng = { seed: run.rng.seed };
     const nextOffer = draftOffer(rng, nextExcluded, mentorSlugs);
-    set({ run: { ...run, party, rng }, offer: nextOffer, excluded: nextExcluded });
+    set({ run: { ...run, party, rng }, offer: nextOffer, excluded: nextExcluded, career: nextCareer });
   },
 
   beginSeason: () => {
@@ -352,13 +376,16 @@ export const useSeason = create<SeasonStore>((set, get) => {
   },
 
   resolveTradeOffer: (accept) => {
-    const { run, tradeCandidate, log } = get();
+    const { run, tradeCandidate, log, career } = get();
     if (run.status !== "shopping" || !tradeCandidate) return;
     let next = run;
     const lines = [...log];
+    let nextCareer = career;
     if (accept) {
       const { party, released } = acceptNewcomer(run.party, makeFighter(tradeCandidate));
       next = { ...run, party };
+      nextCareer = recordSeen(career, [tradeCandidate.slug]);
+      persistCareer(nextCareer);
       lines.push(
         logLine(
           released
@@ -372,12 +399,13 @@ export const useSeason = create<SeasonStore>((set, get) => {
     const step = advanceGrowth(next, { skipTrade: true });
     if (step.phase === "shop" && step.shopOffer.length === 0) {
       const { run: nextRun, battle } = skipToNextAnte(step.run);
-      set({ run: nextRun, battle, growthPhase: null, shopOffer: [], log: [...lines, logLine(`No Doctrines left to offer. Ante ${nextRun.ante} opens.`)] });
+      set({ run: nextRun, battle, growthPhase: null, shopOffer: [], career: nextCareer, log: [...lines, logLine(`No Doctrines left to offer. Ante ${nextRun.ante} opens.`)] });
       return;
     }
     set({
       run: step.run,
       log: lines,
+      career: nextCareer,
       growthPhase: step.phase,
       tradeCandidate: step.tradeCandidate,
       eggCandidate: step.eggCandidate,
@@ -422,12 +450,15 @@ export const useSeason = create<SeasonStore>((set, get) => {
   },
 
   resolveEvolutionOffer: (candidate) => {
-    const { run, evolutionOffer, log } = get();
+    const { run, evolutionOffer, log, career } = get();
     if (run.status !== "shopping" || evolutionOffer.length === 0) return;
     let next = run;
     const lines = [...log];
+    let nextCareer = career;
     if (candidate) {
       next = { ...run, party: applyEvolution(run.party, candidate.memberIndex, candidate.target) };
+      nextCareer = recordSeen(career, [candidate.target.slug]);
+      persistCareer(nextCareer);
       lines.push(logLine(`${candidate.memberSlug} evolved into ${candidate.target.name}!`));
     } else {
       lines.push(logLine("Skipped the Evolution Stone."));
@@ -435,12 +466,13 @@ export const useSeason = create<SeasonStore>((set, get) => {
     const step = advanceGrowth(next, { skipTrade: true, skipEgg: true, skipEvolve: true });
     if (step.phase === "shop" && step.shopOffer.length === 0) {
       const { run: nextRun, battle } = skipToNextAnte(step.run);
-      set({ run: nextRun, battle, growthPhase: null, shopOffer: [], log: [...lines, logLine(`No Doctrines left to offer. Ante ${nextRun.ante} opens.`)] });
+      set({ run: nextRun, battle, growthPhase: null, shopOffer: [], career: nextCareer, log: [...lines, logLine(`No Doctrines left to offer. Ante ${nextRun.ante} opens.`)] });
       return;
     }
     set({
       run: step.run,
       log: lines,
+      career: nextCareer,
       growthPhase: step.phase,
       tradeCandidate: step.tradeCandidate,
       eggCandidate: step.eggCandidate,

@@ -65,6 +65,23 @@
   color: var(--sn-gold);
 }
 
+.sn-eyebrow.is-championship {
+  color: var(--sn-gold);
+}
+
+.sn-charter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sn-charter-chip.is-banned {
+  background: var(--sn-panel-2);
+  color: var(--sn-text-dim);
+  border: 1px dashed var(--sn-border);
+  text-decoration: line-through;
+}
+
 .sn-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -433,6 +450,61 @@
 
 .sn-end.is-lost .sn-end-title {
   color: var(--sn-danger);
+}
+
+/* Pokédex / collection log */
+
+.sn-dex-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.sn-dex-card {
+  background: var(--sn-panel);
+  border-radius: 10px;
+  border: 2px solid var(--sn-card-accent, var(--sn-border));
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.sn-dex-card.is-unseen {
+  opacity: 0.5;
+}
+
+.sn-dex-portrait {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: var(--sn-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: 18px;
+  color: var(--sn-text-dim);
+}
+
+.sn-dex-portrait img {
+  width: 84%;
+  height: 84%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.sn-dex-name {
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--sn-heading);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 /* 08 — States (empty / error / loading) */

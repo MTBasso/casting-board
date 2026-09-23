@@ -81,15 +81,22 @@ export function AnteScreen() {
   const calloutClass = mult > 1 ? "is-strong" : mult < 1 ? "is-weak" : "is-neutral";
   const calloutLabel =
     mult > 1 ? `${mult}× STRONG` : mult < 1 ? `${mult}× WEAK` : "NEUTRAL";
+  // Mechanically the Championship Ante is just the last one (engine.ts's
+  // applyAnteResult), but the player should feel that before the outcome,
+  // not just read "Championship Cleared" after — see REDESIGN.md "Run
+  // structure".
+  const isChampionship = run.ante === run.maxAntes;
 
   return (
     <div className="season-root">
       <div className="sn-header">
         <div>
-          <div className="sn-eyebrow">
-            Ante {run.ante} // Leader's mon {battle.gymIndex + 1} of {battle.gymParty.length}
+          <div className={`sn-eyebrow${isChampionship ? " is-championship" : ""}`}>
+            {isChampionship
+              ? `Championship // Leader's mon ${battle.gymIndex + 1} of ${battle.gymParty.length}`
+              : `Ante ${run.ante} // Leader's mon ${battle.gymIndex + 1} of ${battle.gymParty.length}`}
           </div>
-          <h1 className="sn-title sn-display">Coach Call</h1>
+          <h1 className="sn-title sn-display">{isChampionship ? "Championship Bout" : "Coach Call"}</h1>
         </div>
         <div className="sn-meta">
           Power <strong>{Math.round(powerMult(active) * 100)}%</strong>

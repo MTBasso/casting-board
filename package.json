@@ -3,15 +3,14 @@
   "private": true,
   "version": "0.0.1",
   "type": "module",
-  "description": "The Casting Board — a Pokemon League Manager idle game",
+  "description": "The Casting Board — a Pokémon League roguelike",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "sim": "tsx scripts/sim.ts"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "idb-keyval": "^6.2.1",
